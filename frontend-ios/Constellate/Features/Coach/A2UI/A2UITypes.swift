@@ -163,7 +163,7 @@ struct A2UIPayload: Codable, Sendable, Identifiable {
     let components: [A2UIComponent]
     let layout: A2UILayout
 
-    var id: String { UUID().uuidString }
+    let id: String = UUID().uuidString
 
     /// 是否包含 protocol_prompt 组件
     var hasProtocolPrompt: Bool {

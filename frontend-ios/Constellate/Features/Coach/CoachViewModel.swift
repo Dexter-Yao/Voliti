@@ -27,24 +27,6 @@ final class CoachViewModel {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         guard !isStreaming else { return }
 
-        let threadID = APIConfiguration.threadID ?? ""
-
-        let userMessage = ChatMessage(
-            role: "user",
-            textContent: text,
-            imageData: imageData,
-            threadID: threadID
-        )
-        messages.append(userMessage)
-        modelContext?.insert(userMessage)
-
-        let assistantMessage = ChatMessage(
-            role: "assistant",
-            textContent: "",
-            threadID: threadID
-        )
-        messages.append(assistantMessage)
-
         isStreaming = true
         errorMessage = nil
 
@@ -53,12 +35,25 @@ final class CoachViewModel {
             do {
                 let threadID = try await api.ensureThread()
 
-                if userMessage.threadID.isEmpty {
-                    userMessage.threadID = threadID
-                    assistantMessage.threadID = threadID
+                let userMessage = ChatMessage(
+                    role: "user",
+                    textContent: text,
+                    imageData: imageData,
+                    threadID: threadID
+                )
+                let assistantMessage = ChatMessage(
+                    role: "assistant",
+                    textContent: "",
+                    threadID: threadID
+                )
+
+                await MainActor.run {
+                    self.messages.append(userMessage)
+                    self.modelContext?.insert(userMessage)
+                    self.messages.append(assistantMessage)
                 }
 
-                let stream = await api.streamRun(
+                let stream = try api.streamRun(
                     threadID: threadID,
                     message: text,
                     imageData: imageData
@@ -69,9 +64,6 @@ final class CoachViewModel {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.isStreaming = false
-                    if assistantMessage.textContent.isEmpty {
-                        self.messages.removeLast()
-                    }
                 }
             }
         }
@@ -110,12 +102,22 @@ final class CoachViewModel {
 
         streamTask = Task { [weak self] in
             guard let self else { return }
-            let stream = await api.resumeInterrupt(
-                threadID: threadID,
-                action: action,
-                data: data
-            )
-            await processStream(stream, assistantMessage: assistantMessage)
+            do {
+                let stream = try api.resumeInterrupt(
+                    threadID: threadID,
+                    action: action,
+                    data: data
+                )
+                await processStream(stream, assistantMessage: assistantMessage)
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                    self.isStreaming = false
+                    if assistantMessage.textContent.isEmpty {
+                        self.messages.removeLast()
+                    }
+                }
+            }
         }
     }
 

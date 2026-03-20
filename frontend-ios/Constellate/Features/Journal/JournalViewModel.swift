@@ -7,7 +7,7 @@ import Observation
 
 @Observable
 final class JournalViewModel {
-    var groupedEvents: [(date: String, events: [BehaviorEvent])] = []
+    var groupedEvents: [(date: Date, events: [BehaviorEvent])] = []
 
     private var modelContext: ModelContext?
 
@@ -24,13 +24,11 @@ final class JournalViewModel {
         )
         guard let events = try? modelContext.fetch(descriptor) else { return }
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        var grouped: [String: [BehaviorEvent]] = [:]
+        let calendar = Calendar.current
+        var grouped: [Date: [BehaviorEvent]] = [:]
         for event in events {
-            let key = formatter.string(from: event.timestamp)
-            grouped[key, default: []].append(event)
+            let dayStart = calendar.startOfDay(for: event.timestamp)
+            grouped[dayStart, default: []].append(event)
         }
 
         groupedEvents = grouped

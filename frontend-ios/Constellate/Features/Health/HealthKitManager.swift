@@ -24,14 +24,14 @@ final class HealthKitManager {
         ]
         let shareTypes: Set<HKSampleType> = [HKQuantityType(.bodyMass)]
         try await store.requestAuthorization(toShare: shareTypes, read: types)
-        isWeightAuthorized = true
+        isWeightAuthorized = store.authorizationStatus(for: HKQuantityType(.bodyMass)) == .sharingAuthorized
     }
 
     func requestSleepAccess() async throws {
         guard isAvailable else { return }
         let types: Set<HKObjectType> = [HKCategoryType(.sleepAnalysis)]
         try await store.requestAuthorization(toShare: [], read: types)
-        isSleepAuthorized = true
+        isSleepAuthorized = store.authorizationStatus(for: HKCategoryType(.sleepAnalysis)) != .notDetermined
     }
 
     func requestStepsAccess() async throws {
@@ -41,7 +41,7 @@ final class HealthKitManager {
             HKQuantityType(.activeEnergyBurned),
         ]
         try await store.requestAuthorization(toShare: [], read: types)
-        isStepsAuthorized = true
+        isStepsAuthorized = store.authorizationStatus(for: HKQuantityType(.stepCount)) != .notDetermined
     }
 
     // MARK: - Read

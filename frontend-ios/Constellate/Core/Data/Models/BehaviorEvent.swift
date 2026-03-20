@@ -4,6 +4,28 @@
 import Foundation
 import SwiftData
 
+enum EventType: String, Codable {
+    case meal
+    case exercise
+    case weighIn = "weigh_in"
+    case waterIntake = "water_intake"
+    case stateCheckin = "state_checkin"
+    case goalUpdate = "goal_update"
+    case appAction = "app_action"
+
+    var label: String {
+        switch self {
+        case .meal: "饮食"
+        case .exercise: "运动"
+        case .weighIn: "体重"
+        case .waterIntake: "饮水"
+        case .stateCheckin: "状态"
+        case .goalUpdate: "目标"
+        case .appAction: "操作"
+        }
+    }
+}
+
 @Model
 final class BehaviorEvent {
     var id: String

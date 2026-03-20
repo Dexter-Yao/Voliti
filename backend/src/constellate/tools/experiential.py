@@ -129,9 +129,8 @@ def compose_experiential_intervention(
     raw_response = interrupt(payload.model_dump())
     response = A2UIResponse.model_validate(raw_response)
 
-    _intervention_cache.pop(cache_key, None)
-
     if response.action == "reject":
+        _intervention_cache.pop(cache_key, None)
         return f"User dismissed the experiential intervention ({purpose})."
     if response.data.get("decision") == "accept":
         _persist_card(
@@ -140,5 +139,7 @@ def compose_experiential_intervention(
             caption=caption,
             purpose=purpose,
         )
+        _intervention_cache.pop(cache_key, None)
         return f"User accepted the experiential intervention ({purpose}). {caption}"
+    _intervention_cache.pop(cache_key, None)
     return f"User dismissed the experiential intervention ({purpose})."

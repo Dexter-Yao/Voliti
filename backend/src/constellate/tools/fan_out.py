@@ -1,7 +1,7 @@
 # ABOUTME: A2UI 通用交互工具
 # ABOUTME: 通过组合 7 种 UI 原语构建动态界面，经 interrupt() 采集用户响应
 
-from typing import Any
+from typing import Any, Literal
 
 from langchain_core.tools import tool
 from langgraph.types import interrupt
@@ -12,7 +12,7 @@ from constellate.a2ui import A2UIPayload, A2UIResponse
 @tool
 def fan_out(
     components: list[dict[str, Any]],
-    layout: str = "three-quarter",
+    layout: Literal["half", "three-quarter", "full"] = "three-quarter",
 ) -> str:
     """Present an interactive UI to the user and collect their response.
 

@@ -55,37 +55,33 @@ struct EventRow: View {
         .padding(.vertical, StarpathTokens.spacingSM)
     }
 
+    private var eventType: EventType? {
+        EventType(rawValue: event.type)
+    }
+
     private var eventTypeLabel: String {
-        switch event.type {
-        case "meal": "饮食"
-        case "exercise": "运动"
-        case "weigh_in": "体重"
-        case "water_intake": "饮水"
-        case "state_checkin": "状态"
-        case "goal_update": "目标"
-        case "app_action": "操作"
-        default: event.type
-        }
+        eventType?.label ?? event.type
     }
 
     private func buildDataSummary() -> String? {
+        guard let eventType else { return nil }
         var parts: [String] = []
-        switch event.type {
-        case "meal":
+        switch eventType {
+        case .meal:
             if let kcal = event.kcal { parts.append("\(Int(kcal)) kcal") }
             if let p = event.proteinG { parts.append("P\(Int(p))g") }
-        case "exercise":
+        case .exercise:
             if let dur = event.durationMin { parts.append("\(Int(dur))min") }
             if let burned = event.kcalBurned { parts.append("\(Int(burned)) kcal") }
-        case "weigh_in":
+        case .weighIn:
             if let kg = event.weightKg { parts.append("\(String(format: "%.1f", kg)) kg") }
-        case "water_intake":
+        case .waterIntake:
             if let ml = event.waterMl { parts.append("\(Int(ml)) ml") }
-        case "state_checkin":
+        case .stateCheckin:
             if let e = event.energy { parts.append("E:\(e)") }
             if let m = event.mood { parts.append("M:\(m)") }
             if let s = event.stress { parts.append("S:\(s)") }
-        default:
+        case .goalUpdate, .appAction:
             break
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

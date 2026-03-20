@@ -21,7 +21,7 @@ final class LangGraphAPI {
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let threadID = json["thread_id"] as? String else {
-            throw LangGraphError.invalidJSON
+            throw NetworkError.invalidJSON
         }
         return threadID
     }
@@ -39,20 +39,20 @@ final class LangGraphAPI {
     // MARK: - Streaming
 
     /// 发送消息并获取流式响应
-    func streamRun(threadID: String, message: String, imageData: Data? = nil) -> AsyncStream<SSEEvent> {
-        let request = buildStreamRequest(threadID: threadID, message: message, imageData: imageData)
+    func streamRun(threadID: String, message: String, imageData: Data? = nil) throws -> AsyncStream<SSEEvent> {
+        let request = try buildStreamRequest(threadID: threadID, message: message, imageData: imageData)
         return sseClient.stream(request: request)
     }
 
     /// 恢复 A2UI 中断
-    func resumeInterrupt(threadID: String, action: String, data: [String: Any] = [:]) -> AsyncStream<SSEEvent> {
-        let request = buildResumeRequest(threadID: threadID, action: action, data: data)
+    func resumeInterrupt(threadID: String, action: String, data: [String: Any] = [:]) throws -> AsyncStream<SSEEvent> {
+        let request = try buildResumeRequest(threadID: threadID, action: action, data: data)
         return sseClient.stream(request: request)
     }
 
     // MARK: - Request Builders
 
-    private func buildStreamRequest(threadID: String, message: String, imageData: Data?) -> URLRequest {
+    private func buildStreamRequest(threadID: String, message: String, imageData: Data?) throws -> URLRequest {
         let url = APIConfiguration.baseURL
             .appendingPathComponent("threads")
             .appendingPathComponent(threadID)
@@ -87,11 +87,11 @@ final class LangGraphAPI {
             "stream_mode": ["messages"]
         ]
 
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
     }
 
-    private func buildResumeRequest(threadID: String, action: String, data: [String: Any]) -> URLRequest {
+    private func buildResumeRequest(threadID: String, action: String, data: [String: Any]) throws -> URLRequest {
         let url = APIConfiguration.baseURL
             .appendingPathComponent("threads")
             .appendingPathComponent(threadID)
@@ -115,7 +115,7 @@ final class LangGraphAPI {
             "stream_mode": ["messages"]
         ]
 
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
     }
 
@@ -125,21 +125,8 @@ final class LangGraphAPI {
         guard let http = response as? HTTPURLResponse,
               (200..<300).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            throw LangGraphError.httpError(code)
+            throw NetworkError.httpError(code)
         }
     }
 }
 
-// MARK: - Errors
-
-enum LangGraphError: LocalizedError {
-    case invalidJSON
-    case httpError(Int)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidJSON: return "Invalid JSON response"
-        case .httpError(let code): return "HTTP error: \(code)"
-        }
-    }
-}

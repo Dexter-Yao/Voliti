@@ -30,13 +30,13 @@ struct SSEClient: Sendable {
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
 
                     guard let httpResponse = response as? HTTPURLResponse else {
-                        continuation.yield(.error(SSEError.invalidResponse))
+                        continuation.yield(.error(NetworkError.invalidResponse))
                         continuation.finish()
                         return
                     }
 
                     guard (200..<300).contains(httpResponse.statusCode) else {
-                        continuation.yield(.error(SSEError.httpError(httpResponse.statusCode)))
+                        continuation.yield(.error(NetworkError.httpError(httpResponse.statusCode)))
                         continuation.finish()
                         return
                     }
@@ -145,13 +145,15 @@ struct SSEClient: Sendable {
 
 // MARK: - Errors
 
-enum SSEError: LocalizedError, Sendable {
+enum NetworkError: LocalizedError, Sendable {
     case invalidResponse
+    case invalidJSON
     case httpError(Int)
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse: return "Invalid server response"
+        case .invalidJSON: return "Invalid JSON response"
         case .httpError(let code): return "HTTP error: \(code)"
         }
     }

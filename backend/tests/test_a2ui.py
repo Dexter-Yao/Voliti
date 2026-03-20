@@ -13,6 +13,7 @@ from constellate.a2ui import (
     ImageComponent,
     MultiSelectComponent,
     NumberInputComponent,
+    ProtocolPromptComponent,
     SelectComponent,
     SelectOption,
     SliderComponent,
@@ -205,10 +206,11 @@ class TestComponent:
             adapter.validate_python({"kind": "invalid", "content": "x"})
 
     def test_covers_all_component_types(self) -> None:
-        """Component 联合类型应包含所有 7 种组件。"""
+        """Component 联合类型应包含所有 8 种组件。"""
         expected = {
             TextComponent,
             ImageComponent,
+            ProtocolPromptComponent,
             SliderComponent,
             TextInputComponent,
             NumberInputComponent,

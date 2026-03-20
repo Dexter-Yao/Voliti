@@ -4,18 +4,28 @@
 import UIKit
 
 enum HapticService {
+    private static let lightGenerator = UIImpactFeedbackGenerator(style: .light)
+    private static let mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
+    private static let notificationGenerator = UINotificationFeedbackGenerator()
+
+    static func prepare() {
+        lightGenerator.prepare()
+        mediumGenerator.prepare()
+        notificationGenerator.prepare()
+    }
+
     /// A2UI 滑块值变化
     static func light() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        lightGenerator.impactOccurred()
     }
 
     /// A2UI 提交
     static func medium() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        mediumGenerator.impactOccurred()
     }
 
     /// 干预卡片被接受
     static func success() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        notificationGenerator.notificationOccurred(.success)
     }
 }

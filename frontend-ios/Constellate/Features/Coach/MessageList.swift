@@ -7,6 +7,8 @@ struct MessageList: View {
     let messages: [ChatMessage]
     let isStreaming: Bool
 
+    @State private var lastScrollDate = Date.distantPast
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -50,6 +52,9 @@ struct MessageList: View {
                 }
             }
             .onChange(of: messages.last?.textContent) {
+                let now = Date()
+                guard now.timeIntervalSince(lastScrollDate) > 0.15 else { return }
+                lastScrollDate = now
                 if let lastID = messages.last?.id {
                     proxy.scrollTo(lastID, anchor: .bottom)
                 }

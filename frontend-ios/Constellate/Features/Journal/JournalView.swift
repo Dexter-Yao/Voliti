@@ -16,7 +16,7 @@ struct JournalView: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(viewModel.groupedEvents.enumerated()), id: \.element.date) { index, group in
                         // 日期标题
-                        Text(group.date)
+                        Text(group.date, format: .dateTime.year().month().day())
                             .starpathSerif()
                             .padding(.horizontal, StarpathTokens.spacingMD)
                             .padding(.top, index == 0 ? 0 : StarpathTokens.spacingLG)
@@ -64,16 +64,9 @@ struct JournalView: View {
         let groups = viewModel.groupedEvents
         guard index + 1 < groups.count else { return false }
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        guard let current = formatter.date(from: groups[index].date),
-              let next = formatter.date(from: groups[index + 1].date) else {
-            return false
-        }
-
-        let currentWeek = Calendar.current.component(.weekOfYear, from: current)
-        let nextWeek = Calendar.current.component(.weekOfYear, from: next)
+        let calendar = Calendar.current
+        let currentWeek = calendar.component(.weekOfYear, from: groups[index].date)
+        let nextWeek = calendar.component(.weekOfYear, from: groups[index + 1].date)
         return currentWeek != nextWeek
     }
 }
