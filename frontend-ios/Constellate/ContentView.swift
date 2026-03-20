@@ -1,5 +1,5 @@
 // ABOUTME: 应用根视图，TabView 承载三个页签
-// ABOUTME: Phase 1 仅 Coach 页可用，Map/Journal 为占位
+// ABOUTME: Coach / Map / Journal 全部就位
 
 import SwiftUI
 import SwiftData
@@ -12,14 +12,12 @@ struct ContentView: View {
                     Label("COACH", systemImage: "message")
                 }
 
-            // Phase 3 实现
-            Text("MAP")
+            MapView()
                 .tabItem {
                     Label("MAP", systemImage: "map")
                 }
 
-            // Phase 3 实现
-            Text("JOURNAL")
+            JournalView()
                 .tabItem {
                     Label("JOURNAL", systemImage: "book")
                 }
@@ -30,5 +28,10 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: ChatMessage.self, inMemory: true)
+        .modelContainer(for: [
+            ChatMessage.self,
+            BehaviorEvent.self,
+            InterventionCard.self,
+            Chapter.self,
+        ], inMemory: true)
 }

@@ -7,6 +7,9 @@ enum ModelContainerSetup {
     static func create() throws -> ModelContainer {
         let schema = Schema([
             ChatMessage.self,
+            BehaviorEvent.self,
+            InterventionCard.self,
+            Chapter.self,
         ])
         let config = ModelConfiguration(
             schema: schema,
