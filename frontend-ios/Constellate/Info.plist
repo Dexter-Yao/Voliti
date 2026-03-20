@@ -6,5 +6,34 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+
+	<key>UIAppFonts</key>
+	<array>
+		<string>NotoSerifSC.ttf</string>
+	</array>
+
+	<key>NSHealthShareUsageDescription</key>
+	<string>Constellate 需要读取你的健康数据（体重、睡眠、步数）以帮助 Coach 了解你的状态和行为趋势。</string>
+
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Constellate 会将你通过 Coach 记录的体重数据写入 Apple 健康。</string>
+
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Constellate 使用语音识别将你的语音转为文字，方便与 Coach 对话。</string>
+
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Constellate 需要麦克风来进行语音输入。</string>
+
+	<key>NSCameraUsageDescription</key>
+	<string>Constellate 使用相机拍摄食物照片，Coach 会帮你分析饮食内容。</string>
+
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Constellate 需要访问相册以选择食物照片发送给 Coach。</string>
+
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
