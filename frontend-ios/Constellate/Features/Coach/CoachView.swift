@@ -6,6 +6,7 @@ import SwiftData
 
 struct CoachView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(NotificationService.self) private var notificationService
     @State private var viewModel = CoachViewModel()
 
     var body: some View {
@@ -30,6 +31,13 @@ struct CoachView: View {
         }
         .onAppear {
             viewModel.configure(modelContext: modelContext)
+            viewModel.triggerDailyCheckinIfNeeded()
+        }
+        .onChange(of: notificationService.pendingDeepLink) { _, newValue in
+            guard let link = newValue else { return }
+            notificationService.pendingDeepLink = nil
+            let intent: NotificationIntent = (link == .review) ? .review : .checkin
+            viewModel.triggerFromNotification(intent)
         }
         .sheet(item: $viewModel.activeInterrupt) { payload in
             FanOutPanel(

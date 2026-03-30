@@ -2,11 +2,18 @@
 // ABOUTME: 管理 SSE 流生命周期，确保 UI 状态与后端中断协议一致
 
 import Foundation
+import SwiftUI
 import SwiftData
 import Observation
 import os
 
 private let logger = Logger(subsystem: "com.constellate", category: "CoachViewModel")
+
+/// 通知点击携带的意图类型
+enum NotificationIntent {
+    case checkin
+    case review
+}
 
 @MainActor
 @Observable
@@ -20,9 +27,89 @@ final class CoachViewModel {
     private var modelContext: ModelContext?
     private var streamTask: Task<Void, Never>?
 
+    @ObservationIgnored
+    @AppStorage("lastCheckinDate") private var lastCheckinDate: String = ""
+
+    @ObservationIgnored
+    @AppStorage("onboardingComplete") var onboardingComplete = false
+
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
         loadMessages()
+    }
+
+    // MARK: - Daily Check-in
+
+    /// 检查今天是否为首次打开，如果是且已完成 Onboarding，则发送系统触发消息启动 Check-in
+    func triggerDailyCheckinIfNeeded() {
+        guard onboardingComplete else { return }
+        guard !isStreaming else { return }
+
+        let today = Self.todayString()
+        guard lastCheckinDate != today else { return }
+
+        lastCheckinDate = today
+        sendSystemTrigger("[daily_checkin]")
+    }
+
+    /// 通知点击后触发对应流程
+    func triggerFromNotification(_ intent: NotificationIntent) {
+        guard onboardingComplete else { return }
+        guard !isStreaming else { return }
+
+        switch intent {
+        case .checkin:
+            lastCheckinDate = Self.todayString()
+            sendSystemTrigger("[daily_checkin]")
+        case .review:
+            sendSystemTrigger("[daily_review]")
+        }
+    }
+
+    private static func todayString() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
+
+    // MARK: - System Trigger
+
+    /// 向后端发送系统触发消息，不创建本地 ChatMessage，不在 UI 显示
+    private func sendSystemTrigger(_ tag: String) {
+        guard !isStreaming else { return }
+
+        isStreaming = true
+        errorMessage = nil
+
+        streamTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let threadID = try await api.ensureThread()
+
+                let assistantMessage = ChatMessage(
+                    role: .assistant,
+                    textContent: "",
+                    threadID: threadID
+                )
+
+                await MainActor.run {
+                    self.messages.append(assistantMessage)
+                }
+
+                let stream = try api.streamRun(
+                    threadID: threadID,
+                    message: tag,
+                    imageData: nil
+                )
+
+                await processStream(stream, assistantMessage: assistantMessage)
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                    self.isStreaming = false
+                }
+            }
+        }
     }
 
     // MARK: - Send Message
@@ -205,6 +292,10 @@ final class CoachViewModel {
             purpose: purpose
         )
         modelContext?.insert(card)
+
+        if !onboardingComplete {
+            onboardingComplete = true
+        }
     }
 
     // MARK: - Load from SwiftData

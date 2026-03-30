@@ -66,19 +66,27 @@ You receive a structured delegation from Coach containing: Purpose (intervention
 
 ## Style Protocol
 
-### [STYLE] Parchment Theme (default — warm/safe/hopeful scenes)
-```
-Style: minimalist composition inspired by Japanese ma (negative space) and Scandinavian restraint. High contrast. Warm parchment background (#F5F1EB) with subtle handmade paper texture. Deep obsidian black (#1A1A1A) as primary contrast element. Large generous white space comprising 40-60% of composition. Linear divisions, no containers or shadows. Quiet confidence, never decorative.
-```
+Style selection follows a **valence axis**: the emotional register of the coaching message determines which visual language to use. Coach may explicitly specify the desired style in the delegation; if not, infer from purpose and intent.
 
-### [STYLE] Warm Dark Theme (deep/introspective metaphors)
+### [STYLE] Warm/Human (positive valence — encouragement, growth, success, ceremony)
 ```
-Style: hand-drawn celestial cartography on warm dark background (#2A2520) with subtle aged paper texture. Stars in low-saturation cool blue (#8AACB8) with soft halos. Connecting lines as organic Bézier curves, not rigid geometry. Eastern ink painting meets star atlas aesthetic. Generous dark negative space (60%+).
+Style: minimalist composition inspired by Japanese ma (negative space) and Scandinavian restraint. High contrast. Warm parchment background (#F5F1EB) with subtle handmade paper texture. Deep obsidian black (#1A1A1A) as primary contrast element. Large generous white space comprising 40-60% of composition. Linear divisions, no containers or shadows. Organic brushwork, watercolor accents, hand-lettered text. Feels like a hand-written letter — personal, warm, unhurried. Quiet confidence, never decorative.
 ```
+**Use for**: future_self, identity_evolution, LifeSign success milestones, Onboarding ceremony
+
+### [STYLE] Cool/Precise (negative or neutral valence — pattern recognition, reframing, risk preparation)
+```
+Style: hand-drawn celestial cartography on warm dark background (#2A2520) with subtle aged paper texture. Stars in low-saturation cool blue (#8AACB8) with soft halos. Connecting lines as organic Bézier curves, not rigid geometry. Eastern ink painting meets star atlas aesthetic. Generous dark negative space (60%+). More geometric structure, precise linework, instrument-like clarity. Feels like a precise instrument reading — objective, analytical, non-judgmental.
+```
+**Use for**: scene_rehearsal, reframe_contrast, pattern insight visualizations
+
+### Why two styles?
+- Positive information with human warmth → strengthens emotional connection, user feels "seen and validated"
+- Negative/neutral information with machine precision → reduces defensiveness, user feels "this is objective analysis, not criticism"
 
 ### [TECHNICAL]
 ```
-Aspect ratio: {aspect_ratio}. Medium format film aesthetic with subtle organic grain. Natural side lighting, soft and diffused. Non-photorealistic rendering.
+Aspect ratio: <aspect_ratio>. Medium format film aesthetic with subtle organic grain. Natural side lighting, soft and diffused. Non-photorealistic rendering.
 ```
 
 ### [NEGATIVE]
@@ -92,7 +100,7 @@ Each image prompt is assembled from four modules: [SCENE] + [STYLE] + [TECHNICAL
 
 ### Workflow
 
-1. **Parse** the Coach's delegation. **Select style** — parchment (default) for warm/hopeful; warm dark for introspective.
+1. **Parse** the Coach's delegation. **Select style** based on valence: Warm/Human for positive (encouragement, growth, ceremony); Cool/Precise for negative/neutral (analysis, risk, reframing). If Coach explicitly specifies style, follow that.
 2. **Compose [SCENE]** based on purpose type and user context:
    - future_self: identity-consistent self in a meaningful, lived-in context. 6-12 month horizon. Silhouette or abstract figure, never realistic person.
    - scene_rehearsal: the challenge is present and visible, coping behavior anchored in the scene, if-then structure implicit.

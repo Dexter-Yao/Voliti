@@ -5,6 +5,7 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @Environment(NotificationService.self) private var notificationService
     @State private var selectedTab = 0
 
     private let tabs = ["COACH", "MAP", "JOURNAL"]
@@ -22,6 +23,11 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             StarpathTabBar(tabs: tabs, selectedIndex: $selectedTab)
+        }
+        .onChange(of: notificationService.pendingDeepLink) { _, newValue in
+            guard newValue != nil else { return }
+            selectedTab = 0
+            // pendingDeepLink 由 CoachView 消费后清除
         }
     }
 }
@@ -65,6 +71,7 @@ private struct StarpathTabBar: View {
 
 #Preview {
     ContentView()
+        .environment(NotificationService())
         .modelContainer(for: [
             ChatMessage.self,
             BehaviorEvent.self,

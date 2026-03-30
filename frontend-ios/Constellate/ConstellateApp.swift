@@ -1,5 +1,5 @@
 // ABOUTME: Constellate iOS 应用入口
-// ABOUTME: 配置 SwiftData ModelContainer 并挂载 TabView 根视图
+// ABOUTME: 配置 SwiftData ModelContainer，初始化通知服务，Onboarding 完成后请求通知权限
 
 import SwiftUI
 import SwiftData
@@ -7,6 +7,8 @@ import SwiftData
 @main
 struct ConstellateApp: App {
     let modelContainer: ModelContainer
+    @State private var notificationService = NotificationService()
+    @AppStorage("onboardingComplete") private var onboardingComplete = false
 
     init() {
         do {
@@ -19,6 +21,20 @@ struct ConstellateApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(notificationService)
+                .task {
+                    await notificationService.checkCurrentStatus()
+                    if onboardingComplete && notificationService.isAuthorized {
+                        await notificationService.scheduleDefaultReminders()
+                    }
+                }
+                .onChange(of: onboardingComplete) { _, isComplete in
+                    if isComplete {
+                        Task {
+                            await notificationService.requestPermissionAndSchedule()
+                        }
+                    }
+                }
         }
         .modelContainer(modelContainer)
     }
