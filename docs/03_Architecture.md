@@ -1,6 +1,6 @@
 # Constellate Architecture
 
-> 基于多模态教练 Agent 的系统设计，使用 Gemini 3 构建
+> 基于多模态教练 Agent 的系统设计，使用 Azure OpenAI GPT-5.4 构建
 
 ## 相关文档
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-Constellate is a multi-agent system that maintains coaching continuity across sessions through structured memory, composes dynamic UI interactions, and generates personalized behavioral interventions using Gemini 3's multi-modal capabilities.
+Constellate is a multi-agent system that maintains coaching continuity across sessions through structured memory, composes dynamic UI interactions, and generates personalized behavioral interventions using Azure OpenAI's GPT-5.4 family and gpt-image-1.5.
 
 ## System Architecture
 
@@ -21,16 +21,16 @@ Constellate is a multi-agent system that maintains coaching continuity across se
 │                                                                       │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │                    Coach Agent (DeepAgent)                      │ │
-│  │  Model: gemini-3-pro-preview                                   │ │
+│  │  Model: gpt-5.4 (Azure OpenAI)                                │ │
 │  │  Tools: fan_out (A2UI)                                         │ │
 │  │  Subagents: intervention_composer                              │ │
 │  │  Memory: /user/coach/AGENTS.md, /user/profile/context.md      │ │
 │  │                                                                │ │
 │  │  ┌──────────────────────────────────────────────────────────┐ │ │
 │  │  │         Intervention Composer (Subagent)                  │ │ │
-│  │  │  Model: gemini-3-flash-preview                           │ │ │
+│  │  │  Model: gpt-5.4-nano (Azure OpenAI)                      │ │ │
 │  │  │  Tool: compose_experiential_intervention                 │ │ │
-│  │  │         └─> gemini-3-pro-preview (Image API)             │ │ │
+│  │  │         └─> gpt-image-1.5 (Azure OpenAI Image API)      │ │ │
 │  │  │         └─> A2UI interrupt (image + caption + feedback)  │ │ │
 │  │  └──────────────────────────────────────────────────────────┘ │ │
 │  └────────────────┬───────────────────────────────────────────────┘ │
@@ -43,9 +43,10 @@ Constellate is a multi-agent system that maintains coaching continuity across se
 │                                                                       │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │  ModelRegistry                 │  PromptRegistry                │ │
-│  │  coach → gemini-3-pro          │  coach_system.j2              │ │
-│  │  intervention_composer         │  intervention_composer_system │ │
-│  │    → gemini-3-flash            │    .j2                        │ │
+│  │  coach → gpt-5.4               │  coach_system.j2              │ │
+│  │  summarizer → gpt-5.4-nano     │  intervention_composer_system │ │
+│  │  intervention_composer          │    .j2                        │ │
+│  │    → gpt-5.4-nano              │                               │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                       │
 │  SummarizationMiddleware (85% context triggers compression)          │
@@ -73,7 +74,7 @@ Constellate is a multi-agent system that maintains coaching continuity across se
 ```python
 agent = create_deep_agent(
     name="coach",
-    model=ModelRegistry.get("coach"),  # gemini-3-pro-preview
+    model=ModelRegistry.get("coach"),  # gpt-5.4 (Azure OpenAI)
     system_prompt=PromptRegistry.get("coach_system"),
     backend=composite_backend,
     memory=["/user/coach/AGENTS.md", "/user/profile/context.md"],
@@ -95,11 +96,11 @@ agent = create_deep_agent(
 
 ### 2. Intervention Composer (Subagent)
 
-**Role:** Specialist agent for assembling experiential interventions using Gemini 3
+**Role:** Specialist agent for assembling experiential interventions using Azure OpenAI
 
 **Tool:** `compose_experiential_intervention`
 - Constructs image generation prompts following theoretical frameworks
-- Calls Gemini 3 Image API (`gemini-3-pro-preview`)
+- Calls Azure OpenAI gpt-image-1.5
 - Returns A2UI payload (image + caption + feedback select component)
 
 **Intervention Types:** 详见`/docs/01_Product_Foundation.md`附录A.4节（体验式教练干预）
@@ -185,12 +186,16 @@ agent = create_deep_agent(
 - Example: `config/models.toml`
   ```toml
   [models.coach]
-  model = "google_genai:gemini-3-pro-preview"
-  api_key = "${GEMINI_API_KEY}"
+  model = "azure_openai:gpt-5.4"
+  azure_deployment = "gpt-5.4"
+  azure_endpoint = "${AZURE_OPENAI_ENDPOINT}"
+  api_key = "${AZURE_OPENAI_API_KEY}"
 
   [models.intervention_composer]
-  model = "google_genai:gemini-3-flash-preview"
-  api_key = "${GEMINI_API_KEY}"
+  model = "azure_openai:gpt-5.4-nano"
+  azure_deployment = "gpt-5.4-nano"
+  azure_endpoint = "${AZURE_OPENAI_ENDPOINT}"
+  api_key = "${AZURE_OPENAI_API_KEY}"
   ```
 
 **PromptRegistry (`src/constellate/config/prompts.py`):**
@@ -222,7 +227,7 @@ Coach detects intervention opportunity
   → Delegate to intervention_composer subagent
     → Subagent constructs intervention prompt
       → Call compose_experiential_intervention tool
-        → Generate image via Gemini 3 Pro Image API
+        → Generate image via Azure OpenAI gpt-image-1.5
         → Assemble A2UI payload (image + caption + select)
         → interrupt() propagates: tool → subagent → coach → client
           → iOS renders full-screen A2UI panel
@@ -235,14 +240,15 @@ Coach detects intervention opportunity
 
 ## Technology Choices
 
-### Why Gemini 3?
-- **gemini-3-pro-preview:**
+### Why Azure OpenAI GPT-5.4 Family?
+- **gpt-5.4:**
   - Main Coach Agent (complex reasoning, coaching continuity, nuanced conversations)
-  - Image generation (mixed text/image output, ethical constraints adherence, bounding boxes)
-- **gemini-3-flash-preview:**
+- **gpt-5.4-nano:**
   - Intervention Composer (fast prompt assembly)
   - Summarization (context compression)
-- Cost-effective balance between capability and scale
+- **gpt-image-1.5:**
+  - Image generation (text rendering, ethical constraints adherence, artistic styles)
+- Azure AI Foundry 统一管理，无地区限制
 
 ### Why LangGraph + DeepAgent?
 - Virtual file system abstraction (agent-native data manipulation)
@@ -268,7 +274,7 @@ Coach detects intervention opportunity
 
 **Docker (开发/演示):**
 ```bash
-cp .env.example .env   # Add GEMINI_API_KEY
+cp .env.example .env   # Add AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT
 docker compose up --build
 # Backend: http://localhost:2024
 ```
@@ -332,7 +338,7 @@ docker compose up --build
 ## Future Enhancements
 
 **Multi-modal input:**
-- Voice journaling (Gemini 3 audio transcription)
+- Voice journaling (audio transcription)
 - Wearable data integration (sleep, activity)
 
 **Advanced interventions:**
@@ -356,3 +362,4 @@ docker compose up --build
 | 2026-02-12 | 初始创建：系统架构总览、核心组件、数据流程、技术选型、部署指南 |
 | 2026-02-12 | 激进清理：删除冗余理论/伦理内容（约60-80行），替换为对01_Product_Foundation.md的引用；新增文档导航表与Evergreen说明；控制篇幅至2000字左右 |
 | 2026-03-20 | 前端架构更新为 iOS 原生客户端（SwiftUI + SwiftData）；路径引用 doc/ → docs/；A2UI 组件数量 7 → 8 |
+| 2026-04-01 | 模型全面迁移 Gemini 3 → Azure OpenAI GPT-5.4 系列 + gpt-image-1.5 |

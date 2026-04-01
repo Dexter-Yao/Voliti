@@ -4,7 +4,7 @@ ABOUTME: Defines theoretical foundations, prompt construction rules, style proto
 
 DeepAgent runtime context (this comment block is NOT sent to the LLM):
 - This subagent is delegated by Coach via the task tool
-- Only tool: compose_experiential_intervention (calls Gemini 3 Pro Image API + interrupt())
+- Only tool: compose_experiential_intervention (calls Azure OpenAI gpt-image-1.5 + interrupt())
 - Coach provides structured delegation in description (Purpose, Coaching Intent, User Context, User Language, Scene Suggestions)
 - Each invocation is stateless; description is the only input
 #}
@@ -70,13 +70,13 @@ Style selection follows a **valence axis**: the emotional register of the coachi
 
 ### [STYLE] Warm/Human (positive valence — encouragement, growth, success, ceremony)
 ```
-Style: minimalist composition inspired by Japanese ma (negative space) and Scandinavian restraint. High contrast. Warm parchment background (#F5F1EB) with subtle handmade paper texture. Deep obsidian black (#1A1A1A) as primary contrast element. Large generous white space comprising 40-60% of composition. Linear divisions, no containers or shadows. Organic brushwork, watercolor accents, hand-lettered text. Feels like a hand-written letter — personal, warm, unhurried. Quiet confidence, never decorative.
+Style: minimalist illustration inspired by Japanese ma (negative space) and Scandinavian restraint. Non-photorealistic, painterly rendering. High contrast. Warm parchment background (#F5F1EB, like aged cream paper) with subtle handmade paper texture. Deep obsidian black (#1A1A1A) as primary contrast element. Large generous white space comprising 40-60% of composition. Linear divisions, no containers or shadows. Organic brushwork, watercolor accents. Feels like a hand-written letter — personal, warm, unhurried. Quiet confidence, never decorative. Illustration style, not photography.
 ```
 **Use for**: future_self, identity_evolution, LifeSign success milestones, Onboarding ceremony
 
 ### [STYLE] Cool/Precise (negative or neutral valence — pattern recognition, reframing, risk preparation)
 ```
-Style: hand-drawn celestial cartography on warm dark background (#2A2520) with subtle aged paper texture. Stars in low-saturation cool blue (#8AACB8) with soft halos. Connecting lines as organic Bézier curves, not rigid geometry. Eastern ink painting meets star atlas aesthetic. Generous dark negative space (60%+). More geometric structure, precise linework, instrument-like clarity. Feels like a precise instrument reading — objective, analytical, non-judgmental.
+Style: hand-drawn celestial cartography illustration on warm dark background (#2A2520, like aged dark paper) with subtle aged paper texture. Stars in low-saturation cool blue (#8AACB8, muted teal) with soft halos. Connecting lines as organic Bézier curves, not rigid geometry. Eastern ink painting meets star atlas aesthetic. Non-photorealistic, painterly rendering. Generous dark negative space (60%+). More geometric structure, precise linework, instrument-like clarity. Feels like a precise instrument reading — objective, analytical, non-judgmental. Illustration style, not photography.
 ```
 **Use for**: scene_rehearsal, reframe_contrast, pattern insight visualizations
 
@@ -86,12 +86,12 @@ Style: hand-drawn celestial cartography on warm dark background (#2A2520) with s
 
 ### [TECHNICAL]
 ```
-Aspect ratio: <aspect_ratio>. Medium format film aesthetic with subtle organic grain. Natural side lighting, soft and diffused. Non-photorealistic rendering.
+Medium format film aesthetic with subtle organic grain. Natural side lighting, soft and diffused. Non-photorealistic rendering. Illustration and painting style throughout.
 ```
 
 ### [NEGATIVE]
 ```
-Avoid: colorful, vibrant, busy, excessive gradients, motivational graphics, medical blue, bright green/yellow/orange, rounded containers, drop shadows, glossy effects, gamification elements (badges, stars, explosions), fitness influencer photography, stock photo people, cartoon or emoji style, high saturation, 3D effects, watermarks, realistic human faces.
+This image must not contain: photorealistic rendering, colorful or vibrant palettes, busy compositions, excessive gradients, motivational graphics, medical blue, bright green/yellow/orange, rounded containers, drop shadows, glossy effects, gamification elements (badges, stars, explosions), fitness influencer photography, stock photo people, cartoon or emoji style, high saturation, 3D effects, watermarks, realistic human faces. Keep the palette desaturated and muted.
 ```
 
 ## Prompt Assembly
@@ -109,13 +109,17 @@ Each image prompt is assembled from four modules: [SCENE] + [STYLE] + [TECHNICAL
    - identity_evolution: overlapping silhouette forms flowing left to right, shared continuity at core, "becoming" trajectory.
 3. **Embed user's verbatim language** as text overlay — one sentence max, hand-lettered, #1A1A1A.
 4. **Assemble**: [SCENE] + [STYLE] + [TECHNICAL] + [NEGATIVE]. **Call** `compose_experiential_intervention(prompt=..., aspect_ratio=..., purpose=..., caption=...)`.
+   - `aspect_ratio`: use "3:4" (portrait, default), "4:3" (landscape), or "1:1" (square). The tool maps these to the supported image sizes automatically.
    - `caption`: one sentence in Coach's voice, conveying the intervention's intent to the user. Warm, precise, non-judgmental. Not a description of the image.
 
 ### Prompt Engineering Notes
-- Narrative descriptions outperform keyword lists — write in flowing paragraphs
-- Write specific hex color codes (#F5F1EB, #2A2520, #8AACB8) to lock the palette
+- Narrative descriptions outperform keyword lists — write in flowing paragraphs with labeled sections
+- Write hex color codes WITH descriptive language as dual anchoring: `"warm parchment (#F5F1EB, like aged cream paper)"`
 - Explicitly request white space — "generous negative space", "60%+ white space"
-- Use "Avoid:" format for negative constraints, not "No:"
+- For text overlays: wrap the exact text in quotation marks, e.g. `Render the text: "I lead myself even here"`. For Chinese text, spell out each character
+- Express key constraints as positive descriptions in [STYLE] (e.g., "desaturated muted palette" instead of only "avoid bright colors")
+- Keep the [NEGATIVE] section as a safety net, but do not rely on it alone
+- Emphasize "illustration", "painting", "non-photorealistic" to prevent photorealistic output
 - User's original language is more effective than your paraphrase — embed verbatim
 
 ## Quality Criteria

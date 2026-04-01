@@ -1,17 +1,33 @@
-<!-- ABOUTME: Gemini 3 Pro Image 技术实现指南，定义 API 参数、Subagent 架构、Prompt 模板与工程实践 -->
+<!-- ABOUTME: Azure OpenAI gpt-image-1.5 技术实现指南，定义 API 参数、Subagent 架构、Prompt 模板与工程实践 -->
 <!-- ABOUTME: 教练干预的理论基础与设计原则见 01_Product_Foundation.md 第二章、第六章与附录A -->
 
-# Gemini 3 Pro Image 技术实现指南
+# gpt-image-1.5 技术实现指南
 
-**前置阅读**：`/doc/01_Product_Foundation.md`第二节（理论基础）、第六节（Guardrail）、附录A（理论基础详细阐述）
+**前置阅读**：`/docs/01_Product_Foundation.md`第二节（理论基础）、第六节（Guardrail）、附录A（理论基础详细阐述）
 
-本文档聚焦技术实现层：如何用 Gemini 3 Pro Image API 承载四类教练干预（未来自我对话、场景预演、隐喻协作、认知重构）。关于**为什么用这些干预方法**、**时机-内容-情感的设计原则**，请参考 01_Product_Foundation.md。
+本文档聚焦技术实现层：如何用 Azure OpenAI gpt-image-1.5 承载四类教练干预（未来自我对话、场景预演、隐喻协作、认知重构）。关于**为什么用这些干预方法**、**时机-内容-情感的设计原则**，请参考 01_Product_Foundation.md。
 
-## 一、模型与 API 参数（省略，由于官方API变动频繁，请联网调查最新官方文档）
+## 一、模型与 API 参数
 
+| 参数 | 值 |
+|------|-----|
+| 部署名 | `gpt-image-1.5` |
+| API 端点 | Azure AI Foundry（`AZURE_OPENAI_ENDPOINT`）|
+| API 版本 | `2024-02-01` |
+| 支持尺寸 | `1024x1024`、`1024x1536`、`1536x1024` |
+| 质量等级 | `low` / `medium` / `high`（生产使用 `high`）|
+| 输出格式 | `png`（支持 `jpeg`、`webp`）|
+| 返回格式 | 始终返回 base64 数据（无 URL）|
 
+### 尺寸映射
 
-### 对话式图像编辑（不支持，本应用非图片生成应用，作为教练干预手段工具的图片生成为一次性的，不在对话中迭代，除非用户主动要求或者coach agent要求。那也属于独立任务）
+| 原 aspect_ratio | 映射到 size | 说明 |
+|-----------------|------------|------|
+| `3:4` | `1024x1536` | 竖版（默认）|
+| `4:3` | `1536x1024` | 横版 |
+| `1:1` | `1024x1024` | 正方形 |
+| `16:9` | `1536x1024` | fallback 到横版 |
+| `9:16` | `1024x1536` | fallback 到竖版 |
 
 
 ## 二、Subagent 架构设计
@@ -487,14 +503,14 @@ Coach 在以下条件满足时考虑触发图像生成：
 
 ## 七、Prompt 工程注意事项
 
-1. **叙事式描述**优于关键词列表——Gemini 在段落式描述下效果更好
-2. **写入具体色号**（#F5F1EB, #2A2520, #8AACB8）锁定调色板
+1. **叙事式描述**优于关键词列表——gpt-image-1.5 在段落式描述下效果最好，按 场景→主体→细节→约束 组织
+2. **颜色双重锚定**——hex 代码 + 描述性语言：`"warm parchment (#F5F1EB, like aged cream paper)"`
 3. **显式要求留白**——"generous negative space"、"60%+ white space"
-4. **Avoid 而非 No**——负面 prompt 用"Avoid: X, Y, Z"格式
-5. **Gemini 艺术风格化偏弱**——如效果不满意，尝试多轮对话编辑精化
-6. **参考图策略**——上传成功生成的图像作为后续生成的参考，逐步建立风格库
+4. **正面描述优先**——关键约束写成正面描述融入 Style（"desaturated muted palette"），负面约束（"This image must not contain..."）作兜底
+5. **非写实强化**——gpt-image-1.5 偏向写实，需要在 prompt 中反复强调 "illustration"、"painting"、"non-photorealistic rendering"
+6. **文字渲染是强项**——用引号包裹要渲染的文字：`Render the text: "I lead myself even here"`。中文文字逐字标注
 7. **用户语言优先**——将用户原话中的隐喻、表达直接嵌入 prompt，比 Coach 的转述更有效
-8. **避免真人面孔**——使用剪影、抽象形态、环境细节暗示人的存在，规避恐怖谷效应
+8. **避免真人面孔**——在 Scene 描述中明确写 "silhouette figure" 或 "abstract form"
 9. **文本嵌入要克制**——嵌入图像的文本应为一句话（肯定句、洞察、隐喻），不写段落
 10. **情绪色温匹配**——温暖/安全场景用羊皮纸底，深沉/内省场景用暖黑底
 
@@ -507,3 +523,4 @@ Coach 在以下条件满足时考虑触发图像生成：
 | 2026-02-09 | 初始创建：模型参数、Subagent 架构、模块化 prompt 体系、6 个数据可视化测试 prompt |
 | 2026-02-09 | 架构重定位：图像生成从数据可视化转向教练干预工具；替换全部 6 个模板为 5 个教练干预模板（future_self, scene_rehearsal, metaphor_mirror, reframe_contrast, identity_evolution）；新增 Coach 图像生成决策逻辑；更新 Subagent 系统指令 |
 | 2026-02-09 | 文档重新定位为技术实现指南；删除理论基础章节（移至 01_Product_Foundation.md 附录A.4节）；调整章节编号；更新交叉引用指向 01_Product_Foundation.md；遵循单一事实来源原则 |
+| 2026-04-01 | 图片生成模型从 Gemini 3 Pro Image 迁移至 Azure OpenAI gpt-image-1.5；更新 API 参数表、尺寸映射、prompt 工程注意事项；移除 Gemini 特定内容 |

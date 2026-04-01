@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from constellate.tools.experiential import (
+    _ASPECT_RATIO_TO_SIZE,
     _intervention_cache,
     compose_experiential_intervention,
 )
@@ -222,3 +223,24 @@ class TestExperientialCardPersistence:
         })
 
         mock_persist.assert_not_called()
+
+
+class TestAspectRatioMapping:
+    """aspect_ratio 到 gpt-image-1.5 size 的映射测试。"""
+
+    def test_portrait_mapping(self) -> None:
+        assert _ASPECT_RATIO_TO_SIZE["3:4"] == "1024x1536"
+
+    def test_landscape_mapping(self) -> None:
+        assert _ASPECT_RATIO_TO_SIZE["4:3"] == "1536x1024"
+
+    def test_square_mapping(self) -> None:
+        assert _ASPECT_RATIO_TO_SIZE["1:1"] == "1024x1024"
+
+    def test_wide_fallback(self) -> None:
+        """16:9 应 fallback 到横版。"""
+        assert _ASPECT_RATIO_TO_SIZE["16:9"] == "1536x1024"
+
+    def test_tall_fallback(self) -> None:
+        """9:16 应 fallback 到竖版。"""
+        assert _ASPECT_RATIO_TO_SIZE["9:16"] == "1024x1536"

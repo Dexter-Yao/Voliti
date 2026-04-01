@@ -1,5 +1,5 @@
 # ABOUTME: 体验式干预工具
-# ABOUTME: interrupt() 暂停执行等待用户审阅，接受后持久化到 Store
+# ABOUTME: 调用 Azure OpenAI gpt-image-1.5 生成图片，interrupt() 暂停执行等待用户审阅
 
 import base64
 import hashlib
@@ -26,7 +26,7 @@ from constellate.a2ui import (
 _CACHE_MAXSIZE = 32
 
 _intervention_cache: OrderedDict[str, tuple[str, str]] = OrderedDict()
-"""模块级有界缓存，避免 resume 重执行时重复调用 Gemini API。
+"""模块级有界缓存，避免 resume 重执行时重复调用图片生成 API。
 
 LangGraph 在 interrupt() 后 resume 时会从 node 起重新执行。
 缓存确保同一 prompt 不会重复调用付费 API。
@@ -34,6 +34,15 @@ LangGraph 在 interrupt() 后 resume 时会从 node 起重新执行。
 """
 
 INTERVENTIONS_NAMESPACE = ("constellate", "user", "interventions")
+
+# gpt-image-1.5 仅支持三种固定尺寸
+_ASPECT_RATIO_TO_SIZE: dict[str, str] = {
+    "3:4": "1024x1536",
+    "4:3": "1536x1024",
+    "1:1": "1024x1024",
+    "16:9": "1536x1024",  # fallback 到最近横版
+    "9:16": "1024x1536",  # fallback 到最近竖版
+}
 
 
 def _persist_card(
@@ -71,6 +80,40 @@ def _persist_card(
     return card_id
 
 
+def _generate_image(prompt: str, size: str) -> tuple[str, str]:
+    """调用 Azure OpenAI gpt-image-1.5 生成图片。
+
+    Args:
+        prompt: 完整的图片生成 prompt。
+        size: 图片尺寸，如 "1024x1536"。
+
+    Returns:
+        (base64_data, mime_type) 元组。
+    """
+    from openai import AzureOpenAI
+
+    client = AzureOpenAI(
+        api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+        azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT", ""),
+        api_version="2024-02-01",
+    )
+
+    response = client.images.generate(
+        model="gpt-image-1.5",
+        prompt=prompt,
+        n=1,
+        size=size,
+        quality="high",
+        output_format="png",
+    )
+
+    b64_data = response.data[0].b64_json
+    if not b64_data:
+        raise ValueError("gpt-image-1.5 未返回图片数据")
+
+    return b64_data, "image/png"
+
+
 @tool
 def compose_experiential_intervention(
     prompt: str,
@@ -86,42 +129,16 @@ def compose_experiential_intervention(
 
     Args:
         prompt: Full generation prompt, assembled by Intervention Composer.
-        aspect_ratio: Aspect ratio, e.g. "3:4", "1:1", "16:9".
+        aspect_ratio: Aspect ratio, e.g. "3:4", "1:1", "4:3".
         purpose: Intervention type identifier, e.g. "future_self", "scene_rehearsal".
         caption: Coach-voice narrative conveying the intervention intent.
     """
     cache_key = hashlib.sha256(prompt.encode()).hexdigest()
 
     if cache_key not in _intervention_cache:
-        from google import genai
-        from google.genai import types
-
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY 环境变量未设置")
-
-        client = genai.Client(api_key=api_key)
-        gen_response = client.models.generate_content(
-            model="gemini-3-pro-image-preview",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=["IMAGE"],
-                image_config=types.ImageConfig(
-                    aspect_ratio=aspect_ratio,
-                ),
-            ),
-        )
-        if (
-            not gen_response.candidates
-            or not gen_response.candidates[0].content.parts
-        ):
-            return "Failed to generate intervention content."
-
-        image_part = gen_response.candidates[0].content.parts[0]
-        _intervention_cache[cache_key] = (
-            base64.b64encode(image_part.inline_data.data).decode(),
-            image_part.inline_data.mime_type or "image/jpeg",
-        )
+        size = _ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "1024x1536")
+        b64_data, mime_type = _generate_image(prompt, size)
+        _intervention_cache[cache_key] = (b64_data, mime_type)
         if len(_intervention_cache) > _CACHE_MAXSIZE:
             _intervention_cache.popitem(last=False)
 
