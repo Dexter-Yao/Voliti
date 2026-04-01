@@ -12,7 +12,7 @@ struct SelectOption: Codable, Sendable, Hashable {
 
 // MARK: - Component Types
 
-enum A2UIComponent: Codable, Sendable {
+enum A2UIComponent: Decodable, Sendable {
     case text(TextComponentData)
     case image(ImageComponentData)
     case protocolPrompt(ProtocolPromptData)
@@ -145,7 +145,7 @@ struct MultiSelectData: Codable, Sendable {
 
 // MARK: - Payload & Response
 
-struct A2UIPayload: Codable, Sendable, Identifiable {
+struct A2UIPayload: Decodable, Sendable, Identifiable {
     let type: String
     let components: [A2UIComponent]
     let layout: A2UILayout
