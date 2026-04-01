@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 priority: p1
 issue_id: "001"
 tags: [code-review, security]
@@ -36,7 +36,7 @@ LangGraph Cloud 原生支持 `x-api-key` header。在 iOS 端 APIConfiguration �
 
 ## Recommended Action
 
-（待 triage 决策）
+已实施 Option A。
 
 ## Technical Details
 
@@ -54,6 +54,7 @@ LangGraph Cloud 原生支持 `x-api-key` header。在 iOS 端 APIConfiguration �
 | Date | Action | Learnings |
 |------|--------|-----------|
 | 2026-03-20 | 全库审查发现 | Security Sentinel Agent |
+| 2026-04-01 | Option A 实施：APIConfiguration 添加 apiKey 属性，LangGraphAPI 所有请求附加 x-api-key header | 本地 dev server 无需 key，Cloud 部署时通过环境变量或 Info.plist 配置 |
 
 ## Resources
 

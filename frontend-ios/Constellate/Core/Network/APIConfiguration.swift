@@ -1,5 +1,5 @@
-// ABOUTME: API 配置，管理 LangGraph 后端 base URL 和 assistant ID
-// ABOUTME: 本地开发使用局域网 IP，生产环境使用 LangGraph Cloud URL
+// ABOUTME: API 配置，管理 LangGraph 后端 base URL、assistant ID 和认证凭据
+// ABOUTME: 本地开发使用局域网 IP，生产环境使用 LangGraph Cloud URL + x-api-key
 
 import Foundation
 
@@ -13,6 +13,17 @@ enum APIConfiguration {
             return url
         }
         return URL(string: "http://localhost:2024")!
+    }
+
+    /// LangGraph Cloud API Key（x-api-key header）
+    /// 读取优先级：环境变量 → Info.plist
+    /// 本地开发 server 无需 key，返回 nil 时不附加 header
+    static var apiKey: String? {
+        if let envKey = ProcessInfo.processInfo.environment["LANGGRAPH_API_KEY"],
+           !envKey.isEmpty {
+            return envKey
+        }
+        return Bundle.main.infoDictionary?["LANGGRAPH_API_KEY"] as? String
     }
 
     static let assistantID = "coach"

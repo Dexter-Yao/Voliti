@@ -14,6 +14,7 @@ struct LangGraphAPI: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        Self.applyAuth(&request)
         request.httpBody = try JSONSerialization.data(withJSONObject: [:])
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -91,9 +92,19 @@ struct LangGraphAPI: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        Self.applyAuth(&request)
         request.timeoutInterval = 300
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
+    }
+
+    // MARK: - Authentication
+
+    /// 附加 x-api-key header（仅在 apiKey 配置时生效）
+    private static func applyAuth(_ request: inout URLRequest) {
+        if let key = APIConfiguration.apiKey {
+            request.setValue(key, forHTTPHeaderField: "x-api-key")
+        }
     }
 
     // MARK: - Validation
