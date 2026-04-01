@@ -64,6 +64,30 @@ Constellate/
 - 单一事实原则贯穿数据链各层
 - **简单可组合模式优先**：不引入无消费者的抽象分组，不预设分类体系
 
+## gstack
+
+Use the /browse skill from gstack for all web browsing. Never use mcp__claude-in-chrome__* tools.
+
+Available skills: /office-hours, /plan-ceo-review, /plan-eng-review, /plan-design-review, /design-consultation, /design-shotgun, /design-html, /review, /ship, /land-and-deploy, /canary, /benchmark, /browse, /connect-chrome, /qa, /qa-only, /design-review, /setup-browser-cookies, /setup-deploy, /retro, /investigate, /document-release, /codex, /cso, /autoplan, /careful, /freeze, /guard, /unfreeze, /gstack-upgrade, /learn.
+
+## Skill routing
+
+When the user's request matches an available skill, ALWAYS invoke it using the Skill
+tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
+The skill has specialized workflows that produce better results than ad-hoc answers.
+
+Key routing rules:
+- Product ideas, "is this worth building", brainstorming → invoke office-hours
+- Bugs, errors, "why is this broken", 500 errors → invoke investigate
+- Ship, deploy, push, create PR → invoke ship
+- QA, test the site, find bugs → invoke qa
+- Code review, check my diff → invoke review
+- Update docs after shipping → invoke document-release
+- Weekly retro → invoke retro
+- Design system, brand → invoke design-consultation
+- Visual audit, design polish → invoke design-review
+- Architecture review → invoke plan-eng-review
+
 ---
 
 ## 变更记录
@@ -75,3 +99,4 @@ Constellate/
 | 2026-02-09 | 架构约定新增"简单可组合模式优先"原则 |
 | 2026-02-12 | 文档重命名：统一层级编号前缀 |
 | 2026-03-20 | 项目重组为 Monorepo（frontend-ios + backend + docs）；iOS 原生客户端迁移；文档路径 doc/ → docs/ |
+| 2026-03-31 | 添加 gstack skills 配置段落 |
