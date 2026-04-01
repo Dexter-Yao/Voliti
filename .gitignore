@@ -45,3 +45,4 @@ Package.resolved
 # Project-specific
 .langgraph_api/
 .playwright-mcp/
+.gstack/
