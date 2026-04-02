@@ -1,4 +1,4 @@
-# ABOUTME: Docker Compose configuration for Constellate
+# ABOUTME: Docker Compose configuration for Voliti
 # ABOUTME: Orchestrates backend (LangGraph) and frontend (Next.js) services
 
 services:
@@ -15,7 +15,7 @@ services:
       - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
       - LANGSMITH_TRACING=${LANGSMITH_TRACING:-false}
       - LANGSMITH_ENDPOINT=${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}
-      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-constellate}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-voliti}
     volumes:
       # Mount prompts for hot reload during development
       - ./prompts:/app/prompts:ro
@@ -44,4 +44,4 @@ services:
 
 networks:
   default:
-    name: constellate-network
+    name: voliti-network

@@ -14,7 +14,7 @@ dependencies: []
 
 ## Findings
 
-- `backend/src/constellate/config/prompts.py:21-25` — `Environment(loader=FileSystemLoader(...))`
+- `backend/src/voliti/config/prompts.py:21-25` — `Environment(loader=FileSystemLoader(...))`
 
 ## Proposed Solutions
 

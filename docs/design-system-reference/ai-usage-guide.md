@@ -3,7 +3,7 @@
 
 # AI Usage Guide — Starpath Protocol
 
-本文档面向 Claude、Cursor 等 AI 代码生成工具。在为 Constellate 生成前端代码、CSS、组件或 Gemini 图片 prompt 之前，先读此文。
+本文档面向 Claude、Cursor 等 AI 代码生成工具。在为 Voliti 生成前端代码、CSS、组件或 Gemini 图片 prompt 之前，先读此文。
 
 ---
 
@@ -119,7 +119,7 @@ border-radius: 16px; /* ← 用于按钮可以，用于信息容器禁止 */
 
 ## 五、常见违规模式（AI 最容易生成的不对齐结果）
 
-以下是 AI 工具在生成 Constellate 界面时最常见的错误，每条均附有正确替代：
+以下是 AI 工具在生成 Voliti 界面时最常见的错误，每条均附有正确替代：
 
 | 错误模式 | 原因 | 正确替代 |
 |---------|------|---------|

@@ -21,7 +21,7 @@ dependencies: []
 - `Features/Health/HealthPermissionView.swift` (68 LOC) — 无任何展示路径
 
 **后端死代码：**
-- `backend/src/constellate/schemas.py` (~161 LOC) — 仅被 test_schemas.py 导入，无生产代码使用
+- `backend/src/voliti/schemas.py` (~161 LOC) — 仅被 test_schemas.py 导入，无生产代码使用
 
 **iOS 死类型（~83 LOC）：**
 - `A2UITypes.swift:185-252` — `A2UIResponse`, `A2UIAction`, `AnyCodable` 未使用

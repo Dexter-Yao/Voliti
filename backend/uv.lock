@@ -234,43 +234,6 @@ wheels = [
 ]
 
 [[package]]
-name = "constellate"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "deepagents" },
-    { name = "jinja2" },
-    { name = "langchain-openai" },
-    { name = "langgraph" },
-    { name = "langgraph-cli" },
-    { name = "openai" },
-    { name = "python-dotenv" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "langgraph-cli", extra = ["inmem"] },
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "deepagents", specifier = ">=0.4.0" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "langchain-openai", specifier = ">=0.3.0" },
-    { name = "langgraph", specifier = ">=1.1.0" },
-    { name = "langgraph-cli", specifier = ">=0.4.18" },
-    { name = "openai", specifier = ">=1.60.0" },
-    { name = "python-dotenv", specifier = ">=1.2.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.12" },
-    { name = "pytest", specifier = ">=9.0.2" },
-]
-
-[[package]]
 name = "croniter"
 version = "6.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1790,6 +1753,43 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e3/ad/4a96c425be6fb67e0621e62d86c402b4a17ab2be7f7c055d9bd2f638b9e2/uvicorn-0.42.0.tar.gz", hash = "sha256:9b1f190ce15a2dd22e7758651d9b6d12df09a13d51ba5bf4fc33c383a48e1775", size = 85393, upload-time = "2026-03-16T06:19:50.077Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0a/89/f8827ccff89c1586027a105e5630ff6139a64da2515e24dafe860bd9ae4d/uvicorn-0.42.0-py3-none-any.whl", hash = "sha256:96c30f5c7abe6f74ae8900a70e92b85ad6613b745d4879eb9b16ccad15645359", size = 68830, upload-time = "2026-03-16T06:19:48.325Z" },
+]
+
+[[package]]
+name = "voliti"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "deepagents" },
+    { name = "jinja2" },
+    { name = "langchain-openai" },
+    { name = "langgraph" },
+    { name = "langgraph-cli" },
+    { name = "openai" },
+    { name = "python-dotenv" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "langgraph-cli", extra = ["inmem"] },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "deepagents", specifier = ">=0.4.0" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "langchain-openai", specifier = ">=0.3.0" },
+    { name = "langgraph", specifier = ">=1.1.0" },
+    { name = "langgraph-cli", specifier = ">=0.4.18" },
+    { name = "openai", specifier = ">=1.60.0" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.12" },
+    { name = "pytest", specifier = ">=9.0.2" },
 ]
 
 [[package]]

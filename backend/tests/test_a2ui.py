@@ -6,7 +6,7 @@ from typing import get_args
 import pytest
 from pydantic import ValidationError
 
-from constellate.a2ui import (
+from voliti.a2ui import (
     A2UIPayload,
     A2UIResponse,
     Component,

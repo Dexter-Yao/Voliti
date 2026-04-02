@@ -3,7 +3,7 @@
     "."
   ],
   "graphs": {
-    "coach": "./src/constellate/graph.py:graph"
+    "coach": "./src/voliti/graph.py:graph"
   },
   "env": ".env"
 }

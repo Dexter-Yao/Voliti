@@ -1,10 +1,10 @@
-# ABOUTME: Constellate 应用入口
+# ABOUTME: Voliti 应用入口
 # ABOUTME: 初始化配置并创建 Coach Agent
 
 from pathlib import Path
 
-from constellate.bootstrap import init
-from constellate.agent import create_coach_agent
+from voliti.bootstrap import init
+from voliti.agent import create_coach_agent
 
 PROJECT_ROOT = Path(__file__).parent
 

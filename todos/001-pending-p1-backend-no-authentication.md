@@ -14,8 +14,8 @@ LangGraph 后端所有 API 端点完全无认证。任何发现后端 URL 的人
 
 ## Findings
 
-- `frontend-ios/Constellate/Core/Network/LangGraphAPI.swift` — 所有 HTTP 请求无 auth header
-- `frontend-ios/Constellate/Core/Network/APIConfiguration.swift` — 无 API key 配置
+- `frontend-ios/Voliti/Core/Network/LangGraphAPI.swift` — 所有 HTTP 请求无 auth header
+- `frontend-ios/Voliti/Core/Network/APIConfiguration.swift` — 无 API key 配置
 - 后端无任何中间件或认证检查
 
 ## Proposed Solutions

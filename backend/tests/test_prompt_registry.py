@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from constellate.config.prompts import PromptRegistry
+from voliti.config.prompts import PromptRegistry
 
 
 class TestPromptRegistry:
@@ -23,7 +23,7 @@ class TestPromptRegistry:
 
     def test_get_returns_template_content(self, tmp_path: Path) -> None:
         """get 应返回模板渲染结果。"""
-        content = "你是 Constellate 的教练。\n\n核心原则：冷静、精准。"
+        content = "你是 Voliti 的教练。\n\n核心原则：冷静、精准。"
         (tmp_path / "coach_system.j2").write_text(content)
         PromptRegistry.load(tmp_path)
         result = PromptRegistry.get("coach_system")

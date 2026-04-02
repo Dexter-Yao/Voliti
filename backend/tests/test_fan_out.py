@@ -6,13 +6,13 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from constellate.tools.fan_out import fan_out
+from voliti.tools.fan_out import fan_out
 
 
 class TestFanOutSubmit:
     """fan_out submit 路径测试。"""
 
-    @patch("constellate.tools.fan_out.interrupt")
+    @patch("voliti.tools.fan_out.interrupt")
     def test_returns_data_summary(self, mock_interrupt) -> None:  # noqa: ANN001
         """submit 应返回包含用户数据的摘要字符串。"""
         mock_interrupt.return_value = {
@@ -27,7 +27,7 @@ class TestFanOutSubmit:
         assert "energy=7" in result
         assert "mood=6" in result
 
-    @patch("constellate.tools.fan_out.interrupt")
+    @patch("voliti.tools.fan_out.interrupt")
     def test_submit_with_empty_data(self, mock_interrupt) -> None:  # noqa: ANN001
         """submit 但无输入组件时应正常返回。"""
         mock_interrupt.return_value = {"action": "submit", "data": {}}
@@ -40,7 +40,7 @@ class TestFanOutSubmit:
 class TestFanOutReject:
     """fan_out reject 路径测试。"""
 
-    @patch("constellate.tools.fan_out.interrupt")
+    @patch("voliti.tools.fan_out.interrupt")
     def test_returns_cancel_message(self, mock_interrupt) -> None:  # noqa: ANN001
         """reject 应返回取消信息。"""
         mock_interrupt.return_value = {"action": "reject"}
@@ -53,7 +53,7 @@ class TestFanOutReject:
 class TestFanOutSkip:
     """fan_out skip 路径测试。"""
 
-    @patch("constellate.tools.fan_out.interrupt")
+    @patch("voliti.tools.fan_out.interrupt")
     def test_returns_skip_message(self, mock_interrupt) -> None:  # noqa: ANN001
         """skip 应返回跳过信息。"""
         mock_interrupt.return_value = {"action": "skip"}
@@ -66,7 +66,7 @@ class TestFanOutSkip:
 class TestFanOutPayload:
     """fan_out payload 构建测试。"""
 
-    @patch("constellate.tools.fan_out.interrupt")
+    @patch("voliti.tools.fan_out.interrupt")
     def test_interrupt_receives_a2ui_payload(self, mock_interrupt) -> None:  # noqa: ANN001
         """interrupt 应收到完整的 A2UI payload dict。"""
         mock_interrupt.return_value = {"action": "submit", "data": {}}
@@ -78,7 +78,7 @@ class TestFanOutPayload:
         assert len(payload["components"]) == 1
         assert payload["components"][0]["kind"] == "text"
 
-    @patch("constellate.tools.fan_out.interrupt")
+    @patch("voliti.tools.fan_out.interrupt")
     def test_default_layout_is_three_quarter(self, mock_interrupt) -> None:  # noqa: ANN001
         """默认 layout 应为 three-quarter。"""
         mock_interrupt.return_value = {"action": "submit", "data": {}}
@@ -88,7 +88,7 @@ class TestFanOutPayload:
         payload = mock_interrupt.call_args[0][0]
         assert payload["layout"] == "three-quarter"
 
-    @patch("constellate.tools.fan_out.interrupt")
+    @patch("voliti.tools.fan_out.interrupt")
     def test_passes_full_layout(self, mock_interrupt) -> None:  # noqa: ANN001
         """layout=full 应透传到 payload。"""
         mock_interrupt.return_value = {"action": "submit", "data": {}}
@@ -108,7 +108,7 @@ class TestFanOutValidation:
         with pytest.raises(ValidationError):
             fan_out.invoke({"components": [{"kind": "invalid"}]})
 
-    @patch("constellate.tools.fan_out.interrupt")
+    @patch("voliti.tools.fan_out.interrupt")
     def test_multiple_components(self, mock_interrupt) -> None:  # noqa: ANN001
         """多组件 payload 应正确组装。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"x": 5}}

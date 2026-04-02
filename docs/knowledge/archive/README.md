@@ -1,10 +1,10 @@
-# Constellate
+# Voliti
 
 > A Leadership Coach for behavioral alignment, built with Gemini 3 for [Gemini Global Hackathon 2025](https://googleai.devpost.com/)
 
 ## Overview
 
-Constellate is a coaching agent that helps users build self-leadership through evidence-based behavioral interventions. Unlike traditional diet trackers that count numbers, it trains decision-making capacity under real-life pressure through personalized coaching interactions.
+Voliti is a coaching agent that helps users build self-leadership through evidence-based behavioral interventions. Unlike traditional diet trackers that count numbers, it trains decision-making capacity under real-life pressure through personalized coaching interactions.
 
 **First scenario:** Weight management for knowledge workers
 **Core capability:** Behavioral alignment system extensible to sleep, exercise, focus, and other self-management domains
@@ -75,8 +75,8 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for detailed system design.
 
 ```bash
 # 1. Clone and configure
-git clone https://github.com/Dexter-Yao/Constellate.git
-cd Constellate
+git clone https://github.com/Dexter-Yao/Voliti.git
+cd Voliti
 cp .env.example .env
 # Edit .env and add your GEMINI_API_KEY
 
@@ -130,7 +130,7 @@ See [`README_DEV.md`](README_DEV.md) for detailed development setup including La
 
 ```
 .
-├── src/constellate/          # Backend agent system
+├── src/voliti/          # Backend agent system
 │   ├── agent.py              # Coach agent factory
 │   ├── a2ui.py               # A2UI component models
 │   ├── tools/
@@ -159,9 +159,9 @@ See [`README_DEV.md`](README_DEV.md) for detailed development setup including La
 
 | File | Purpose |
 |------|---------|
-| `src/constellate/a2ui.py` | A2UI component type definitions |
-| `src/constellate/tools/fan_out.py` | A2UI interaction tool |
-| `src/constellate/tools/experiential.py` | Experiential intervention composition |
+| `src/voliti/a2ui.py` | A2UI component type definitions |
+| `src/voliti/tools/fan_out.py` | A2UI interaction tool |
+| `src/voliti/tools/experiential.py` | Experiential intervention composition |
 | `prompts/intervention_composer_system.j2` | Intervention subagent system prompt with ethical constraints |
 | `frontend/src/components/fanout/A2UIRenderer.tsx` | A2UI component renderer (7 primitives) |
 | `frontend/src/lib/types.ts` | Frontend type definitions |

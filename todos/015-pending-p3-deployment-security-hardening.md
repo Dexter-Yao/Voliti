@@ -18,8 +18,8 @@ dependencies: ["001"]
 ## Findings
 
 - `backend/Dockerfile:32` — `CMD ["uv", "run", "langgraph", "dev", ...]`
-- `frontend-ios/Constellate/Info.plist:33-37` — `NSAllowsLocalNetworking: true`
-- `frontend-ios/Constellate/Core/Network/APIConfiguration.swift:15` — `http://localhost:2024`
+- `frontend-ios/Voliti/Info.plist:33-37` — `NSAllowsLocalNetworking: true`
+- `frontend-ios/Voliti/Core/Network/APIConfiguration.swift:15` — `http://localhost:2024`
 - `APIConfiguration.swift:21-24` — `UserDefaults.standard` 存 threadID
 
 ## Proposed Solutions

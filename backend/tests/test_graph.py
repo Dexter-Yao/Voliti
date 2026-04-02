@@ -52,23 +52,23 @@ class TestGraphModuleStructure:
 
     def test_graph_py_exists(self) -> None:
         """graph.py 文件应存在。"""
-        graph_path = _PROJECT_ROOT / "src" / "constellate" / "graph.py"
+        graph_path = _PROJECT_ROOT / "src" / "voliti" / "graph.py"
         assert graph_path.exists()
 
     def test_graph_py_has_graph_variable(self) -> None:
         """graph.py 应包含模块级 graph 变量赋值。"""
-        graph_path = _PROJECT_ROOT / "src" / "constellate" / "graph.py"
+        graph_path = _PROJECT_ROOT / "src" / "voliti" / "graph.py"
         source = graph_path.read_text()
         assert "graph = create_coach_agent()" in source
 
     def test_graph_py_calls_init(self) -> None:
         """graph.py 应在模块级调用 init()。"""
-        graph_path = _PROJECT_ROOT / "src" / "constellate" / "graph.py"
+        graph_path = _PROJECT_ROOT / "src" / "voliti" / "graph.py"
         source = graph_path.read_text()
         assert "init(_PROJECT_ROOT)" in source
 
     def test_graph_py_imports_bootstrap(self) -> None:
         """graph.py 应导入 bootstrap.init。"""
-        graph_path = _PROJECT_ROOT / "src" / "constellate" / "graph.py"
+        graph_path = _PROJECT_ROOT / "src" / "voliti" / "graph.py"
         source = graph_path.read_text()
-        assert "from constellate.bootstrap import init" in source
+        assert "from voliti.bootstrap import init" in source

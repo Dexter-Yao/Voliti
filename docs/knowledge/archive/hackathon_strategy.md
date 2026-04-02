@@ -5,7 +5,7 @@
 
 ## 一、评分标准与得分策略
 
-| 标准 | 权重 | 评审关注点 | Constellate 得分策略 |
+| 标准 | 权重 | 评审关注点 | Voliti 得分策略 |
 |------|------|-----------|---------------------|
 | Technical Execution | 40% | Gemini 3 深度集成、代码质量、功能完整性 | 多模态管线（视觉理解 → 文本推理 → 图像生成）贯穿单次交互 |
 | Innovation / Wow Factor | 30% | 问题重构、独特方案、惊喜感 | "Coach 即界面"——Agent 不只回复文字，还主动生成视觉体验 |
@@ -15,7 +15,7 @@
 ## 二、必须避开的陷阱
 
 黑客松明确 discourage 以下项目类型：
-- **Generic nutrition chatbot** → Constellate 必须展示远超聊天的能力
+- **Generic nutrition chatbot** → Voliti 必须展示远超聊天的能力
 - **Prompt-only wrapper** → 需要 robust 多 Agent 系统
 - **Simple vision analyzer** → 食物识别只是基线，需要更深的情境/行为理解
 - **Baseline RAG** → Gemini 3 的 1M token context 使简单检索成为 table stakes
@@ -35,7 +35,7 @@
 
 ### 核心叙事
 
-Constellate 不是在跟减肥 App 竞争。它是将 Leadership Coaching 方法论应用于人类行为的系统。"减脂"是第一个验证场景，本质是在构建**行为对齐操作系统**。
+Voliti 不是在跟减肥 App 竞争。它是将 Leadership Coaching 方法论应用于人类行为的系统。"减脂"是第一个验证场景，本质是在构建**行为对齐操作系统**。
 
 ### 与预期竞品的区分
 
@@ -50,7 +50,7 @@ Constellate 不是在跟减肥 App 竞争。它是将 Leadership Coaching 方法
 
 ### 黑客松 Track 映射
 
-Constellate 最契合 **Marathon Agent** track（跨天自主推理）+ **Creative Autopilot** track（多模态内容生成），但不局限于单一 track。
+Voliti 最契合 **Marathon Agent** track（跨天自主推理）+ **Creative Autopilot** track（多模态内容生成），但不局限于单一 track。
 
 ## 五、Gemini 3 技术展示矩阵
 
@@ -80,7 +80,7 @@ Constellate 最契合 **Marathon Agent** track（跨天自主推理）+ **Creati
 | 时段 | 内容 | Gemini 3 能力 |
 |------|------|-------------|
 | 0:00-0:25 | Hook：为什么聪明人总做不到显而易见的事？ | — |
-| 0:25-0:50 | Constellate 的不同：不是 diet tracker，是 Leadership Coach | — |
+| 0:25-0:50 | Voliti 的不同：不是 diet tracker，是 Leadership Coach | — |
 | 0:50-1:20 | 食物照片 → 视觉标注 + 情境推断 | Agentic Vision |
 | 1:20-1:50 | Coach 记忆三天前的讨论 + 模式识别 | Thought Signatures + 1M Context |
 | 1:50-2:05 | Coach 生成体验式干预图像（隐喻图像化） | Nano Banana Pro + 混合文图输出 |

@@ -1,11 +1,11 @@
-<!-- ABOUTME: Constellate 设计系统规范，定义视觉语言、信息层级、关键组件与交互原则 -->
+<!-- ABOUTME: Voliti 设计系统规范，定义视觉语言、信息层级、关键组件与交互原则 -->
 <!-- ABOUTME: 所有界面设计与交互实现应遵循本文档的风格约束与节奏设计 -->
 
-# Constellate 设计系统 – Starpath Protocol
+# Voliti 设计系统 – Starpath Protocol
 
 ## 一、设计哲学
 
-Constellate 的视觉与交互建立在两个原则之上：
+Voliti 的视觉与交互建立在两个原则之上：
 
 1. **Identity First**：界面强化"成为那种人"的连续性，而非数字评判。
 2. **Map Over Metrics**：用户走在路径上，而不是被仪表盘监控。
@@ -40,7 +40,7 @@ Coach 扇出面板遵循同一视觉体系，附加约束：
 
 ## 三、信息层级结构
 
-Constellate 界面分四层，通过三个页签承载：
+Voliti 界面分四层，通过三个页签承载：
 
 1. **Coach Layer（交互层）**：用户的主要停留空间。Coach 通过对话和扇出半 UI 动态呈现下列三层信息。
 2. **Horizon Layer（身份层）**：展示长期趋势、一致性指数与身份演化。
@@ -125,7 +125,7 @@ Coach 通过扇出半 UI 向用户呈现或采集信息。所有扇出组件是 
 
 强调连续性，而非即时成就。
 
-Constellate 的视觉与交互目标不是"激励"，而是营造一个让身份缓慢演化的空间。它让用户感觉自己不是被管理，而是在书写一条长期路径。
+Voliti 的视觉与交互目标不是"激励"，而是营造一个让身份缓慢演化的空间。它让用户感觉自己不是被管理，而是在书写一条长期路径。
 
 ---
 
@@ -135,4 +135,4 @@ Constellate 的视觉与交互目标不是"激励"，而是营造一个让身份
 |------|----------|
 | 2026-02-08 | 按文档规范整理格式；添加 ABOUTME 标识与变更记录；统一标题层级与列表样式 |
 | 2026-02-08 | 信息层级增加 Coach Layer 与三页签映射；组件章节重构为基础视觉元素 + Coach 扇出组件目录；节奏设计补充 Coach 交互方式映射；视觉语言补充扇出面板约束 |
-| 2026-02-12 | Map页设计定位更新：从"Horizon Layer + Path Layer"转为"Coach卡片归档（Chapter元数据 + 体验式干预卡片列表）"；删除Alignment Path Bar组件；信息呈现类组件调整（删除AI生成图片，新增应对计划卡片）；品牌更名：Aligner → Constellate, Wayfarer's Protocol → Starpath Protocol |
+| 2026-02-12 | Map页设计定位更新：从"Horizon Layer + Path Layer"转为"Coach卡片归档（Chapter元数据 + 体验式干预卡片列表）"；删除Alignment Path Bar组件；信息呈现类组件调整（删除AI生成图片，新增应对计划卡片）；品牌更名：Aligner → Voliti, Wayfarer's Protocol → Starpath Protocol |

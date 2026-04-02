@@ -14,7 +14,7 @@ dependencies: []
 
 ## Findings
 
-- `backend/src/constellate/tools/experiential.py:25` — 无界 dict 缓存
+- `backend/src/voliti/tools/experiential.py:25` — 无界 dict 缓存
 - 仅在 happy path（用户响应后）通过 `pop()` 清理
 - LangGraph Cloud 多 worker 部署时缓存不跨进程，resume 路由到不同 worker 导致 cache miss
 

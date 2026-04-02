@@ -17,7 +17,7 @@ dependencies: []
 1. **A2UITextInput 命名不一致** — `TextInput.swift:6` 类名 `A2UITextInput` 带前缀，同目录其他组件（NumberInput/SliderInput/SelectInput）不带前缀
 2. **CameraService 名称不精确** — 仅做图片压缩，不涉及相机功能，应为 `ImageCompressor`
 3. **MessageList magic number** — `MessageList.swift:45` `.padding(.bottom, 80)` 硬编码
-4. **UserDefaults key 硬编码** — `APIConfiguration.swift:22` `"constellate_thread_id"` 应提为常量
+4. **UserDefaults key 硬编码** — `APIConfiguration.swift:22` `"voliti_thread_id"` 应提为常量
 5. **LangGraphAPI URL 构建重复** — `buildStreamRequest` 和 `buildResumeRequest` 大量重复 header/URL 代码
 6. **Registry 测试直接操作私有属性** — 应提供 `reset()` 类方法
 7. **schemas.py Union vs | 不一致** — 混用 Union 和 | 语法

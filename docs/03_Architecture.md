@@ -1,4 +1,4 @@
-# Constellate Architecture
+# Voliti Architecture
 
 > 基于多模态教练 Agent 的系统设计，使用 Azure OpenAI GPT-5.4 构建
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-Constellate is a multi-agent system that maintains coaching continuity across sessions through structured memory, composes dynamic UI interactions, and generates personalized behavioral interventions using Azure OpenAI's GPT-5.4 family and gpt-image-1.5.
+Voliti is a multi-agent system that maintains coaching continuity across sessions through structured memory, composes dynamic UI interactions, and generates personalized behavioral interventions using Azure OpenAI's GPT-5.4 family and gpt-image-1.5.
 
 ## System Architecture
 
@@ -113,7 +113,7 @@ agent = create_deep_agent(
 
 **Concept:** Composable UI primitives for dynamic agent-driven interactions
 
-**8 Component Primitives:** text, image, slider, text_input, number_input, select, multi_select, protocol_prompt。详见代码库`src/constellate/a2ui.py`
+**8 Component Primitives:** text, image, slider, text_input, number_input, select, multi_select, protocol_prompt。详见代码库`src/voliti/a2ui.py`
 
 **Unified Interrupt Protocol:**
 ```json
@@ -133,9 +133,9 @@ agent = create_deep_agent(
 ```
 
 **Implementation:**
-- Backend: `src/constellate/a2ui.py` (Pydantic discriminated union on `kind`)
-- Tool: `src/constellate/tools/fan_out.py`
-- iOS: `frontend-ios/Constellate/Features/Coach/A2UI/A2UIRenderer.swift`
+- Backend: `src/voliti/a2ui.py` (Pydantic discriminated union on `kind`)
+- Tool: `src/voliti/tools/fan_out.py`
+- iOS: `frontend-ios/Voliti/Features/Coach/A2UI/A2UIRenderer.swift`
 
 **Usage Pattern:**
 1. Coach calls `fan_out(components, layout)`
@@ -180,7 +180,7 @@ agent = create_deep_agent(
 
 ### 5. Configuration Registries
 
-**ModelRegistry (`src/constellate/config/models.py`):**
+**ModelRegistry (`src/voliti/config/models.py`):**
 - Central LLM configuration with lazy loading
 - TOML-based config with environment variable interpolation
 - Example: `config/models.toml`
@@ -198,7 +198,7 @@ agent = create_deep_agent(
   api_key = "${AZURE_OPENAI_API_KEY}"
   ```
 
-**PromptRegistry (`src/constellate/config/prompts.py`):**
+**PromptRegistry (`src/voliti/config/prompts.py`):**
 - Jinja2 template engine for system prompts
 - Templates in `prompts/` directory
 - StrictUndefined mode for fail-fast on missing variables

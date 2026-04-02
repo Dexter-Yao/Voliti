@@ -1,4 +1,4 @@
-# Constellate Development Guide
+# Voliti Development Guide
 
 ## Environment Setup
 
@@ -13,7 +13,7 @@
 1. **Clone and install dependencies**
 ```bash
 git clone <repo-url>
-cd constellate
+cd voliti
 uv sync
 cd frontend && npm install
 ```
@@ -106,7 +106,7 @@ uv run pytest tests/test_a2ui.py
 
 **Run with coverage:**
 ```bash
-uv run pytest --cov=src/constellate
+uv run pytest --cov=src/voliti
 ```
 
 ### Code Style
@@ -120,7 +120,7 @@ Project uses:
 
 ```
 .
-├── src/constellate/           # Backend Python package
+├── src/voliti/           # Backend Python package
 │   ├── agent.py               # Coach agent factory
 │   ├── graph.py               # LangGraph dev server entry
 │   ├── bootstrap.py           # Registry initialization
@@ -160,7 +160,7 @@ Project uses:
 
 ### Adding a New A2UI Component
 
-1. **Define component model** (`src/constellate/a2ui.py`):
+1. **Define component model** (`src/voliti/a2ui.py`):
 ```python
 class NewComponent(BaseModel):
     kind: Literal["new_component"]
@@ -186,7 +186,7 @@ case "new_component":
    - Define theoretical framework
    - Specify prompt construction rules
 
-2. **Add to purpose enum** (`src/constellate/tools/experiential.py`):
+2. **Add to purpose enum** (`src/voliti/tools/experiential.py`):
 ```python
 InterventionPurpose = Literal[..., "new_type"]
 ```
@@ -303,7 +303,7 @@ read_file("/user/ledger/2026-02-09/143052_meal.json")
 
 ### Reducing Context Window Usage
 
-- SummarizationMiddleware triggers at 85% → adjust in `src/constellate/graph.py`
+- SummarizationMiddleware triggers at 85% → adjust in `src/voliti/graph.py`
 - Keep system prompts concise
 - Regularly archive old conversation history
 

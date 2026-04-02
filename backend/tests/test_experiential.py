@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from constellate.tools.experiential import (
+from voliti.tools.experiential import (
     _ASPECT_RATIO_TO_SIZE,
     _intervention_cache,
     compose_experiential_intervention,
@@ -29,7 +29,7 @@ def _prefill_cache() -> None:
 class TestExperientialInterventionPayload:
     """interrupt payload 应为 A2UI 格式。"""
 
-    @patch("constellate.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential.interrupt")
     def test_interrupt_payload_is_a2ui(self, mock_interrupt) -> None:  # noqa: ANN001
         """interrupt 应收到 type=a2ui 的 payload。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
@@ -43,7 +43,7 @@ class TestExperientialInterventionPayload:
         payload = mock_interrupt.call_args[0][0]
         assert payload["type"] == "a2ui"
 
-    @patch("constellate.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential.interrupt")
     def test_payload_contains_image_component(self, mock_interrupt) -> None:  # noqa: ANN001
         """payload 应包含 image 组件。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
@@ -60,7 +60,7 @@ class TestExperientialInterventionPayload:
         assert len(image_components) == 1
         assert image_components[0]["src"].startswith("data:")
 
-    @patch("constellate.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential.interrupt")
     def test_payload_contains_caption_text(self, mock_interrupt) -> None:  # noqa: ANN001
         """payload 应包含 caption 文本组件。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
@@ -75,7 +75,7 @@ class TestExperientialInterventionPayload:
         text_components = [c for c in components if c["kind"] == "text"]
         assert any("This is the caption." in c["content"] for c in text_components)
 
-    @patch("constellate.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential.interrupt")
     def test_payload_layout_is_full(self, mock_interrupt) -> None:  # noqa: ANN001
         """体验式干预应使用 full layout。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
@@ -87,7 +87,7 @@ class TestExperientialInterventionPayload:
         payload = mock_interrupt.call_args[0][0]
         assert payload["layout"] == "full"
 
-    @patch("constellate.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential.interrupt")
     def test_payload_contains_decision_select(self, mock_interrupt) -> None:  # noqa: ANN001
         """payload 应包含 accept/dismiss 选择组件。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
@@ -108,7 +108,7 @@ class TestExperientialInterventionPayload:
 class TestExperientialInterventionResponse:
     """用户响应处理测试。"""
 
-    @patch("constellate.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential.interrupt")
     def test_accept_returns_success_message(self, mock_interrupt) -> None:  # noqa: ANN001
         """用户接受应返回成功信息。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
@@ -121,7 +121,7 @@ class TestExperientialInterventionResponse:
 
         assert "accept" in result.lower()
 
-    @patch("constellate.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential.interrupt")
     def test_dismiss_returns_dismiss_message(self, mock_interrupt) -> None:  # noqa: ANN001
         """用户取消应返回取消信息。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "dismiss"}}
@@ -133,7 +133,7 @@ class TestExperientialInterventionResponse:
 
         assert "dismiss" in result.lower()
 
-    @patch("constellate.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential.interrupt")
     def test_reject_returns_cancel_message(self, mock_interrupt) -> None:  # noqa: ANN001
         """用户 reject 整个交互应返回取消信息。"""
         mock_interrupt.return_value = {"action": "reject"}
@@ -153,7 +153,7 @@ class TestExperientialCardPersistence:
         """_persist_card 应将卡片数据写入 Store。"""
         from langgraph.store.memory import InMemoryStore
 
-        from constellate.tools.experiential import _persist_card
+        from voliti.tools.experiential import _persist_card
 
         store = InMemoryStore()
         card_id = _persist_card(
@@ -163,7 +163,7 @@ class TestExperientialCardPersistence:
             purpose="future_self",
         )
 
-        items = store.search(("constellate", "user", "interventions"))
+        items = store.search(("voliti", "user", "interventions"))
         assert len(items) == 1
         item = items[0]
         assert item.key == card_id
@@ -174,7 +174,7 @@ class TestExperientialCardPersistence:
 
     def test_persist_card_noop_when_store_is_none(self) -> None:
         """store 为 None 时 _persist_card 应返回 None。"""
-        from constellate.tools.experiential import _persist_card
+        from voliti.tools.experiential import _persist_card
 
         result = _persist_card(
             store=None,
@@ -184,8 +184,8 @@ class TestExperientialCardPersistence:
         )
         assert result is None
 
-    @patch("constellate.tools.experiential.interrupt")
-    @patch("constellate.tools.experiential._persist_card")
+    @patch("voliti.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential._persist_card")
     def test_accept_triggers_persistence(self, mock_persist, mock_interrupt) -> None:  # noqa: ANN001
         """用户接受时应调用 _persist_card。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
@@ -198,8 +198,8 @@ class TestExperientialCardPersistence:
 
         mock_persist.assert_called_once()
 
-    @patch("constellate.tools.experiential.interrupt")
-    @patch("constellate.tools.experiential._persist_card")
+    @patch("voliti.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential._persist_card")
     def test_reject_does_not_persist(self, mock_persist, mock_interrupt) -> None:  # noqa: ANN001
         """用户拒绝时不应调用 _persist_card。"""
         mock_interrupt.return_value = {"action": "reject"}
@@ -211,8 +211,8 @@ class TestExperientialCardPersistence:
 
         mock_persist.assert_not_called()
 
-    @patch("constellate.tools.experiential.interrupt")
-    @patch("constellate.tools.experiential._persist_card")
+    @patch("voliti.tools.experiential.interrupt")
+    @patch("voliti.tools.experiential._persist_card")
     def test_dismiss_does_not_persist(self, mock_persist, mock_interrupt) -> None:  # noqa: ANN001
         """用户选择 dismiss 时不应调用 _persist_card。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "dismiss"}}
