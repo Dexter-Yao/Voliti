@@ -47,6 +47,12 @@ class CoachClient:
     def __init__(self, server_url: str, assistant_id: str = "coach") -> None:
         self._client: LangGraphClient = get_client(url=server_url)
         self._assistant_id = assistant_id
+        self._user_id: str | None = None
+
+    def with_user_id(self, user_id: str) -> "CoachClient":
+        """设置当前会话的 user_id，用于 Store namespace 隔离。"""
+        self._user_id = user_id
+        return self
 
     async def create_thread(self) -> str:
         """创建新对话线程，返回 thread_id。"""
@@ -56,10 +62,7 @@ class CoachClient:
         return thread_id
 
     async def send_message(self, thread_id: str, message: str) -> list[CoachEvent]:
-        """发送用户消息并流式收集 Coach 响应。
-
-        返回本轮所有 CoachEvent（文本消息和/或 A2UI interrupt）。
-        """
+        """发送用户消息并流式收集 Coach 响应。"""
         input_data = {"messages": [{"role": "human", "content": message}]}
         return await self._stream_and_collect(thread_id, input_data=input_data)
 
@@ -76,6 +79,12 @@ class CoachClient:
     def store(self):
         """暴露底层 store 客户端供 store.py 使用。"""
         return self._client.store
+
+    def _build_config(self) -> dict[str, Any] | None:
+        """构造 run config，注入 user_id 实现 Store namespace 隔离。"""
+        if self._user_id:
+            return {"configurable": {"user_id": self._user_id}}
+        return None
 
     async def _stream_and_collect(
         self,
@@ -97,6 +106,10 @@ class CoachClient:
             kwargs["input"] = input_data
         if command is not None:
             kwargs["command"] = command
+
+        config = self._build_config()
+        if config is not None:
+            kwargs["config"] = config
 
         async for chunk in self._client.runs.stream(**kwargs):
             logger.debug("Stream chunk: event=%s", chunk.event)

@@ -1,8 +1,9 @@
 # ABOUTME: 评估编排器
-# ABOUTME: 串行执行 seed 场景，管理对话循环、Store 隔离、transcript 收集
+# ABOUTME: 并发执行 seed 场景，每个 seed 使用独立 Store namespace 实现隔离
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -170,12 +171,68 @@ async def run_conversation(
     return transcript
 
 
+async def _run_single_seed(
+    seed: Seed,
+    config: EvalConfig,
+    auditor: Auditor,
+    judge_fn: Any | None,
+) -> SeedResult:
+    """执行单个 seed 的完整流程（Store 隔离 → 对话 → 评分）。"""
+    user_id = f"eval_{seed.id}"
+    client = CoachClient(config.server_url, config.assistant_id)
+    client.with_user_id(user_id)
+
+    try:
+        logger.info("[%s] Starting (user_id=%s)", seed.id, user_id)
+
+        # 清空 + 预填充隔离的 Store namespace
+        await clear_store(client.store, user_id=user_id)
+        if seed.pre_state:
+            await populate_store(client.store, seed.pre_state, user_id=user_id)
+
+        # 创建线程 + 运行对话
+        thread_id = await client.create_thread()
+        max_turns = seed.max_turns or config.max_turns_default
+        transcript = await run_conversation(seed, thread_id, auditor, client, max_turns)
+
+        # Judge 评分
+        score_card: ScoreCard
+        if judge_fn:
+            score_card = await judge_fn(seed, transcript)
+        else:
+            score_card = ScoreCard(seed_id=seed.id)
+
+        logger.info("[%s] Completed: %d turns, end_reason=%s",
+                    seed.id, transcript.turn_count, transcript.end_reason)
+
+        return SeedResult(seed=seed, transcript=transcript, score_card=score_card)
+
+    except Exception:
+        logger.exception("[%s] Failed", seed.id)
+        error_transcript = Transcript(
+            seed_id=seed.id,
+            seed_name=seed.name,
+            thread_id="error",
+            started_at=datetime.now(UTC),
+            finished_at=datetime.now(UTC),
+            end_reason="error",
+        )
+        return SeedResult(seed=seed, transcript=error_transcript, score_card=ScoreCard(seed_id=seed.id))
+
+    finally:
+        # 清理 Store
+        try:
+            await clear_store(client.store, user_id=user_id)
+        except Exception:
+            logger.warning("[%s] Store cleanup failed", seed.id)
+
+
 async def run_evaluation(
     seeds: list[Seed],
     config: EvalConfig,
     judge_fn: Any = None,
 ) -> EvalResult:
-    """串行执行所有 seed 场景，收集评估结果。
+    """并发执行所有 seed 场景，每个 seed 使用独立的 Store namespace。
 
     Args:
         seeds: 要运行的 seed 列表。
@@ -194,61 +251,13 @@ async def run_evaluation(
         },
     )
 
-    client = CoachClient(config.server_url, config.assistant_id)
     auditor = Auditor(config.auditor_model)
 
-    for i, seed in enumerate(seeds, 1):
-        logger.info("=" * 60)
-        logger.info("Running seed %d/%d: %s (%s)", i, len(seeds), seed.id, seed.name)
-        logger.info("=" * 60)
+    logger.info("Running %d seeds concurrently", len(seeds))
+    tasks = [_run_single_seed(seed, config, auditor, judge_fn) for seed in seeds]
+    seed_results = await asyncio.gather(*tasks)
 
-        try:
-            # 清空 Store
-            await clear_store(client.store)
-
-            # 预填充状态
-            if seed.pre_state:
-                await populate_store(client.store, seed.pre_state)
-
-            # 创建线程
-            thread_id = await client.create_thread()
-
-            # 运行对话
-            max_turns = seed.max_turns or config.max_turns_default
-            transcript = await run_conversation(seed, thread_id, auditor, client, max_turns)
-
-            # Judge 评分
-            score_card: ScoreCard
-            if judge_fn:
-                score_card = await judge_fn(seed, transcript)
-            else:
-                score_card = ScoreCard(seed_id=seed.id)
-
-            result.seed_results.append(SeedResult(
-                seed=seed,
-                transcript=transcript,
-                score_card=score_card,
-            ))
-
-            logger.info("[%s] Completed: %d turns, end_reason=%s",
-                        seed.id, transcript.turn_count, transcript.end_reason)
-
-        except Exception:
-            logger.exception("[%s] Failed", seed.id)
-            # 记录失败但继续下一个 seed
-            error_transcript = Transcript(
-                seed_id=seed.id,
-                seed_name=seed.name,
-                thread_id="error",
-                started_at=datetime.now(UTC),
-                finished_at=datetime.now(UTC),
-                end_reason="error",
-            )
-            result.seed_results.append(SeedResult(
-                seed=seed,
-                transcript=error_transcript,
-                score_card=ScoreCard(seed_id=seed.id),
-            ))
-
+    # 按 seed ID 排序保持输出一致性
+    result.seed_results = sorted(seed_results, key=lambda sr: sr.seed.id)
     result.finished_at = datetime.now(UTC)
     return result

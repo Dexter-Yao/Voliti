@@ -19,6 +19,27 @@ from voliti.tools.fan_out import fan_out
 COACH_TOOLS = [fan_out]
 """Coach 直接调用的工具，通过 A2UI 组件组合实现动态交互。"""
 
+_DEFAULT_USER_NAMESPACE = ("voliti", "user")
+
+
+def _resolve_user_namespace(ctx: Any) -> tuple[str, ...]:
+    """从运行时 config 解析用户 namespace。
+
+    支持通过 configurable.user_id 传入自定义用户标识，
+    实现多用户或评估场景下的 Store 隔离。
+    默认回退到 ("voliti", "user")。
+    """
+    from langgraph.config import get_config
+
+    try:
+        cfg = get_config()
+        user_id = cfg.get("configurable", {}).get("user_id")
+        if user_id:
+            return ("voliti", str(user_id))
+    except Exception:  # noqa: BLE001
+        pass
+    return _DEFAULT_USER_NAMESPACE
+
 
 def _create_backend_factory() -> Callable[..., Any]:
     """创建 CompositeBackend 工厂函数。
@@ -34,7 +55,7 @@ def _create_backend_factory() -> Callable[..., Any]:
             routes={
                 "/user/": StoreBackend(
                     rt,
-                    namespace=lambda ctx: ("voliti", "user"),
+                    namespace=_resolve_user_namespace,
                 ),
             },
         )

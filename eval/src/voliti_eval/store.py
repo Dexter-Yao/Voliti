@@ -1,5 +1,5 @@
 # ABOUTME: LangGraph Store 状态管理
-# ABOUTME: 为评估场景预填充用户档案/LifeSign/Coach 记忆，运行后清理
+# ABOUTME: 为评估场景预填充用户档案/LifeSign/Coach 记忆，运行后清理；支持动态 namespace 隔离
 
 from __future__ import annotations
 
@@ -12,8 +12,12 @@ from voliti_eval.models import PreState
 
 logger = logging.getLogger(__name__)
 
-# 与 backend agent.py 中 StoreBackend namespace 一致
-STORE_NAMESPACE = ("voliti", "user")
+STORE_NAMESPACE_PREFIX = "voliti"
+
+
+def make_namespace(user_id: str = "user") -> tuple[str, str]:
+    """构造 Store namespace，与 backend agent.py 中 _resolve_user_namespace 一致。"""
+    return (STORE_NAMESPACE_PREFIX, user_id)
 
 
 def _make_file_value(content: str) -> dict[str, Any]:
@@ -29,54 +33,48 @@ def _make_file_value(content: str) -> dict[str, Any]:
     }
 
 
-async def populate_store(store_client: Any, pre_state: PreState) -> None:
-    """将 seed 的 pre_state 写入 LangGraph Store。
+async def populate_store(
+    store_client: Any, pre_state: PreState, *, user_id: str = "user"
+) -> None:
+    """将 seed 的 pre_state 写入 LangGraph Store。"""
+    ns = make_namespace(user_id)
 
-    Args:
-        store_client: LangGraphClient.store 实例。
-        pre_state: 要预填充的状态。
-    """
     if pre_state.profile:
-        await store_client.put_item(
-            STORE_NAMESPACE,
-            key="profile/context.md",
-            value=_make_file_value(pre_state.profile),
-        )
-        logger.info("Populated profile/context.md")
+        await store_client.put_item(ns, key="profile/context.md", value=_make_file_value(pre_state.profile))
+        logger.info("[%s] Populated profile/context.md", user_id)
 
+    # 生成 LifeSign 索引文件
+    index_lines = ["# LifeSign Index"]
     for plan in pre_state.coping_plans:
         plan_data = plan.model_dump()
         plan_json = json.dumps(plan_data, ensure_ascii=False, indent=2)
-        await store_client.put_item(
-            STORE_NAMESPACE,
-            key=f"coping_plans/{plan.id}.json",
-            value=_make_file_value(plan_json),
+        await store_client.put_item(ns, key=f"coping_plans/{plan.id}.json", value=_make_file_value(plan_json))
+        logger.info("[%s] Populated coping_plans/%s.json", user_id, plan.id)
+        index_lines.append(
+            f'- {plan.id}: "{plan.trigger.get("situation", "")}" → {plan.action} '
+            f"[{plan.status}, {plan.success_count}/{plan.activated_count} success]"
         )
-        logger.info("Populated coping_plans/%s.json", plan.id)
+
+    if pre_state.coping_plans:
+        await store_client.put_item(
+            ns, key="coping_plans_index.md", value=_make_file_value("\n".join(index_lines))
+        )
+        logger.info("[%s] Populated coping_plans_index.md", user_id)
 
     if pre_state.coach_memory:
-        await store_client.put_item(
-            STORE_NAMESPACE,
-            key="coach/AGENTS.md",
-            value=_make_file_value(pre_state.coach_memory),
-        )
-        logger.info("Populated coach/AGENTS.md")
+        await store_client.put_item(ns, key="coach/AGENTS.md", value=_make_file_value(pre_state.coach_memory))
+        logger.info("[%s] Populated coach/AGENTS.md", user_id)
 
 
-async def clear_store(store_client: Any) -> None:
-    """清空 Store 中 STORE_NAMESPACE 下的所有项。
-
-    通过 search_items 列出所有 key，逐一删除。
-    """
+async def clear_store(store_client: Any, *, user_id: str = "user") -> None:
+    """清空指定 namespace 下的所有 Store 项。"""
+    ns = make_namespace(user_id)
     offset = 0
     limit = 100
     deleted = 0
 
     while True:
-        result = await store_client.search_items(
-            STORE_NAMESPACE, limit=limit, offset=offset
-        )
-        # search_items 返回 {"items": [...]} dict
+        result = await store_client.search_items(ns, limit=limit, offset=offset)
         item_list: list = result.get("items", []) if isinstance(result, dict) else result
 
         if not item_list:
@@ -85,7 +83,7 @@ async def clear_store(store_client: Any) -> None:
         for item in item_list:
             key = item.get("key") if isinstance(item, dict) else getattr(item, "key", None)
             if key:
-                await store_client.delete_item(STORE_NAMESPACE, key=key)
+                await store_client.delete_item(ns, key=key)
                 deleted += 1
 
         if len(item_list) < limit:
@@ -93,4 +91,4 @@ async def clear_store(store_client: Any) -> None:
         offset += limit
 
     if deleted:
-        logger.info("Cleared %d items from Store namespace %s", deleted, STORE_NAMESPACE)
+        logger.info("[%s] Cleared %d items from Store", user_id, deleted)
