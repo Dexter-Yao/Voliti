@@ -53,6 +53,9 @@ struct LangGraphAPI: Sendable {
             ])
         }
 
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        content.insert(["type": "text", "text": "[\(timestamp)] "], at: 0)
+
         let body: [String: Any] = [
             "assistant_id": APIConfiguration.assistantID,
             "input": [
