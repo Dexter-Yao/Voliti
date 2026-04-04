@@ -8,6 +8,8 @@ import os
 struct InputBar: View {
     var onSend: (String, Data?) -> Void
     var disabled: Bool = false
+    var suggestedReplies: [String] = []
+    var onSuggestionTap: ((String) -> Void)?
 
     @State private var text = ""
     @State private var selectedPhoto: PhotosPickerItem?
@@ -17,6 +19,30 @@ struct InputBar: View {
 
     var body: some View {
         VStack(spacing: StarpathTokens.spacingXS) {
+            // Suggested replies
+            if !suggestedReplies.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: StarpathTokens.spacingSM) {
+                        ForEach(suggestedReplies, id: \.self) { reply in
+                            Button {
+                                onSuggestionTap?(reply)
+                            } label: {
+                                Text(reply)
+                                    .font(.system(size: StarpathTokens.fontSizeSM))
+                                    .foregroundStyle(StarpathTokens.obsidian)
+                                    .padding(.horizontal, StarpathTokens.spacingSM)
+                                    .padding(.vertical, StarpathTokens.spacingXS)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(StarpathTokens.obsidian20, lineWidth: 1)
+                                    )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, StarpathTokens.spacingMD)
+                }
+            }
+
             // 图片预览
             if let imageData, let uiImage = UIImage(data: imageData) {
                 HStack {

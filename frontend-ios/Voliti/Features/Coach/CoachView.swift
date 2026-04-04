@@ -25,7 +25,12 @@ struct CoachView: View {
                     onSend: { text, imageData in
                         viewModel.sendMessage(text, imageData: imageData)
                     },
-                    disabled: viewModel.isStreaming
+                    disabled: viewModel.isStreaming,
+                    suggestedReplies: viewModel.suggestedReplies,
+                    onSuggestionTap: { reply in
+                        viewModel.suggestedReplies = []
+                        viewModel.sendMessage(reply, imageData: nil)
+                    }
                 )
             }
         }

@@ -22,6 +22,7 @@ final class CoachViewModel {
     var isStreaming = false
     var errorMessage: String?
     var activeInterrupt: A2UIPayload?
+    var suggestedReplies: [String] = []
 
     private let api = LangGraphAPI()
     private var modelContext: ModelContext?
@@ -77,6 +78,7 @@ final class CoachViewModel {
     /// 向后端发送系统触发消息，不创建本地 ChatMessage，不在 UI 显示
     private func sendSystemTrigger(_ tag: String) {
         guard !isStreaming else { return }
+        suggestedReplies = []
 
         isStreaming = true
         errorMessage = nil
@@ -117,6 +119,7 @@ final class CoachViewModel {
     func sendMessage(_ text: String, imageData: Data? = nil) {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         guard !isStreaming else { return }
+        suggestedReplies = []
 
         isStreaming = true
         errorMessage = nil
@@ -254,10 +257,37 @@ final class CoachViewModel {
         }
 
         await MainActor.run {
-            assistantMessage.textContent = fullContent
+            let (cleaned, replies) = Self.extractSuggestedReplies(from: fullContent)
+            assistantMessage.textContent = cleaned
+            self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
         }
+    }
+
+    // MARK: - Suggested Replies Parsing
+
+    /// 从 Assistant 消息中提取 suggested_replies 标记并返回清理后的文本和建议列表
+    static func extractSuggestedReplies(from content: String) -> (String, [String]) {
+        let pattern = "```json:suggested_replies\\n(\\[.*?\\])\\n```"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .dotMatchesLineSeparators),
+              let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+              let jsonRange = Range(match.range(at: 1), in: content) else {
+            return (content, [])
+        }
+
+        let jsonString = String(content[jsonRange])
+        guard let data = jsonString.data(using: .utf8),
+              let replies = try? JSONDecoder().decode([String].self, from: data) else {
+            return (content, [])
+        }
+
+        let fullMatchRange = Range(match.range, in: content)!
+        var cleaned = content
+        cleaned.removeSubrange(fullMatchRange)
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return (cleaned, replies)
     }
 
     // MARK: - Intervention Card Persistence
