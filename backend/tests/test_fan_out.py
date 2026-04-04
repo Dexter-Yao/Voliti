@@ -26,6 +26,7 @@ class TestFanOutSubmit:
         })
         assert "energy=7" in result
         assert "mood=6" in result
+        assert "User responded:" in result
 
     @patch("voliti.tools.fan_out.interrupt")
     def test_submit_with_empty_data(self, mock_interrupt) -> None:  # noqa: ANN001
@@ -34,7 +35,7 @@ class TestFanOutSubmit:
         result = fan_out.invoke({
             "components": [{"kind": "text", "content": "hello"}],
         })
-        assert isinstance(result, str)
+        assert "acknowledged the observation" in result
 
 
 class TestFanOutReject:
@@ -47,7 +48,7 @@ class TestFanOutReject:
         result = fan_out.invoke({
             "components": [{"kind": "text", "content": "hello"}],
         })
-        assert "cancel" in result.lower()
+        assert result == "User closed the panel without responding."
 
 
 class TestFanOutSkip:
@@ -60,7 +61,7 @@ class TestFanOutSkip:
         result = fan_out.invoke({
             "components": [{"kind": "text", "content": "hello"}],
         })
-        assert "skip" in result.lower()
+        assert result == "User acknowledged but chose to skip."
 
 
 class TestFanOutPayload:

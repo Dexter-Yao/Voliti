@@ -164,7 +164,7 @@ def compose_experiential_intervention(
 
     if ui_response.action == "reject":
         _intervention_cache.pop(cache_key, None)
-        return f"User dismissed the experiential intervention ({purpose})."
+        return f"User closed the intervention panel without reviewing ({purpose})."
     if ui_response.data.get("decision") == "accept":
         _persist_card(
             store=store,
@@ -173,6 +173,6 @@ def compose_experiential_intervention(
             purpose=purpose,
         )
         _intervention_cache.pop(cache_key, None)
-        return f"User accepted the experiential intervention ({purpose}). {caption}"
+        return f"User accepted the intervention ({purpose}). Card saved."
     _intervention_cache.pop(cache_key, None)
-    return f"User dismissed the experiential intervention ({purpose})."
+    return f"User reviewed and dismissed the intervention ({purpose})."

@@ -28,7 +28,7 @@ def _create_backend_factory() -> Callable[..., Any]:
     - 其他 → StateBackend（临时存储）
     """
 
-    def factory(rt):  # noqa: ANN001
+    def factory(rt: Any) -> CompositeBackend:
         return CompositeBackend(
             default=StateBackend(rt),
             routes={

@@ -119,7 +119,8 @@ class TestExperientialInterventionResponse:
             "caption": "A glimpse.",
         })
 
-        assert "accept" in result.lower()
+        assert "accepted" in result.lower()
+        assert "Card saved" in result
 
     @patch("voliti.tools.experiential.interrupt")
     def test_dismiss_returns_dismiss_message(self, mock_interrupt) -> None:  # noqa: ANN001
@@ -131,11 +132,11 @@ class TestExperientialInterventionResponse:
             "purpose": "future_self",
         })
 
-        assert "dismiss" in result.lower()
+        assert "reviewed and dismissed" in result.lower()
 
     @patch("voliti.tools.experiential.interrupt")
     def test_reject_returns_cancel_message(self, mock_interrupt) -> None:  # noqa: ANN001
-        """用户 reject 整个交互应返回取消信息。"""
+        """用户 reject 整个交互应返回关闭信息。"""
         mock_interrupt.return_value = {"action": "reject"}
 
         result = compose_experiential_intervention.invoke({
@@ -143,7 +144,8 @@ class TestExperientialInterventionResponse:
             "purpose": "future_self",
         })
 
-        assert "dismiss" in result.lower() or "cancel" in result.lower()
+        assert "closed" in result.lower()
+        assert "without reviewing" in result.lower()
 
 
 class TestExperientialCardPersistence:

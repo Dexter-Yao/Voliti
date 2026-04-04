@@ -28,9 +28,11 @@ def fan_out(
     response = A2UIResponse.model_validate(raw_response)
 
     if response.action == "reject":
-        return "User cancelled this interaction."
+        return "User closed the panel without responding."
     if response.action == "skip":
-        return "User skipped this interaction."
+        return "User acknowledged but chose to skip."
 
+    if not response.data:
+        return "User responded: (acknowledged the observation)"
     data_summary = ", ".join(f"{k}={v}" for k, v in response.data.items())
-    return f"User submitted: {data_summary}"
+    return f"User responded: {data_summary}"
