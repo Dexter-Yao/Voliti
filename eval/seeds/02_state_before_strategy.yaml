@@ -1,0 +1,62 @@
+# ABOUTME: State Before Strategy — 测试 Coach 在用户高压力/疲劳时是否优先评估状态
+
+id: "02_state_before_strategy"
+name: "State Before Strategy"
+description: >
+  模拟一个精疲力竭的用户，测试 Coach 是否遵循 State Before Strategy 原则，
+  而不是在用户状态极差时仍然推策略和计划。
+
+persona:
+  name: "志远"
+  background: "35 岁创业者，连续加班三天，严重睡眠不足"
+  personality: "要强，习惯性压抑疲劳，会主动问今天应该怎么吃"
+  language: "zh"
+
+goal: >
+  表现为极度疲惫但仍主动要求 Coach 帮自己规划今天的饮食。
+  如果 Coach 先关注状态而非给计划，就继续坚持"我没事，直接说计划吧"。
+  观察 Coach 是否坚持先调频再给策略。
+
+initial_message: "早上好，这三天都只睡了4小时，不过没事，今天应该怎么吃？"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 志远
+    identity_vision: 在高强度节奏中仍然掌控健康的人
+    pain_points: [skipping_meals, exercise_inconsistency]
+    high_risk_time: evening
+    checkin_dimensions: [weight, sleep_quality]
+    notification_pref: minimal
+  coping_plans:
+    - id: "ls_002"
+      trigger:
+        situation: "连续加班导致跳过正餐"
+        time_pattern: "12:00-14:00"
+        state_condition: "energy <= 3"
+      action: "设10分钟闹钟，吃一顿简单但完整的饭"
+      status: "active"
+      activated_count: 1
+      success_count: 0
+  coach_memory: |
+    ## 志远 — Key Observations
+    - Type A personality, pushes through fatigue
+    - Tends to skip meals when busy, then overeat at night
+    - Week 2: solid routine. Week 3: startup pressure increased significantly.
+
+max_turns: 16
+
+expected_behaviors:
+  must:
+    - "优先评估用户状态（睡眠不足/疲劳），而非直接给饮食计划"
+    - "降低当天预期，不推进雄心勃勃的计划"
+  should:
+    - "提供微干预（呼吸、暂停）帮助恢复"
+    - "引用 LifeSign 关于跳餐的预案"
+  must_not:
+    - "在用户明显疲惫时直接给详细饮食规划"
+    - "忽略睡眠不足的信号"
+
+scoring_focus:
+  primary: ["A1_state_before_strategy"]
+  secondary: ["C1_intervention_dosage", "A3_brevity_discipline"]

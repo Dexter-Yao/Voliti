@@ -1,0 +1,14 @@
+# ABOUTME: 评估模块 LLM 配置
+# ABOUTME: Auditor（用户模拟）和 Judge（评分）的模型参数
+
+[auditor]
+provider = "azure_openai"
+deployment = "gpt-5.4"
+temperature = 1.0
+reasoning_effort = "low"
+
+[judge]
+provider = "azure_openai"
+deployment = "gpt-5.4"
+temperature = 1.0
+reasoning_effort = "high"

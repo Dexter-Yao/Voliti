@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voliti 评估报告 — {{ run_id }}</title>
+<style>
+  :root {
+    --bg: #fafafa; --fg: #1a1a1a; --muted: #666; --border: #e0e0e0;
+    --user-bg: #e8f4fd; --coach-bg: #f0f0f0; --a2ui-bg: #fff8e1;
+    --score-1: #d32f2f; --score-2: #f57c00; --score-3: #fbc02d;
+    --score-4: #7cb342; --score-5: #2e7d32;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Helvetica Neue", sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+  h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+
+  /* 总览表格 */
+  .summary-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+  .summary-table th, .summary-table td { padding: 0.5rem 0.75rem; border: 1px solid var(--border); text-align: left; }
+  .summary-table th { background: #f5f5f5; font-weight: 600; }
+
+  /* 评分条 */
+  .score-bar { display: inline-block; height: 14px; border-radius: 2px; }
+  .score-1 { background: var(--score-1); }
+  .score-2 { background: var(--score-2); }
+  .score-3 { background: var(--score-3); }
+  .score-4 { background: var(--score-4); }
+  .score-5 { background: var(--score-5); }
+
+  /* 热力图 */
+  .heatmap { display: grid; gap: 2px; margin: 1rem 0; font-size: 0.75rem; }
+  .heatmap-cell { padding: 4px 6px; text-align: center; border-radius: 2px; color: #fff; font-weight: 600; }
+  .heatmap-header { background: #f5f5f5; color: var(--fg); font-weight: 600; }
+
+  /* Seed 详情 */
+  details { margin: 0.75rem 0; border: 1px solid var(--border); border-radius: 4px; }
+  summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; background: #f9f9f9; }
+  summary:hover { background: #f0f0f0; }
+  .detail-content { padding: 1rem; }
+
+  /* 对话气泡 */
+  .chat { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0; }
+  .bubble { max-width: 80%; padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
+  .bubble-user { align-self: flex-start; background: var(--user-bg); border-bottom-left-radius: 2px; }
+  .bubble-coach { align-self: flex-end; background: var(--coach-bg); border-bottom-right-radius: 2px; }
+  .bubble-a2ui { align-self: flex-end; background: var(--a2ui-bg); border: 1px solid #ffe082; border-bottom-right-radius: 2px; font-size: 0.85rem; }
+  .bubble-label { font-size: 0.7rem; color: var(--muted); margin-bottom: 2px; }
+
+  /* 图片 */
+  .eval-image { max-width: 300px; border-radius: 8px; margin: 0.5rem 0; }
+
+  /* 评分卡 */
+  .scorecard { margin: 0.75rem 0; }
+  .scorecard-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; font-size: 0.85rem; }
+  .scorecard-dim { width: 220px; font-weight: 500; }
+  .scorecard-score { width: 30px; text-align: center; font-weight: 700; }
+  .scorecard-just { color: var(--muted); flex: 1; }
+
+  /* 页脚 */
+  .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>Voliti Coach 评估报告</h1>
+<div class="meta">
+  Run ID: {{ run_id }} | {{ started_at }} | {{ seed_count }} seeds |
+  Auditor: {{ config.auditor_model }} | Judge: {{ config.judge_model }}
+</div>
+
+{# ---- 总览仪表盘 ---- #}
+<h2>总览</h2>
+<table class="summary-table">
+  <thead>
+    <tr>
+      <th>Seed</th>
+      <th>Turns</th>
+      <th>End</th>
+      <th>Avg Score</th>
+      <th>Critical</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for sr in seed_results %}
+    <tr>
+      <td>{{ sr.seed.id }} {{ sr.seed.name }}</td>
+      <td>{{ sr.transcript.turn_count }}</td>
+      <td>{{ sr.transcript.end_reason }}</td>
+      <td>
+        {% set score_class = [1, sr.score_card.weighted_average | round | int] | max %}
+        {% set score_class = [score_class, 5] | min %}
+        <span class="score-bar score-{{ score_class }}"
+              style="width: {{ sr.score_card.weighted_average * 20 }}px"></span>
+        {{ "%.1f" | format(sr.score_card.weighted_average) }}
+      </td>
+      <td>{{ sr.score_card.critical_issues | length }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{# ---- 热力图 ---- #}
+{% if all_dimensions %}
+<h2>评分热力图</h2>
+<div class="heatmap" style="grid-template-columns: 160px repeat({{ all_dimensions | length }}, 1fr);">
+  <div class="heatmap-header"></div>
+  {% for dim in all_dimensions %}
+  <div class="heatmap-header" title="{{ dim }}">{{ dim | replace('_', ' ') | truncate(12) }}</div>
+  {% endfor %}
+  {% for sr in seed_results %}
+  <div class="heatmap-header">{{ sr.seed.id }}</div>
+  {% for dim in all_dimensions %}
+  {% set s = sr.score_card.scores.get(dim) %}
+  {% if s %}
+  <div class="heatmap-cell score-{{ s.score }}" title="{{ dim }}: {{ s.score }}">{{ s.score }}</div>
+  {% else %}
+  <div class="heatmap-cell" style="background: #eee; color: #999;">—</div>
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ---- 每 Seed 详情 ---- #}
+<h2>详细结果</h2>
+{% for sr in seed_results %}
+<details>
+  <summary>{{ sr.seed.id }} — {{ sr.seed.name }}（avg {{ "%.1f" | format(sr.score_card.weighted_average) }}）</summary>
+  <div class="detail-content">
+
+    <h3>评分</h3>
+    <div class="scorecard">
+      {% for dim_id, dim in sr.score_card.scores.items() %}
+      <div class="scorecard-row">
+        <span class="scorecard-dim">{{ dim_id | replace('_', ' ') }}</span>
+        <span class="scorecard-score score-{{ dim.score }}">{{ dim.score }}</span>
+        <span class="score-bar score-{{ dim.score }}" style="width: {{ dim.score * 20 }}px"></span>
+        <span class="scorecard-just">{{ dim.justification | truncate(120) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if sr.score_card.overall_assessment %}
+    <h3>总体评估</h3>
+    <p>{{ sr.score_card.overall_assessment }}</p>
+    {% endif %}
+
+    {% if sr.score_card.critical_issues %}
+    <h3>关键问题</h3>
+    <ul>
+      {% for issue in sr.score_card.critical_issues %}
+      <li>{{ issue }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h3>对话记录</h3>
+    <div class="chat">
+      {% for turn in sr.transcript.turns %}
+        {% if turn.role == "user" and turn.text %}
+        <div>
+          <div class="bubble-label">User (Turn {{ turn.index }})</div>
+          <div class="bubble bubble-user">{{ turn.text }}</div>
+        </div>
+        {% endif %}
+
+        {% if turn.role == "user" and turn.a2ui_response %}
+        <div>
+          <div class="bubble-label">User A2UI Response (Turn {{ turn.index }})</div>
+          <div class="bubble bubble-a2ui">{{ turn.a2ui_response | tojson(indent=2) }}</div>
+        </div>
+        {% endif %}
+
+        {% if turn.role == "coach" and turn.text %}
+        <div>
+          <div class="bubble-label">Coach (Turn {{ turn.index }})</div>
+          <div class="bubble bubble-coach">{{ turn.text }}</div>
+        </div>
+        {% endif %}
+
+        {% if turn.a2ui_payload %}
+        <div>
+          <div class="bubble-label">Coach A2UI (Turn {{ turn.index }})</div>
+          <div class="bubble bubble-a2ui">
+            {% for comp in turn.a2ui_payload.get('components', []) %}
+            <div>
+              {% if comp.kind == 'text' %}📝 {{ comp.content | default('') | truncate(200) }}
+              {% elif comp.kind == 'image' %}🖼️ [Image: {{ comp.alt | default('') }}]
+              {% elif comp.kind == 'slider' %}📊 {{ comp.label | default('') }} ({{ comp.min | default(1) }}-{{ comp.max | default(10) }})
+              {% elif comp.kind == 'select' %}☑️ {{ comp.label | default('') }}: {{ comp.options | map(attribute='label') | join(', ') if comp.options else '' }}
+              {% elif comp.kind == 'text_input' %}✏️ {{ comp.label | default('') }}
+              {% elif comp.kind == 'number_input' %}🔢 {{ comp.label | default('') }}
+              {% elif comp.kind == 'multi_select' %}☑️ {{ comp.label | default('') }} (multi)
+              {% else %}{{ comp.kind }}: {{ comp | tojson }}
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if turn.images %}
+        {% for img in turn.images %}
+        {% if img.src and img.src.startswith('data:') %}
+        <div>
+          <div class="bubble-label">Generated Image</div>
+          <img class="eval-image" src="{{ img.src }}" alt="{{ img.alt }}" />
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+      {% endfor %}
+    </div>
+
+  </div>
+</details>
+{% endfor %}
+
+{# ---- 附录：Prompt 与评分标准 ---- #}
+<h2>附录 A：Auditor System Prompt 模板</h2>
+<details>
+  <summary>展开查看 Auditor 提示词模板</summary>
+  <div class="detail-content">
+    <pre style="white-space: pre-wrap; font-size: 0.8rem; background: #f5f5f5; padding: 1rem; border-radius: 4px;">{{ auditor_prompt_template }}</pre>
+  </div>
+</details>
+
+<h2>附录 B：Judge 评分标准（Rubric）</h2>
+<details>
+  <summary>展开查看 12 维度评分标准</summary>
+  <div class="detail-content">
+    <pre style="white-space: pre-wrap; font-size: 0.8rem; background: #f5f5f5; padding: 1rem; border-radius: 4px;">{{ judge_rubric }}</pre>
+  </div>
+</details>
+
+<h2>附录 C：各 Seed 的 Auditor 实际提示词</h2>
+{% for sr in seed_results %}
+<details>
+  <summary>{{ sr.seed.id }} — {{ sr.seed.name }}：Auditor Prompt</summary>
+  <div class="detail-content">
+    <h3>Persona</h3>
+    <p><strong>{{ sr.seed.persona.name }}</strong> ({{ sr.seed.persona.language }})<br>{{ sr.seed.persona.background }}<br><em>{{ sr.seed.persona.personality }}</em></p>
+    <h3>Goal</h3>
+    <p>{{ sr.seed.goal }}</p>
+    <h3>Expected Behaviors</h3>
+    <table class="summary-table">
+      <tr><th>Must</th><td>{{ sr.seed.expected_behaviors.must | join('<br>') }}</td></tr>
+      <tr><th>Should</th><td>{{ sr.seed.expected_behaviors.should | join('<br>') }}</td></tr>
+      <tr><th>Must NOT</th><td>{{ sr.seed.expected_behaviors.must_not | join('<br>') }}</td></tr>
+    </table>
+    <h3>Scoring Focus</h3>
+    <p>Primary: {{ sr.seed.scoring_focus.primary | join(', ') }}<br>Secondary: {{ sr.seed.scoring_focus.secondary | join(', ') }}</p>
+    <h3>Pre-State</h3>
+    {% if sr.seed.pre_state %}
+    <pre style="white-space: pre-wrap; font-size: 0.8rem; background: #f5f5f5; padding: 0.5rem; border-radius: 4px;">Profile: {{ sr.seed.pre_state.profile or 'None' }}
+Coach Memory: {{ sr.seed.pre_state.coach_memory or 'None' }}
+Coping Plans: {{ sr.seed.pre_state.coping_plans | length }} plan(s)</pre>
+    {% else %}
+    <p>无预填充状态（Onboarding 场景）</p>
+    {% endif %}
+  </div>
+</details>
+{% endfor %}
+
+<h2>附录 D：Judge 完整评分输出</h2>
+{% for sr in seed_results %}
+<details>
+  <summary>{{ sr.seed.id }} — {{ sr.seed.name }}：Judge 评分详情</summary>
+  <div class="detail-content">
+    {% for dim_id, dim in sr.score_card.scores.items() %}
+    <div style="margin: 0.5rem 0; padding: 0.5rem; background: #f9f9f9; border-radius: 4px;">
+      <strong>{{ dim_id | replace('_', ' ') }}</strong>: <span class="scorecard-score score-{{ dim.score }}">{{ dim.score }}</span>/5
+      <p style="font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem;">{{ dim.justification }}</p>
+    </div>
+    {% endfor %}
+    {% if sr.score_card.overall_assessment %}
+    <div style="margin-top: 0.75rem;">
+      <strong>Overall Assessment:</strong>
+      <p>{{ sr.score_card.overall_assessment }}</p>
+    </div>
+    {% endif %}
+    {% if sr.score_card.critical_issues %}
+    <div style="margin-top: 0.5rem;">
+      <strong>Critical Issues:</strong>
+      <ul>{% for issue in sr.score_card.critical_issues %}<li>{{ issue }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+  </div>
+</details>
+{% endfor %}
+
+<div class="footer">
+  Generated by voliti-eval {{ run_id }}<br>
+  Config: server={{ config.server_url }}, assistant={{ config.assistant_id }}<br>
+  Auditor: {{ config.auditor_model }} (reasoning={{ config.get('auditor_reasoning', 'N/A') }})<br>
+  Judge: {{ config.judge_model }} (reasoning={{ config.get('judge_reasoning', 'N/A') }})
+</div>
+
+</body>
+</html>

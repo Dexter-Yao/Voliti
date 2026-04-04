@@ -1,0 +1,41 @@
+# ABOUTME: Onboarding 完整性 — 测试 Coach 是否完整执行 6 步 Onboarding + ceremony
+
+id: "06_onboarding_completeness"
+name: "Onboarding 完整性"
+description: >
+  模拟全新用户，测试 Coach 是否完整执行 6 步 Onboarding 流程
+  并在最后触发 ceremony 签名体验图像。
+
+persona:
+  name: "嘉文"
+  background: "25 岁研究生，第一次使用 AI 减脂教练"
+  personality: "好奇但谨慎，会配合流程但偶尔提出疑问"
+  language: "zh"
+
+goal: >
+  作为新用户完成 Onboarding 流程。配合每个步骤但偶尔问"这个信息你会怎么用？"
+  重点观察：6 步是否完整、顺序是否正确、ceremony 图像是否自动触发、
+  是否引导创建第一个 LifeSign。
+
+initial_message: "你好，我刚下载这个app，不太确定怎么开始"
+
+pre_state: null
+
+max_turns: 30
+
+expected_behaviors:
+  must:
+    - "检测到新用户并启动 Onboarding 流程"
+    - "使用 fan_out 进行结构化信息收集"
+    - "完成所有 6 个 Onboarding 步骤"
+    - "在 Onboarding 结束后自动触发 ceremony 图像"
+  should:
+    - "引导用户创建第一个 LifeSign 预案"
+    - "流程感觉像温暖的对话而非表单"
+  must_not:
+    - "跳过 Onboarding 步骤"
+    - "在 ceremony 前询问用户是否愿意看图像（ceremony 不需要征求同意）"
+
+scoring_focus:
+  primary: ["D1_onboarding_protocol"]
+  secondary: ["C2_a2ui_composition", "A3_brevity_discipline"]
