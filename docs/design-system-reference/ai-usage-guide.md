@@ -3,7 +3,7 @@
 
 # AI Usage Guide — Starpath Protocol
 
-本文档面向 Claude、Cursor 等 AI 代码生成工具。在为 Voliti 生成前端代码、CSS、组件或 Gemini 图片 prompt 之前，先读此文。
+本文档面向 Claude、Cursor 等 AI 代码生成工具。在为 Voliti 生成前端代码、CSS、组件或图片 prompt 之前，先读此文。
 
 ---
 
@@ -22,7 +22,7 @@
 
 ```
 5. machine/image-prompt-tokens.json   ← 色彩、风格模块、模板参数
-6. doc/05_Image_Generation.md        ← 完整 prompt 模板（含具体变量占位符）
+6. docs/05_Image_Generation.md        ← 完整 prompt 模板（含具体变量占位符）
 ```
 
 ---

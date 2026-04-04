@@ -4,24 +4,24 @@
 
 ### Prerequisites
 - Python 3.12+
-- Node.js 18+
 - `uv` package manager
-- Gemini API key
+- Azure OpenAI credentials（AZURE_OPENAI_API_KEY、AZURE_OPENAI_ENDPOINT、AZURE_OPENAI_API_VERSION）
 
 ### Initial Setup
 
 1. **Clone and install dependencies**
 ```bash
 git clone <repo-url>
-cd voliti
+cd voliti/backend
 uv sync
-cd frontend && npm install
 ```
 
 2. **Configure environment**
 ```bash
-# Set Gemini API key
-export GEMINI_API_KEY="your-key-here"
+# Set Azure OpenAI credentials
+export AZURE_OPENAI_API_KEY="your-key-here"
+export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
+export AZURE_OPENAI_API_VERSION="2024-02-01"
 
 # (Optional) Copy and edit model config
 cp config/models.toml.example config/models.toml
@@ -33,33 +33,24 @@ cp config/models.toml.example config/models.toml
 
 **Standard mode** (local only):
 ```bash
-uv run langgraph dev --port 2024
+uv run langgraph dev --port 2025
 ```
 
 **Tunnel mode** (for LangGraph Studio):
 ```bash
-uv run langgraph dev --port 2024 --tunnel
+uv run langgraph dev --port 2025 --tunnel
 ```
 
 The `--tunnel` flag creates a Cloudflare HTTPS tunnel for Studio access. Each run generates a new temporary domain.
 
 **Expected output:**
 ```
-🚀 API: http://127.0.0.1:2024
+🚀 API: http://127.0.0.1:2025
 🎨 Studio UI: https://smith.langchain.com/studio/?baseUrl=https://xxx-xxx.trycloudflare.com
 📚 API Docs: https://xxx-xxx.trycloudflare.com/docs
 ```
 
-### Frontend (Next.js)
-
-```bash
-cd frontend
-npm run dev
-```
-
-**Default:** http://localhost:3000 (auto-increments if port occupied)
-
-**Configuration:** Frontend connects to backend via `NEXT_PUBLIC_LANGGRAPH_API_URL` in `frontend/.env.local` (defaults to `http://localhost:2024`)
+iOS 客户端位于 `frontend-ios/`，使用 Xcode 打开 `Voliti.xcodeproj`。
 
 ## Development Workflow
 
@@ -134,27 +125,13 @@ Project uses:
 ├── prompts/                   # Jinja2 system prompt templates
 │   ├── coach_system.j2
 │   └── intervention_composer_system.j2
-├── frontend/                  # Next.js application
-│   └── src/
-│       ├── app/               # Next.js 15 app router
-│       │   ├── page.tsx       # Coach chat page
-│       │   ├── map/page.tsx   # Coach card archive
-│       │   └── journal/page.tsx
-│       ├── components/
-│       │   ├── ChatContainer.tsx    # Main chat UI + interrupt handling
-│       │   ├── MessageList.tsx
-│       │   ├── InputBar.tsx
-│       │   ├── FanOutPanel.tsx      # Slide-in A2UI panel
-│       │   └── fanout/
-│       │       └── A2UIRenderer.tsx # A2UI component renderer
-│       └── lib/
-│           ├── types.ts       # Shared TypeScript types
-│           └── langgraph.ts   # LangGraph SDK config
 ├── config/
 │   └── models.toml            # LLM model configurations
 ├── tests/                     # Pytest test suite
 └── langgraph.json             # LangGraph graph registration
 ```
+
+> iOS 客户端位于 `frontend-ios/`，使用 Xcode 打开 `Voliti.xcodeproj`。
 
 ## Key Development Tasks
 
@@ -173,10 +150,10 @@ class NewComponent(BaseModel):
 Component = text | image | slider | ... | NewComponent
 ```
 
-3. **Implement frontend renderer** (`frontend/src/components/fanout/A2UIRenderer.tsx`):
-```typescript
+3. **Implement iOS renderer** (`frontend-ios/...A2UITypes.swift` + `A2UIRenderer.swift`):
+```swift
 case "new_component":
-  return <NewComponentUI {...component} />;
+    NewComponentView(component: component)
 ```
 
 ### Adding a New Intervention Type
@@ -257,27 +234,18 @@ read_file("/user/ledger/2026-02-09/143052_meal.json")
 **Check:**
 1. Python version: `python --version` (must be 3.12+)
 2. Dependencies: `uv sync`
-3. API key: `echo $GEMINI_API_KEY`
+3. API key: `echo $AZURE_OPENAI_API_KEY`
 4. Port conflict: Try different port with `--port 2025`
-
-### Frontend can't connect to backend
-
-**Symptom:** Frontend shows connection errors
-
-**Check:**
-1. Backend running: Visit http://localhost:2024/docs
-2. Frontend `.env.local`: Verify `NEXT_PUBLIC_LANGGRAPH_API_URL=http://localhost:2024`
-3. CORS: LangGraph dev server should handle CORS automatically
 
 ### A2UI interrupt not rendering
 
-**Symptom:** A2UI panel doesn't appear
+**Symptom:** A2UI panel doesn't appear in iOS client
 
 **Debug:**
-1. Check browser console for errors
-2. Verify `stream.interrupt` in ChatContainer.tsx
-3. Inspect interrupt payload structure (should match A2UIPayload type)
-4. Check FanOutPanel visibility state
+1. Verify `stream.interrupt` received in SSE stream
+2. Inspect interrupt payload structure (should match A2UIPayload type)
+3. Check A2UIRenderer.swift for unhandled component kind
+4. Review Xcode console for decoding errors
 
 ### Agent memory not persisting
 
@@ -294,7 +262,7 @@ read_file("/user/ledger/2026-02-09/143052_meal.json")
 **Symptom:** Experiential interventions fail
 
 **Check:**
-1. Gemini API key valid for image generation
+1. Azure OpenAI credentials valid and gpt-image-1.5 deployment accessible
 2. Prompt length (very long prompts may fail)
 3. Ethical constraints not blocking content
 4. Check agent logs for API errors
@@ -310,7 +278,6 @@ read_file("/user/ledger/2026-02-09/143052_meal.json")
 ### Speeding Up Development Iteration
 
 - Use `--no-tunnel` flag (faster startup without Cloudflare tunnel)
-- Frontend hot-reload: Next.js auto-refreshes on file changes
 - Backend: Restart required for code changes (no hot-reload)
 
 ### Optimizing LLM Calls
@@ -334,8 +301,7 @@ Demo deployment uses:
 
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [DeepAgent Guide](https://github.com/deeplearning-ai/deepagents)
-- [Gemini API Reference](https://ai.google.dev/api)
-- [Next.js 15 Docs](https://nextjs.org/docs)
+- [Azure OpenAI Documentation](https://learn.microsoft.com/azure/ai-services/openai/)
 
 ## Getting Help
 

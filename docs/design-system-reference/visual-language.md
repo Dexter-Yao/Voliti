@@ -19,7 +19,7 @@
 |-------|-----|------|
 | `--color-risk-red` | `#8B3A3A` | 仅用于系统级风险标记，**禁止**用于行为评判 |
 | `--color-aligned` | `#8A9A8A` | 对齐状态指示，低饱和冷绿灰 |
-| `--color-aligned-cool` | `#8AACB8` | 图片生成专用，对齐状态冷蓝（Gemini prompt 中的星光色） |
+| `--color-aligned-cool` | `#8AACB8` | 图片生成专用，对齐状态冷蓝（图片生成 prompt 中的星光色） |
 
 ### 透明度变体
 

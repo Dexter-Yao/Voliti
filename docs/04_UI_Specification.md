@@ -282,7 +282,7 @@
 
 ## 五、Map 页——Coach 卡片归档
 
-**设计定位**：详见`/doc/02_Design_System.md`第三节"信息层级结构"。Map页不再承载Horizon/Path Layer的直接呈现，转为Coach在关键时刻生成的教练洞察归档。
+**设计定位**：详见`/docs/02_Design_System.md`第三节"信息层级结构"。Map页不再承载Horizon/Path Layer的直接呈现，转为Coach在关键时刻生成的教练洞察归档。
 
 Map 页承载两类内容：
 
@@ -421,13 +421,6 @@ Map 页承载两类内容：
 Map 页不显示"缺席"概念——仅展示 Coach 已生成的卡片。用户没有卡片时显示空状态，不制造"你没有记录"的暗示。
 
 ---
-
-变更记录末尾添加：
-
-| 2026-02-09 | Map 页重写为 Coach 卡片归档视图：删除 Drift 多尺度星图架构（Day Pulse / Chapter / Journey），聚焦体验式干预卡片管理。战略聚焦 Coach，Map 转为教练洞察归档。 |
-
----
-
 
 ## 六、Coach 页补充规范
 

@@ -1,9 +1,9 @@
-# ABOUTME: Onboarding 完整性 — 测试 Coach 是否完整执行 6 步 Onboarding + ceremony
+# ABOUTME: Onboarding 完整性 — 测试 Coach 是否完整执行 4 步 Onboarding + ceremony
 
 id: "06_onboarding_completeness"
 name: "Onboarding 完整性"
 description: >
-  模拟全新用户，测试 Coach 是否完整执行 6 步 Onboarding 流程
+  模拟全新用户，测试 Coach 是否完整执行 4 步 Onboarding 流程
   并在最后触发 ceremony 签名体验图像。
 
 persona:
@@ -14,7 +14,7 @@ persona:
 
 goal: >
   作为新用户完成 Onboarding 流程。配合每个步骤但偶尔问"这个信息你会怎么用？"
-  重点观察：6 步是否完整、顺序是否正确、ceremony 图像是否自动触发、
+  重点观察：4 步是否完整、顺序是否正确、ceremony 图像是否自动触发、
   是否引导创建第一个 LifeSign。
 
 initial_message: "你好，我刚下载这个app，不太确定怎么开始"

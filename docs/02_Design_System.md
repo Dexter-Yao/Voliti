@@ -61,7 +61,7 @@ Voliti 界面分四层，通过三个页签承载：
 - 设计原则："Map Over Metrics"——用户在地图上，不是在数轴上
 - 每个卡片包含：AI生成图像 + Coach文案 + 时间戳 + 干预类型
 - 用户可删除卡片、全屏查看、提供反馈
-- 详细线框规范见`/doc/04_UI_Specification.md`第五节
+- 详细线框规范见`/docs/04_UI_Specification.md`第五节
 
 Coach 扇出半 UI 是 Coach Layer 的核心机制——Coach 根据用户状态和交互需要，从预定义组件目录中选择组件，在对话区域上方以半屏或全屏面板呈现。用户随时可返回对话。
 

@@ -57,7 +57,7 @@ Voliti 属于健康/行为追踪类应用，以下类别约定需要保留以建
 - `reference/visual-language.md` — Layer 1：人类可读的完整视觉规范
 - `machine/design-tokens.json` — Layer 2：机器可读的全量设计 tokens
 - `machine/component-rules.json` — Layer 3：A2UI 组件渲染规则
-- `machine/image-prompt-tokens.json` — 扩展：Gemini 图片生成专用约束
+- `machine/image-prompt-tokens.json` — 扩展：图片生成专用约束
 - `reference/ai-usage-guide.md` — Layer 5：AI 代码和图片生成指引
 
 ---
