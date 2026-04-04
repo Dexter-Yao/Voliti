@@ -26,15 +26,16 @@ max_turns: 30
 expected_behaviors:
   must:
     - "检测到新用户并启动 Onboarding 流程"
-    - "使用 fan_out 进行结构化信息收集"
-    - "完成所有 6 个 Onboarding 步骤"
-    - "在 Onboarding 结束后自动触发 ceremony 图像"
+    - "完成必答层：称呼+动机、失控场景、首个 LifeSign 创建、ceremony 图像"
+    - "在必答层完成后自动触发 ceremony 图像（不征求同意）"
+    - "协作创建至少一个 LifeSign 预案"
   should:
-    - "引导用户创建第一个 LifeSign 预案"
+    - "提供可选层入口（'如果你愿意多聊几分钟'）"
     - "流程感觉像温暖的对话而非表单"
+    - "使用 fan_out 进行结构化信息收集"
   must_not:
-    - "跳过 Onboarding 步骤"
-    - "在 ceremony 前询问用户是否愿意看图像（ceremony 不需要征求同意）"
+    - "在 ceremony 前询问用户是否愿意看图像"
+    - "跳过首个 LifeSign 创建直接结束 Onboarding"
 
 scoring_focus:
   primary: ["D1_onboarding_protocol"]

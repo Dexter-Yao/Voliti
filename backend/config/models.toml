@@ -8,15 +8,6 @@ azure_deployment = "gpt-5.4"
 azure_endpoint = "${AZURE_OPENAI_ENDPOINT}"
 api_key = "${AZURE_OPENAI_API_KEY}"
 openai_api_version = "${AZURE_OPENAI_API_VERSION}"
-
-# 摘要/压缩中间件使用轻量模型
-[models.summarizer]
-model = "azure_openai:gpt-5.4-nano"
-azure_deployment = "gpt-5.4-nano"
-azure_endpoint = "${AZURE_OPENAI_ENDPOINT}"
-api_key = "${AZURE_OPENAI_API_KEY}"
-openai_api_version = "${AZURE_OPENAI_API_VERSION}"
-
 # Intervention Composer Subagent 使用 GPT-5.4 Nano 组装干预 prompt
 [models.intervention_composer]
 model = "azure_openai:gpt-5.4-nano"

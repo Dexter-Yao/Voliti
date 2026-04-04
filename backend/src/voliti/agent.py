@@ -71,7 +71,7 @@ def create_coach_agent(
         "system_prompt": PromptRegistry.get("coach_system"),
         "backend": _create_backend_factory(),
         "name": "coach",
-        "memory": ["/user/coach/AGENTS.md", "/user/profile/context.md"],
+        "memory": ["/user/coach/AGENTS.md", "/user/profile/context.md", "/user/coping_plans_index.md"],
         "tools": COACH_TOOLS,
         "subagents": [_create_intervention_composer()],
     }

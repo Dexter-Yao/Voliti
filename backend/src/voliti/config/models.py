@@ -31,8 +31,8 @@ class ModelRegistry:
 
         TOML 文件格式：
             [models.coach]
-            model = "azure_openai:gpt-5.2"
-            azure_endpoint = "${AZURE_OPENAI_GPT52_ENDPOINT}"
+            model = "azure_openai:gpt-5.4"
+            azure_endpoint = "${AZURE_OPENAI_ENDPOINT}"
 
         Args:
             path: TOML 配置文件路径

@@ -1,5 +1,5 @@
 # ABOUTME: A2UI 组件类型目录与交互 Payload 定义
-# ABOUTME: 定义 Coach 可组合的 8 种 UI 原语及前后端共享的交互协议
+# ABOUTME: 定义 Coach 可组合的 9 种 UI 原语及前后端共享的交互协议
 
 from typing import Annotated, Literal, Union
 
@@ -40,6 +40,14 @@ class ProtocolPromptComponent(BaseModel):
     """Coach 的观察链，说明触发原因（如"压力分数连续两天 > 7"）。"""
     question: str
     """引导用户自我审视的核心问题，将被引号包裹呈现。"""
+
+
+class SuggestedRepliesComponent(BaseModel):
+    """推荐用户回复。展示在输入框上方，帮助引导对话方向。"""
+
+    kind: Literal["suggested_replies"] = "suggested_replies"
+    suggestions: list[str]
+    """最多 3 条建议文本。鼓励用户提供真实信息，不假设用户状态。"""
 
 
 # --- Input Components (produce output keyed by name) ---
@@ -105,6 +113,7 @@ Component = Annotated[
         TextComponent,
         ImageComponent,
         ProtocolPromptComponent,
+        SuggestedRepliesComponent,
         SliderComponent,
         TextInputComponent,
         NumberInputComponent,

@@ -316,8 +316,9 @@ read_file("/user/ledger/2026-02-09/143052_meal.json")
 ### Optimizing LLM Calls
 
 - Cache intervention images (already implemented in experiential.py)
-- `gemini-3-pro-preview`: Main Coach Agent + image generation
-- `gemini-3-flash-preview`: Intervention assembly + summarization
+- `azure_openai:gpt-5.4`: Main Coach Agent
+- `azure_openai:gpt-5.4-nano`: Intervention Composer subagent
+- `gpt-image-1.5`: 图片生成（experiential.py 直接调用）
 - Batch multiple A2UI components in single interrupt
 
 ## Deployment
