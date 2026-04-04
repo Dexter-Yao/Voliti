@@ -9,6 +9,12 @@ import os
 
 private let logger = Logger(subsystem: "com.voliti", category: "CoachViewModel")
 
+/// Coach 的思路块，展示观察和策略选择
+struct ThinkingBlock {
+    let strategy: String
+    let observations: [String]
+}
+
 /// 通知点击携带的意图类型
 enum NotificationIntent {
     case checkin
@@ -23,6 +29,9 @@ final class CoachViewModel {
     var errorMessage: String?
     var activeInterrupt: A2UIPayload?
     var suggestedReplies: [String] = []
+    var thinkingBlocks: [String: ThinkingBlock] = [:]
+    /// 全局控制思路卡片默认展开/折叠。预留迁移到统一配置中心。
+    var thinkingDefaultExpanded: Bool = true
 
     private let api = LangGraphAPI()
     private var modelContext: ModelContext?
@@ -257,12 +266,45 @@ final class CoachViewModel {
         }
 
         await MainActor.run {
-            let (cleaned, replies) = Self.extractSuggestedReplies(from: fullContent)
+            let (afterThinking, thinkingBlock) = Self.extractCoachThinking(from: fullContent)
+            let (cleaned, replies) = Self.extractSuggestedReplies(from: afterThinking)
             assistantMessage.textContent = cleaned
+            if let block = thinkingBlock {
+                self.thinkingBlocks[assistantMessage.id] = block
+            }
             self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
         }
+    }
+
+    // MARK: - Coach Thinking Parsing
+
+    /// 从 Assistant 消息中提取 coach_thinking 标记并返回思路块和剩余文本
+    static func extractCoachThinking(from content: String) -> (String, ThinkingBlock?) {
+        let pattern = "```json:coach_thinking\\n(\\{.*?\\})\\n```"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .dotMatchesLineSeparators),
+              let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+              let jsonRange = Range(match.range(at: 1), in: content) else {
+            return (content, nil)
+        }
+
+        let jsonString = String(content[jsonRange])
+        guard let data = jsonString.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let strategy = dict["strategy"] as? String else {
+            return (content, nil)
+        }
+
+        let observations = dict["observations"] as? [String] ?? []
+        let block = ThinkingBlock(strategy: strategy, observations: observations)
+
+        let fullMatchRange = Range(match.range, in: content)!
+        var cleaned = content
+        cleaned.removeSubrange(fullMatchRange)
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return (cleaned, block)
     }
 
     // MARK: - Suggested Replies Parsing
