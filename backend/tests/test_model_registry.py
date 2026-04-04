@@ -67,14 +67,14 @@ class TestModelRegistry:
 
         ModelRegistry.configure({
             "coach": {
-                "model": "google_genai:gemini-3-pro-preview",
+                "model": "azure_openai:gpt-5.4",
                 "api_key": "test-key",
             },
         })
         ModelRegistry.get("coach")
 
         mock_init.assert_called_once_with(
-            model="google_genai:gemini-3-pro-preview",
+            model="azure_openai:gpt-5.4",
             api_key="test-key",
         )
 
@@ -82,7 +82,7 @@ class TestModelRegistry:
         """load_from_toml 应解析配置中的环境变量占位符。"""
         toml_content = """
 [models.test]
-model = "google_genai:gemini-3-pro-preview"
+model = "azure_openai:gpt-5.4"
 api_key = "${TEST_API_KEY}"
 """
         toml_file = tmp_path / "models.toml"
@@ -92,13 +92,13 @@ api_key = "${TEST_API_KEY}"
             ModelRegistry.load_from_toml(toml_file)
 
         assert ModelRegistry._profiles["test"]["api_key"] == "secret-key-123"
-        assert ModelRegistry._profiles["test"]["model"] == "google_genai:gemini-3-pro-preview"
+        assert ModelRegistry._profiles["test"]["model"] == "azure_openai:gpt-5.4"
 
     def test_load_from_toml_raises_on_missing_env_var(self, tmp_path: Path) -> None:
         """load_from_toml 遇到未设置的环境变量应抛出 ValueError。"""
         toml_content = """
 [models.test]
-model = "google_genai:gemini-3-pro-preview"
+model = "azure_openai:gpt-5.4"
 api_key = "${UNDEFINED_VAR}"
 """
         toml_file = tmp_path / "models.toml"

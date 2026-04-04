@@ -197,4 +197,5 @@ class TestCreateCoachAgent:
         assert call_kwargs.kwargs["memory"] == [
             "/user/coach/AGENTS.md",
             "/user/profile/context.md",
+            "/user/coping_plans_index.md",
         ]

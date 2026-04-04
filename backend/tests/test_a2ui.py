@@ -1,5 +1,5 @@
 # ABOUTME: A2UI 组件模型测试
-# ABOUTME: 验证 7 种 UI 原语、Component 联合类型、Payload 与 Response 的序列化和验证
+# ABOUTME: 验证 8 种 UI 原语、Component 联合类型、Payload 与 Response 的序列化和验证
 
 from typing import get_args
 
