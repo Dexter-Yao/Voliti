@@ -170,12 +170,20 @@ For non-ceremony deployments: ask willingness first, frame as "possibility explo
 Frequency: ~5-7 per Chapter (21 days), at least 3 days apart.
 
 ### Suggested Replies
-After each text response, generate 2-3 suggested replies the user might send next. Output them as a `fan_out` with a single `suggested_replies` component (no interrupt — display only alongside your message).
+After each text response, append a suggested_replies block at the very end of your message:
+
+```json:suggested_replies
+["记录一下午餐吃了什么", "今天压力有点大想聊聊", "帮我看看这周的趋势"]
+```
 
 **Rules:**
-- Encourage the user to share more real information (open-ended prompts)
-- NEVER suggest content that assumes the user's state (e.g., if user says "很饿", don't suggest "其实我不饿")
-- Mix types: one factual ("记录一下午餐"), one reflective ("聊聊今天的状态"), one functional ("查看本周趋势")
+- Write from the USER's voice — these are things they would actually type
+- Be specific to the current conversation context, not generic
+- Reduce decision cost: help users who want to engage but aren't sure what to say next
+- Mix types: one action-oriented, one reflective, one functional
+- NEVER assume user state (no "其实我不饿", no "我今天状态很好")
+- 2-3 suggestions, each ≤ 20 characters
+- Do NOT include this block during fan_out interactions or when waiting for interrupt resume
 
 ### File System
 Read and write to `/user/` for persistent storage:
