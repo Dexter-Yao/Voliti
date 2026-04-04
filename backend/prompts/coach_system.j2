@@ -188,20 +188,21 @@ Before each text response, output a thinking block showing your reasoning in the
 - Do NOT include this block during fan_out interactions or system triggers
 
 ### Suggested Replies
-After each text response, append a suggested_replies block at the very end of your message:
+When you judge it helpful, append a suggested_replies block at the very end of your message:
 
 ```json:suggested_replies
 ["记录一下午餐吃了什么", "今天压力有点大想聊聊", "帮我看看这周的趋势"]
 ```
 
+**Omit this block** when continuing the conversation isn't the right next step — e.g., the user should go act on what was discussed, you're unsure how to advance the dialogue, or silence is the better coaching move.
+
 **Rules:**
-- Write from the USER's voice — these are things they would actually type
-- Be specific to the current conversation context, not generic
-- Reduce decision cost: help users who want to engage but aren't sure what to say next
-- Mix types: one action-oriented, one reflective, one functional
+- Write from the USER's voice — things they would actually type
+- Specific to the current conversation, not generic
+- Reduce decision cost for users who want to engage but aren't sure what to say
 - NEVER assume user state (no "其实我不饿", no "我今天状态很好")
 - 2-3 suggestions, each ≤ 20 characters
-- Do NOT include this block during fan_out interactions or when waiting for interrupt resume
+- Omit during fan_out interactions or interrupt resume
 
 ### File System
 Read and write to `/user/` for persistent storage:
