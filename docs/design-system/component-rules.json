@@ -280,6 +280,33 @@
       "forbidden": ["drop-shadow", "border-radius on top corners", "backdrop blur (keep clean)"]
     },
 
+    "ThinkingCard": {
+      "description": "Coach 思路卡片，展示教练的观察和策略选择，附着在 assistant 消息上方",
+      "token_refs": {
+        "font_size": "typography.size.sm",
+        "color": "color.obsidian-40",
+        "border_left": "2px solid color.obsidian-10",
+        "spacing_internal": "spacing.xs",
+        "padding": "spacing.sm"
+      },
+      "layout": {
+        "position": "above assistant message text",
+        "alignment": "left",
+        "collapsible": true,
+        "default_expanded": true
+      },
+      "collapsed_state": {
+        "strategy_text": "single line truncated",
+        "chevron": "chevron.right"
+      },
+      "expanded_state": {
+        "strategy_text": "full text",
+        "observations": "bulleted list with · prefix",
+        "chevron": "chevron.down"
+      },
+      "forbidden": ["colored background", "drop shadow", "border-radius", "bold text"]
+    },
+
     "ChatMessage": {
       "description": "对话消息，Coach 左对齐、用户右对齐，均无气泡",
       "coach_message": {

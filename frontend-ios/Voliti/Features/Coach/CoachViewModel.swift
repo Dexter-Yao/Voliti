@@ -113,6 +113,9 @@ final class CoachViewModel {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.isStreaming = false
+                    if assistantMessage.textContent.isEmpty {
+                        self.messages.removeLast()
+                    }
                 }
             }
         }
@@ -232,18 +235,22 @@ final class CoachViewModel {
             case .token(let content):
                 fullContent = content
                 await MainActor.run {
-                    assistantMessage.textContent = fullContent
+                    assistantMessage.textContent = Self.stripFencedBlocks(from: fullContent)
                 }
 
             case .message(_, let content):
                 fullContent = content
                 await MainActor.run {
-                    assistantMessage.textContent = fullContent
+                    assistantMessage.textContent = Self.stripFencedBlocks(from: fullContent)
                 }
 
             case .interrupt(let data):
                 if let payload = try? JSONDecoder().decode(A2UIPayload.self, from: data) {
                     await MainActor.run {
+                        if !fullContent.isEmpty {
+                            assistantMessage.textContent = Self.stripFencedBlocks(from: fullContent)
+                            self.modelContext?.insert(assistantMessage)
+                        }
                         self.activeInterrupt = payload
                         self.isStreaming = false
                     }
@@ -272,6 +279,20 @@ final class CoachViewModel {
         }
     }
 
+    // MARK: - Fenced JSON Block Stripping (Streaming)
+
+    private static let fencedBlockPattern = try! NSRegularExpression(
+        pattern: "```json:(?:coach_thinking|suggested_replies)\\n[\\s\\S]*?(?:```|$)",
+        options: []
+    )
+
+    /// 流式文本中移除所有 fenced JSON block（含未闭合的），避免用户看到 raw JSON
+    static func stripFencedBlocks(from content: String) -> String {
+        let range = NSRange(content.startIndex..., in: content)
+        let stripped = fencedBlockPattern.stringByReplacingMatches(in: content, range: range, withTemplate: "")
+        return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     // MARK: - Fenced JSON Block Extraction
 
     private static let thinkingRegex = try! NSRegularExpression(
@@ -298,23 +319,28 @@ final class CoachViewModel {
         return (cleaned, jsonData)
     }
 
+    private struct CoachThinkingPayload: Decodable {
+        let strategy: String
+        let observations: [String]?
+    }
+
     /// 从 Assistant 消息中提取 coach_thinking 标记并返回策略和观察
     static func extractCoachThinking(from content: String) -> (String, (strategy: String, observations: [String])?) {
         let (cleaned, data) = extractTaggedJSON(from: content, using: thinkingRegex)
-        guard let data,
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let strategy = dict["strategy"] as? String else {
+        guard let data else { return (cleaned, nil) }
+        guard let payload = try? JSONDecoder().decode(CoachThinkingPayload.self, from: data) else {
+            logger.warning("coach_thinking block matched but JSON decode failed")
             return (cleaned, nil)
         }
-        let observations = dict["observations"] as? [String] ?? []
-        return (cleaned, (strategy, observations))
+        return (cleaned, (payload.strategy, payload.observations ?? []))
     }
 
     /// 从 Assistant 消息中提取 suggested_replies 标记并返回清理后的文本和建议列表
     static func extractSuggestedReplies(from content: String) -> (String, [String]) {
         let (cleaned, data) = extractTaggedJSON(from: content, using: repliesRegex)
-        guard let data,
-              let replies = try? JSONDecoder().decode([String].self, from: data) else {
+        guard let data else { return (cleaned, []) }
+        guard let replies = try? JSONDecoder().decode([String].self, from: data) else {
+            logger.warning("suggested_replies block matched but JSON decode failed")
             return (cleaned, [])
         }
         return (cleaned, replies)
