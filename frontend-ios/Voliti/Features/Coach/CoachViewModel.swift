@@ -9,12 +9,6 @@ import os
 
 private let logger = Logger(subsystem: "com.voliti", category: "CoachViewModel")
 
-/// Coach 的思路块，展示观察和策略选择
-struct ThinkingBlock {
-    let strategy: String
-    let observations: [String]
-}
-
 /// 通知点击携带的意图类型
 enum NotificationIntent {
     case checkin
@@ -29,9 +23,6 @@ final class CoachViewModel {
     var errorMessage: String?
     var activeInterrupt: A2UIPayload?
     var suggestedReplies: [String] = []
-    var thinkingBlocks: [String: ThinkingBlock] = [:]
-    /// 全局控制思路卡片默认展开/折叠。预留迁移到统一配置中心。
-    var thinkingDefaultExpanded: Bool = true
 
     private let api = LangGraphAPI()
     private var modelContext: ModelContext?
@@ -76,10 +67,14 @@ final class CoachViewModel {
         }
     }
 
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
     private static func todayString() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: Date())
+        dateFormatter.string(from: Date())
     }
 
     // MARK: - System Trigger
@@ -266,69 +261,62 @@ final class CoachViewModel {
         }
 
         await MainActor.run {
-            let (afterThinking, thinkingBlock) = Self.extractCoachThinking(from: fullContent)
+            let (afterThinking, thinking) = Self.extractCoachThinking(from: fullContent)
             let (cleaned, replies) = Self.extractSuggestedReplies(from: afterThinking)
             assistantMessage.textContent = cleaned
-            if let block = thinkingBlock {
-                self.thinkingBlocks[assistantMessage.id] = block
-            }
+            assistantMessage.thinkingStrategy = thinking?.strategy
+            assistantMessage.thinkingObservations = thinking?.observations
             self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
         }
     }
 
-    // MARK: - Coach Thinking Parsing
+    // MARK: - Fenced JSON Block Extraction
 
-    /// 从 Assistant 消息中提取 coach_thinking 标记并返回思路块和剩余文本
-    static func extractCoachThinking(from content: String) -> (String, ThinkingBlock?) {
-        let pattern = "```json:coach_thinking\\n(\\{.*?\\})\\n```"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .dotMatchesLineSeparators),
-              let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
-              let jsonRange = Range(match.range(at: 1), in: content) else {
+    private static let thinkingRegex = try! NSRegularExpression(
+        pattern: "```json:coach_thinking\\n(\\{.*?\\})\\n```",
+        options: .dotMatchesLineSeparators
+    )
+
+    private static let repliesRegex = try! NSRegularExpression(
+        pattern: "```json:suggested_replies\\n(\\[.*?\\])\\n```",
+        options: .dotMatchesLineSeparators
+    )
+
+    /// 用指定 regex 从文本中提取 fenced JSON block，返回清理后文本和 JSON Data
+    private static func extractTaggedJSON(from content: String, using regex: NSRegularExpression) -> (String, Data?) {
+        guard let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
+              let jsonRange = Range(match.range(at: 1), in: content),
+              let jsonData = String(content[jsonRange]).data(using: .utf8) else {
             return (content, nil)
         }
-
-        let jsonString = String(content[jsonRange])
-        guard let data = jsonString.data(using: .utf8),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let strategy = dict["strategy"] as? String else {
-            return (content, nil)
-        }
-
-        let observations = dict["observations"] as? [String] ?? []
-        let block = ThinkingBlock(strategy: strategy, observations: observations)
-
         let fullMatchRange = Range(match.range, in: content)!
         var cleaned = content
         cleaned.removeSubrange(fullMatchRange)
         cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        return (cleaned, block)
+        return (cleaned, jsonData)
     }
 
-    // MARK: - Suggested Replies Parsing
+    /// 从 Assistant 消息中提取 coach_thinking 标记并返回策略和观察
+    static func extractCoachThinking(from content: String) -> (String, (strategy: String, observations: [String])?) {
+        let (cleaned, data) = extractTaggedJSON(from: content, using: thinkingRegex)
+        guard let data,
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let strategy = dict["strategy"] as? String else {
+            return (cleaned, nil)
+        }
+        let observations = dict["observations"] as? [String] ?? []
+        return (cleaned, (strategy, observations))
+    }
 
     /// 从 Assistant 消息中提取 suggested_replies 标记并返回清理后的文本和建议列表
     static func extractSuggestedReplies(from content: String) -> (String, [String]) {
-        let pattern = "```json:suggested_replies\\n(\\[.*?\\])\\n```"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .dotMatchesLineSeparators),
-              let match = regex.firstMatch(in: content, range: NSRange(content.startIndex..., in: content)),
-              let jsonRange = Range(match.range(at: 1), in: content) else {
-            return (content, [])
-        }
-
-        let jsonString = String(content[jsonRange])
-        guard let data = jsonString.data(using: .utf8),
+        let (cleaned, data) = extractTaggedJSON(from: content, using: repliesRegex)
+        guard let data,
               let replies = try? JSONDecoder().decode([String].self, from: data) else {
-            return (content, [])
+            return (cleaned, [])
         }
-
-        let fullMatchRange = Range(match.range, in: content)!
-        var cleaned = content
-        cleaned.removeSubrange(fullMatchRange)
-        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-
         return (cleaned, replies)
     }
 

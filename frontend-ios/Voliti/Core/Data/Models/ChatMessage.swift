@@ -17,6 +17,8 @@ final class ChatMessage {
     @Attribute(.externalStorage) var imageData: Data?
     var timestamp: Date
     var threadID: String
+    var thinkingStrategy: String?
+    var thinkingObservations: [String]?
 
     init(
         id: String = UUID().uuidString,
@@ -24,7 +26,9 @@ final class ChatMessage {
         textContent: String,
         imageData: Data? = nil,
         timestamp: Date = .now,
-        threadID: String
+        threadID: String,
+        thinkingStrategy: String? = nil,
+        thinkingObservations: [String]? = nil
     ) {
         self.id = id
         self.role = role
@@ -32,5 +36,7 @@ final class ChatMessage {
         self.imageData = imageData
         self.timestamp = timestamp
         self.threadID = threadID
+        self.thinkingStrategy = thinkingStrategy
+        self.thinkingObservations = thinkingObservations
     }
 }

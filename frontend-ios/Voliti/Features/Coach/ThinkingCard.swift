@@ -4,10 +4,16 @@
 import SwiftUI
 
 struct ThinkingCard: View {
-    let block: ThinkingBlock
-    let defaultExpanded: Bool
+    let strategy: String
+    let observations: [String]
 
-    @State private var isExpanded: Bool = true
+    @State private var isExpanded: Bool
+
+    init(strategy: String, observations: [String]) {
+        self.strategy = strategy
+        self.observations = observations
+        _isExpanded = State(initialValue: true)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -21,7 +27,7 @@ struct ThinkingCard: View {
                     Text("💡")
                         .font(.system(size: StarpathTokens.fontSizeSM))
 
-                    Text(block.strategy)
+                    Text(strategy)
                         .font(.system(size: StarpathTokens.fontSizeSM))
                         .foregroundStyle(StarpathTokens.obsidian40)
                         .lineLimit(isExpanded ? nil : 1)
@@ -36,9 +42,9 @@ struct ThinkingCard: View {
             .buttonStyle(.plain)
 
             // 展开区域
-            if isExpanded && !block.observations.isEmpty {
+            if isExpanded && !observations.isEmpty {
                 VStack(alignment: .leading, spacing: StarpathTokens.spacingXS) {
-                    ForEach(block.observations, id: \.self) { observation in
+                    ForEach(observations, id: \.self) { observation in
                         HStack(alignment: .top, spacing: StarpathTokens.spacingSM) {
                             Text("·")
                                 .foregroundStyle(StarpathTokens.obsidian40)
@@ -60,8 +66,5 @@ struct ThinkingCard: View {
                 .foregroundStyle(StarpathTokens.obsidian10),
             alignment: .leading
         )
-        .onAppear {
-            isExpanded = defaultExpanded
-        }
     }
 }
