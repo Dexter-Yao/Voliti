@@ -35,14 +35,11 @@ def generate_report(eval_result: EvalResult, output_dir: Path) -> Path:
     )
     template = env.get_template("report.html.j2")
 
-    # 收集所有出现过的评分维度
-    all_dimensions: list[str] = []
+    # 收集所有出现过的评分维度，按 ID 排序确保逻辑分组（A→B→C→D）
     seen: set[str] = set()
     for sr in eval_result.seed_results:
-        for dim_id in sr.score_card.scores:
-            if dim_id not in seen:
-                all_dimensions.append(dim_id)
-                seen.add(dim_id)
+        seen.update(sr.score_card.scores.keys())
+    all_dimensions = sorted(seen)
 
     html = template.render(
         run_id=eval_result.run_id,
