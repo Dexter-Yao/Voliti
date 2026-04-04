@@ -6,6 +6,8 @@ import SwiftUI
 struct MessageList: View {
     let messages: [ChatMessage]
     let isStreaming: Bool
+    var thinkingBlocks: [String: ThinkingBlock] = [:]
+    var thinkingDefaultExpanded: Bool = true
 
     @State private var lastScrollDate = Date.distantPast
 
@@ -24,7 +26,11 @@ struct MessageList: View {
                             }
 
                             // 消息内容
-                            MessageBubble(message: message)
+                            MessageBubble(
+                                message: message,
+                                thinkingBlock: thinkingBlocks[message.id],
+                                thinkingDefaultExpanded: thinkingDefaultExpanded
+                            )
                         }
                         .id(message.id)
                     }
@@ -74,12 +80,19 @@ struct MessageList: View {
 
 private struct MessageBubble: View {
     let message: ChatMessage
+    var thinkingBlock: ThinkingBlock?
+    var thinkingDefaultExpanded: Bool = true
 
     var body: some View {
         HStack {
             if message.role == .user { Spacer(minLength: 60) }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: StarpathTokens.spacingXS) {
+                // 思路卡片（仅 assistant 消息）
+                if message.role == .assistant, let block = thinkingBlock {
+                    ThinkingCard(block: block, defaultExpanded: thinkingDefaultExpanded)
+                }
+
                 // 图片附件
                 if let imageData = message.imageData, let uiImage = UIImage(data: imageData) {
                     Image(uiImage: uiImage)

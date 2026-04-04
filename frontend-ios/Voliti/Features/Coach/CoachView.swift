@@ -16,7 +16,9 @@ struct CoachView: View {
 
             MessageList(
                 messages: viewModel.messages,
-                isStreaming: viewModel.isStreaming
+                isStreaming: viewModel.isStreaming,
+                thinkingBlocks: viewModel.thinkingBlocks,
+                thinkingDefaultExpanded: viewModel.thinkingDefaultExpanded
             )
 
             VStack(spacing: 0) {
