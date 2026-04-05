@@ -70,7 +70,7 @@ struct EventRow: View {
             if let e = event.energy { parts.append("E:\(e)") }
             if let m = event.mood { parts.append("M:\(m)") }
             if let s = event.stress { parts.append("S:\(s)") }
-        case .goalUpdate, .appAction:
+        case .goalUpdate, .appAction, .signatureImage:
             break
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

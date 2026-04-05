@@ -421,6 +421,15 @@ final class CoachViewModel {
         )
         modelContext?.insert(card)
 
+        let event = BehaviorEvent(
+            timestamp: card.timestamp,
+            type: .signatureImage,
+            evidence: "",
+            summary: caption
+        )
+        event.cardId = card.id
+        modelContext?.insert(event)
+
         if !onboardingComplete {
             onboardingComplete = true
         }
