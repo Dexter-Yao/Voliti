@@ -22,44 +22,69 @@ enum SSEEvent: Sendable {
 // MARK: - SSE Client
 
 struct SSEClient: Sendable {
+    nonisolated private static func trace(_ message: String) {
+#if DEBUG
+        print("[SSEClient] \(message)")
+#endif
+    }
 
     /// 发起 SSE 流式请求，返回 AsyncStream<SSEEvent>
     func stream(request: URLRequest) -> AsyncStream<SSEEvent> {
         AsyncStream { continuation in
             let task = Task.detached {
                 do {
+                    Self.trace("stream() start: \(request.httpMethod ?? "GET") \(request.url?.absoluteString ?? "<nil>")")
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
 
                     guard let httpResponse = response as? HTTPURLResponse else {
+                        Self.trace("invalid response type")
                         continuation.yield(.error(NetworkError.invalidResponse))
                         continuation.finish()
                         return
                     }
 
                     guard (200..<300).contains(httpResponse.statusCode) else {
+                        Self.trace("HTTP status: \(httpResponse.statusCode)")
                         continuation.yield(.error(NetworkError.httpError(httpResponse.statusCode)))
                         continuation.finish()
                         return
                     }
+                    Self.trace("connected: HTTP \(httpResponse.statusCode)")
 
                     var currentEvent = ""
                     var currentData = ""
+                    var lineBuffer = Data()
 
-                    for try await line in bytes.lines {
+                    // 手动逐字节解析行，替代 bytes.lines（后者对 SSE 空行分隔不可靠）
+                    for try await byte in bytes {
                         if Task.isCancelled { break }
 
+                        guard byte == UInt8(ascii: "\n") else {
+                            lineBuffer.append(byte)
+                            continue
+                        }
+
+                        // 遇到 \n → 构建当前行
+                        var line = String(data: lineBuffer, encoding: .utf8) ?? ""
+                        lineBuffer.removeAll(keepingCapacity: true)
+
+                        // CRLF 兼容
+                        if line.hasSuffix("\r") { line.removeLast() }
+
                         if line.isEmpty {
+                            // 空行 = SSE 事件边界
                             if !currentData.isEmpty {
+                                Self.trace("event complete: \(currentEvent), dataBytes=\(currentData.utf8.count)")
                                 for event in Self.parseEvent(type: currentEvent, data: currentData) {
+                                    Self.trace("yield \(Self.eventDescription(event))")
                                     continuation.yield(event)
                                 }
                             }
                             currentEvent = ""
                             currentData = ""
-                            continue
-                        }
-
-                        if line.hasPrefix("event: ") {
+                        } else if line.hasPrefix(":") {
+                            // SSE 注释/heartbeat
+                        } else if line.hasPrefix("event: ") {
                             currentEvent = String(line.dropFirst(7))
                         } else if line.hasPrefix("data: ") {
                             let data = String(line.dropFirst(6))
@@ -71,10 +96,21 @@ struct SSEClient: Sendable {
                         }
                     }
 
+                    // EOF flush
+                    if !currentData.isEmpty {
+                        Self.trace("flush at EOF: \(currentEvent), dataBytes=\(currentData.utf8.count)")
+                        for event in Self.parseEvent(type: currentEvent, data: currentData) {
+                            Self.trace("yield \(Self.eventDescription(event))")
+                            continuation.yield(event)
+                        }
+                    }
+
+                    Self.trace("bytes.lines ended; yielding done")
                     continuation.yield(.done)
                     continuation.finish()
                 } catch {
                     if !Task.isCancelled {
+                        Self.trace("stream error: \(error.localizedDescription)")
                         continuation.yield(.error(error))
                     }
                     continuation.finish()
@@ -104,6 +140,7 @@ struct SSEClient: Sendable {
         case "end":
             return [.done]
         default:
+            trace("ignored event type: \(type)")
             return []
         }
     }
@@ -111,9 +148,10 @@ struct SSEClient: Sendable {
     nonisolated private static func parsePartialMessage(_ data: Data) -> SSEEvent? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
               let last = json.last,
-              let content = last["content"] as? String,
               let type = last["type"] as? String,
-              type == "ai" else {
+              type == "ai",
+              let content = extractContent(from: last["content"]) else {
+            trace("parsePartialMessage: no AI string content")
             return nil
         }
         return .token(content)
@@ -122,8 +160,9 @@ struct SSEClient: Sendable {
     nonisolated private static func parseCompleteMessage(_ data: Data) -> SSEEvent? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
               let last = json.last,
-              let content = last["content"] as? String,
+              let content = extractContent(from: last["content"]),
               let type = last["type"] as? String else {
+            trace("parseCompleteMessage: decode failed")
             return nil
         }
         return .message(role: type == "ai" ? "assistant" : "user", content: content)
@@ -133,6 +172,7 @@ struct SSEClient: Sendable {
 
     nonisolated private static func parseValuesEvent(_ data: Data) -> [SSEEvent] {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            trace("parseValuesEvent: invalid JSON")
             return []
         }
 
@@ -142,7 +182,7 @@ struct SSEClient: Sendable {
         if let messages = json["messages"] as? [[String: Any]] {
             for msg in messages.reversed() {
                 guard let type = msg["type"] as? String, type == "ai",
-                      let content = msg["content"] as? String,
+                      let content = extractContent(from: msg["content"]),
                       !content.isEmpty else { continue }
                 events.append(.message(role: "assistant", content: content))
                 break
@@ -158,7 +198,40 @@ struct SSEClient: Sendable {
             events.append(.interrupt(payloadData))
         }
 
+        if events.isEmpty {
+            trace("parseValuesEvent: no message/interrupt found; keys=\(json.keys.sorted())")
+        }
         return events
+    }
+
+    nonisolated private static func extractContent(from raw: Any?) -> String? {
+        guard let raw else { return nil }
+        if let string = raw as? String {
+            return string
+        }
+        if let parts = raw as? [[String: Any]] {
+            let text = parts.compactMap { part -> String? in
+                guard let type = part["type"] as? String, type == "text" else { return nil }
+                return part["text"] as? String
+            }.joined()
+            return text.isEmpty ? nil : text
+        }
+        return nil
+    }
+
+    nonisolated private static func eventDescription(_ event: SSEEvent) -> String {
+        switch event {
+        case .token(let content):
+            return "token(\(content.count) chars)"
+        case .message(let role, let content):
+            return "message(role=\(role), \(content.count) chars)"
+        case .interrupt(let data):
+            return "interrupt(\(data.count) bytes)"
+        case .done:
+            return "done"
+        case .error(let error):
+            return "error(\(error.localizedDescription))"
+        }
     }
 }
 
