@@ -89,17 +89,19 @@ final class CoachViewModel {
 
         streamTask = Task { [weak self] in
             guard let self else { return }
+            var assistantMessage: ChatMessage?
             do {
                 let threadID = try await api.ensureThread()
 
-                let assistantMessage = ChatMessage(
+                let msg = ChatMessage(
                     role: .assistant,
                     textContent: "",
                     threadID: threadID
                 )
+                assistantMessage = msg
 
                 await MainActor.run {
-                    self.messages.append(assistantMessage)
+                    self.messages.append(msg)
                 }
 
                 let stream = try api.streamRun(
@@ -108,12 +110,12 @@ final class CoachViewModel {
                     imageData: nil
                 )
 
-                await processStream(stream, assistantMessage: assistantMessage)
+                await processStream(stream, assistantMessage: msg)
             } catch {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.isStreaming = false
-                    if assistantMessage.textContent.isEmpty {
+                    if let msg = assistantMessage, msg.textContent.isEmpty {
                         self.messages.removeLast()
                     }
                 }

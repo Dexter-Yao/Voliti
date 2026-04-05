@@ -151,7 +151,12 @@ struct A2UIPayload: Decodable, Sendable, Identifiable {
     let layout: A2UILayout
     let metadata: [String: String]?
 
-    let id: String = UUID().uuidString
+    /// 客户端生成的唯一标识，用于 SwiftUI 列表渲染，不参与 JSON 解码。
+    var id: String = UUID().uuidString
+
+    private enum CodingKeys: String, CodingKey {
+        case type, components, layout, metadata
+    }
 
     /// 是否包含 protocol_prompt 组件
     var hasProtocolPrompt: Bool {

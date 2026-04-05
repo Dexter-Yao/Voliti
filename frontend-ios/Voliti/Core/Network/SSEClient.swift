@@ -89,7 +89,7 @@ struct SSEClient: Sendable {
 
     // MARK: - Event Parsing
 
-    private static func parseEvent(type: String, data: String) -> SSEEvent? {
+    nonisolated private static func parseEvent(type: String, data: String) -> SSEEvent? {
         guard let jsonData = data.data(using: .utf8) else { return nil }
 
         switch type {
@@ -106,7 +106,7 @@ struct SSEClient: Sendable {
         }
     }
 
-    private static func parsePartialMessage(_ data: Data) -> SSEEvent? {
+    nonisolated private static func parsePartialMessage(_ data: Data) -> SSEEvent? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
               let last = json.last,
               let content = last["content"] as? String,
@@ -117,7 +117,7 @@ struct SSEClient: Sendable {
         return .token(content)
     }
 
-    private static func parseCompleteMessage(_ data: Data) -> SSEEvent? {
+    nonisolated private static func parseCompleteMessage(_ data: Data) -> SSEEvent? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
               let last = json.last,
               let content = last["content"] as? String,
@@ -127,9 +127,9 @@ struct SSEClient: Sendable {
         return .message(role: type == "ai" ? "assistant" : "user", content: content)
     }
 
-    private static let logger = Logger(subsystem: "voliti", category: "SSEClient")
+    nonisolated(unsafe) private static let logger = Logger(subsystem: "voliti", category: "SSEClient")
 
-    private static func parseValuesForInterrupt(_ data: Data) -> SSEEvent? {
+    nonisolated private static func parseValuesForInterrupt(_ data: Data) -> SSEEvent? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             logger.debug("values event: JSON 解析失败")
             return nil

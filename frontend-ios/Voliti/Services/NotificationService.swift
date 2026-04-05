@@ -7,14 +7,15 @@ import os
 
 private let logger = Logger(subsystem: "com.voliti", category: "NotificationService")
 
+/// 通知标识常量，nonisolated 以便在 delegate 回调中安全访问。
+enum NotificationID {
+    static let morningCheckin = "voliti.morning.checkin"
+    static let eveningReview = "voliti.evening.review"
+}
+
 @MainActor
 @Observable
 final class NotificationService: NSObject {
-
-    enum NotificationID {
-        static let morningCheckin = "voliti.morning.checkin"
-        static let eveningReview = "voliti.evening.review"
-    }
 
     enum DeepLink: Equatable {
         case checkin
