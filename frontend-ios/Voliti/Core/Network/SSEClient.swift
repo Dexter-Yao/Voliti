@@ -135,12 +135,13 @@ struct SSEClient: Sendable {
             return nil
         }
 
-        // 优先检查 interrupt（A2UI 交互）
-        if let interrupt = json["interrupt"] as? [String: Any],
-           let value = interrupt["value"] as? [[String: Any]],
-           let first = value.first,
-           let type = first["type"] as? String, type == "a2ui",
-           let payloadData = try? JSONSerialization.data(withJSONObject: first) {
+        // 优先检查 interrupt（A2UI 交互）— LangGraph REST API 使用 __interrupt__ key
+        // 结构: {"__interrupt__": [{"value": {"type": "a2ui", "components": [...]}, ...}]}
+        if let interrupts = json["__interrupt__"] as? [[String: Any]],
+           let first = interrupts.first,
+           let value = first["value"] as? [String: Any],
+           let type = value["type"] as? String, type == "a2ui",
+           let payloadData = try? JSONSerialization.data(withJSONObject: value) {
             return .interrupt(payloadData)
         }
 
