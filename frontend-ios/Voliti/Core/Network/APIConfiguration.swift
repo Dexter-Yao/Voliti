@@ -5,14 +5,14 @@ import Foundation
 
 enum APIConfiguration {
     /// LangGraph 后端 base URL
-    /// 本地开发：http://192.168.x.x:2024（Mac 局域网 IP）
+    /// 本地开发：http://192.168.x.x:2025（Mac 局域网 IP）
     /// 生产环境：LangGraph Cloud 部署 URL
     static var baseURL: URL {
         if let urlString = ProcessInfo.processInfo.environment["LANGGRAPH_API_URL"],
            let url = URL(string: urlString) {
             return url
         }
-        return URL(string: "http://localhost:2024")!
+        return URL(string: "http://localhost:2025")!
     }
 
     /// LangGraph Cloud API Key（x-api-key header）
