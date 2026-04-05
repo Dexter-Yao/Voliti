@@ -82,6 +82,35 @@ struct LangGraphAPI: Sendable {
         return sseClient.stream(request: request)
     }
 
+    // MARK: - Store
+
+    /// 从 LangGraph Store 获取单个 item 的 value
+    func fetchStoreItem(namespace: [String], key: String) async throws -> [String: Any]? {
+        let url = APIConfiguration.baseURL.appendingPathComponent("store/items/search")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        Self.applyAuth(&request)
+
+        let body: [String: Any] = [
+            "namespace_prefix": namespace,
+            "filter": ["key": key],
+            "limit": 1,
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["items"] as? [[String: Any]],
+              let first = items.first,
+              let value = first["value"] as? [String: Any] else {
+            return nil
+        }
+        return value
+    }
+
     // MARK: - Request Builder
 
     private func buildStreamRequest(threadID: String, body: [String: Any]) throws -> URLRequest {

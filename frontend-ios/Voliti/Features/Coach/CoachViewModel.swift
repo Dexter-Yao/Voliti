@@ -348,11 +348,12 @@ final class CoachViewModel {
 
     // MARK: - Intervention Card Persistence
 
-    /// 用户 accept 体验式干预时，从 payload 提取图片和文案，持久化到 SwiftData
+    /// 用户 accept 体验式干预时，持久化卡片到 SwiftData。
+    /// 先用 payload 中的缩略图创建卡片，然后异步从 Store 下载原图替换。
     private func persistInterventionCardIfAccepted(payload: A2UIPayload, data: [String: Any]) {
         guard let decision = data["decision"] as? String, decision == "accept" else { return }
 
-        var cardImageData: Data?
+        var thumbnailData: Data?
         var caption = ""
         var purpose = ""
 
@@ -360,7 +361,7 @@ final class CoachViewModel {
             switch component {
             case .image(let img):
                 if img.src.hasPrefix("data:") {
-                    cardImageData = Data.fromDataURL(img.src)
+                    thumbnailData = Data.fromDataURL(img.src)
                 }
                 purpose = img.alt
             case .text(let txt):
@@ -370,10 +371,10 @@ final class CoachViewModel {
             }
         }
 
-        guard cardImageData != nil || !caption.isEmpty else { return }
+        guard thumbnailData != nil || !caption.isEmpty else { return }
 
         let card = InterventionCard(
-            imageData: cardImageData,
+            imageData: thumbnailData,
             caption: caption,
             purpose: purpose
         )
@@ -381,6 +382,33 @@ final class CoachViewModel {
 
         if !onboardingComplete {
             onboardingComplete = true
+        }
+
+        // 异步从 Store 下载原图替换缩略图
+        if let cardID = payload.cardID {
+            Task { [weak self] in
+                await self?.upgradeCardImage(card: card, cardID: cardID)
+            }
+        }
+    }
+
+    /// 从 LangGraph Store 下载原图，替换 InterventionCard 中的缩略图
+    private func upgradeCardImage(card: InterventionCard, cardID: String) async {
+        let api = LangGraphAPI()
+        let namespace = ["voliti", "user", "interventions"]
+
+        do {
+            guard let value = try await api.fetchStoreItem(namespace: namespace, key: cardID),
+                  let imageDataURL = value["imageData"] as? String,
+                  let fullImage = Data.fromDataURL(imageDataURL) else {
+                return
+            }
+
+            await MainActor.run {
+                card.imageData = fullImage
+            }
+        } catch {
+            // 下载失败时保留缩略图，不阻断用户体验
         }
     }
 

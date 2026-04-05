@@ -149,6 +149,7 @@ struct A2UIPayload: Decodable, Sendable, Identifiable {
     let type: String
     let components: [A2UIComponent]
     let layout: A2UILayout
+    let metadata: [String: String]?
 
     let id: String = UUID().uuidString
 
@@ -157,6 +158,10 @@ struct A2UIPayload: Decodable, Sendable, Identifiable {
         components.contains { $0.isProtocolPrompt }
     }
 
+    /// 干预卡片 ID（用于从 Store 下载原图）
+    var cardID: String? {
+        metadata?["card_id"]
+    }
 }
 
 enum A2UILayout: String, Codable, Sendable {
