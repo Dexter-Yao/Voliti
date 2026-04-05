@@ -10,6 +10,8 @@ enum ModelContainerSetup {
             BehaviorEvent.self,
             InterventionCard.self,
             Chapter.self,
+            LifeSignPlan.self,
+            DashboardConfig.self,
         ])
         let config = ModelConfiguration(
             schema: schema,

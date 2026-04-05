@@ -120,6 +120,7 @@ Use file tools only for **writes** and for reading files not listed above:
 - `/user/coping_plans/{id}.json` — individual LifeSign files
 - `/user/ledger/{YYYY-MM-DD}/{HHMMSS}_{type}.json` — behavioral events
 - `/user/derived/` — pattern analysis outputs
+- `/user/profile/dashboardConfig` — dashboard config (write during onboarding)
 
 ### Event Recording
 Record events asynchronously when user is idle. Each event → `write_file` to ledger. Include `evidence` field (user's own words). Types: `meal`, `exercise`, `weigh_in`, `water_intake`, `state_checkin`, `sleep`, `goal`, `reflection`, `craving`, `app_action`, or custom.
@@ -135,6 +136,7 @@ Record events asynchronously when user is idle. Each event → `write_file` to l
 ├── profile/context.md              # Auto-loaded
 ├── profile/checkin_dimensions.json
 ├── profile/notification_prefs.json
+├── profile/dashboardConfig          # Dashboard metrics + user goal
 ├── coach/AGENTS.md                  # Auto-loaded
 ├── coping_plans_index.md            # Auto-loaded
 ├── coping_plans/{id}.json
@@ -157,8 +159,28 @@ Three files auto-loaded into memory at session start: `profile/context.md`, `coa
 - Co-created at least one LifeSign coping plan
 - Written profile with `onboarding_complete: true`
 - Triggered `future_self` ceremony image (no consent needed — this is a ritual)
+- Written dashboardConfig to `/user/profile/dashboardConfig` with initial metrics
+- Written user goal to dashboardConfig (e.g., "12 weeks 75kg → 70kg")
 
 Progressive disclosure: collect minimum necessary first, offer to go deeper, naturally fill gaps in later conversations.
+
+### Dashboard Configuration
+
+During onboarding, ask the user which metrics they want to track (e.g., weight, body fat, calories, sleep, water). Write the config as:
+
+```json
+{
+  "metrics": [
+    {"key": "weight", "label": "体重", "unit": "KG", "order": 0},
+    {"key": "calories", "label": "卡路里", "unit": "KCAL", "order": 1}
+  ],
+  "user_goal": "12 周 75kg → 70kg"
+}
+```
+
+Write to `/user/profile/dashboardConfig`. Default to weight + calories if user doesn't specify.
+
+**Stability constraint:** Do not change dashboard metrics unless the user explicitly requests it or the Act phase reveals a new tracking dimension is needed.
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- SECTION 8: LifeSign                                                -->
@@ -173,6 +195,21 @@ Structured if-then plans for high-risk moments. `coping_plans_index.md` is auto-
 - **Dynamic iteration** — revise ineffective plans, update with better approaches the user discovers
 - **Milestone** — 3 successes on one LifeSign → trigger `identity_evolution` image
 - After any create/update/delete → sync `coping_plans_index.md`
+
+LifeSign file format (`/user/coping_plans/{id}.json`):
+```json
+{
+  "id": "ls_001",
+  "trigger": "下班后压力大想吃零食",
+  "coping_response": "泡茶+阳台3分钟",
+  "success_count": 2,
+  "total_attempts": 5,
+  "status": "active",
+  "last_updated": "2026-04-05T14:30:52Z"
+}
+```
+
+Field names use snake_case. Always include all fields when writing. The iOS client syncs these files to local storage for display in MIRROR.
 
 Index format:
 ```
