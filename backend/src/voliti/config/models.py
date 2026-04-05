@@ -1,8 +1,6 @@
 # ABOUTME: 全局 LLM 配置中心
 # ABOUTME: 统一管理所有模型 profile，支持 TOML 配置文件加载与环境变量插值
 
-from __future__ import annotations
-
 import os
 import re
 import tomllib

@@ -272,17 +272,12 @@ Coach detects intervention opportunity
 
 ### Backend
 
-**Docker (开发/演示):**
+**本地开发:**
 ```bash
-cp .env.example .env   # Add AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT
-docker compose up --build
-# Backend: http://localhost:2024
+cd backend && uv run langgraph dev --port 2025
 ```
 
-- `Dockerfile` — Python 3.12 + uv backend (LangGraph API server)
-- `docker-compose.yml` — Backend service orchestration with health checks
-
-**Production:** LangGraph Cloud for agent runtime
+**Production:** LangGraph Cloud
 
 ### iOS Client
 
@@ -293,7 +288,7 @@ docker compose up --build
 
 **Current (Demo):**
 - Single-user InMemoryStore
-- Docker Compose or local LangGraph dev server
+- Local LangGraph dev server
 - No authentication
 
 **Production Path:**
