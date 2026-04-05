@@ -50,7 +50,7 @@ struct SSEClient: Sendable {
 
                         if line.isEmpty {
                             if !currentData.isEmpty {
-                                if let event = Self.parseEvent(type: currentEvent, data: currentData) {
+                                for event in Self.parseEvent(type: currentEvent, data: currentData) {
                                     continuation.yield(event)
                                 }
                             }
@@ -89,20 +89,22 @@ struct SSEClient: Sendable {
 
     // MARK: - Event Parsing
 
-    nonisolated private static func parseEvent(type: String, data: String) -> SSEEvent? {
-        guard let jsonData = data.data(using: .utf8) else { return nil }
+    nonisolated private static func parseEvent(type: String, data: String) -> [SSEEvent] {
+        guard let jsonData = data.data(using: .utf8) else { return [] }
 
         switch type {
         case "messages/partial":
-            return parsePartialMessage(jsonData)
+            if let event = parsePartialMessage(jsonData) { return [event] }
+            return []
         case "messages/complete":
-            return parseCompleteMessage(jsonData)
+            if let event = parseCompleteMessage(jsonData) { return [event] }
+            return []
         case "values":
             return parseValuesEvent(jsonData)
         case "end":
-            return .done
+            return [.done]
         default:
-            return nil
+            return []
         }
     }
 
@@ -129,32 +131,34 @@ struct SSEClient: Sendable {
 
     private static let logger = Logger(subsystem: "voliti", category: "SSEClient")
 
-    nonisolated private static func parseValuesEvent(_ data: Data) -> SSEEvent? {
+    nonisolated private static func parseValuesEvent(_ data: Data) -> [SSEEvent] {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
+            return []
         }
 
-        // 优先检查 interrupt（A2UI 交互）— LangGraph REST API 使用 __interrupt__ key
-        // 结构: {"__interrupt__": [{"value": {"type": "a2ui", "components": [...]}, ...}]}
-        if let interrupts = json["__interrupt__"] as? [[String: Any]],
-           let first = interrupts.first,
-           let value = first["value"] as? [String: Any],
-           let type = value["type"] as? String, type == "a2ui",
-           let payloadData = try? JSONSerialization.data(withJSONObject: value) {
-            return .interrupt(payloadData)
-        }
+        var events: [SSEEvent] = []
 
-        // 从 messages 数组提取最新 AI 消息（Coach 经过 tool calls 后的最终文本）
+        // 先提取 AI 文本（确保 processStream 在处理 interrupt 前已有 fullContent）
         if let messages = json["messages"] as? [[String: Any]] {
             for msg in messages.reversed() {
                 guard let type = msg["type"] as? String, type == "ai",
                       let content = msg["content"] as? String,
                       !content.isEmpty else { continue }
-                return .message(role: "assistant", content: content)
+                events.append(.message(role: "assistant", content: content))
+                break
             }
         }
 
-        return nil
+        // 再检查 interrupt — LangGraph REST API 使用 __interrupt__ key
+        if let interrupts = json["__interrupt__"] as? [[String: Any]],
+           let first = interrupts.first,
+           let value = first["value"] as? [String: Any],
+           let type = value["type"] as? String, type == "a2ui",
+           let payloadData = try? JSONSerialization.data(withJSONObject: value) {
+            events.append(.interrupt(payloadData))
+        }
+
+        return events
     }
 }
 
