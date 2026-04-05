@@ -13,6 +13,28 @@ from openai import AsyncAzureOpenAI
 from voliti_eval.config import ModelConfig
 from voliti_eval.models import Seed, Turn
 
+_DATA_URL_PREFIX = "data:"
+
+
+def _sanitize_components_for_llm(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """剥离 A2UI 组件中的 binary 数据，仅保留 LLM 可处理的结构信息。
+
+    图片组件的 base64 data URL 替换为占位描述，避免 token 爆炸。
+    """
+    sanitized = []
+    for comp in components:
+        if comp.get("kind") == "image":
+            src = comp.get("src", "")
+            sanitized.append({
+                **comp,
+                "src": f"[image: {comp.get('alt', 'generated image')}]"
+                if src.startswith(_DATA_URL_PREFIX)
+                else src,
+            })
+        else:
+            sanitized.append(comp)
+    return sanitized
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -133,7 +155,8 @@ class Auditor:
             role = "assistant" if turn.role == "user" else "user"
             content = turn.text or ""
             if turn.a2ui_payload and turn.role == "coach":
-                content += f"\n\n[A2UI Components]: {json.dumps(turn.a2ui_payload, ensure_ascii=False)}"
+                safe_comps = _sanitize_components_for_llm(turn.a2ui_payload.get("components", []))
+                content += f"\n\n[A2UI Components]: {json.dumps(safe_comps, ensure_ascii=False)}"
             if turn.a2ui_response and turn.role == "user":
                 content = json.dumps(
                     {"type": "a2ui_response", **turn.a2ui_response}, ensure_ascii=False
@@ -178,7 +201,8 @@ class Auditor:
             {"type": "a2ui_response", "action": "submit"|"reject"|"skip", "data": {...}}
         """
         content = coach_text
-        content += f"\n\n[A2UI Interaction Required]\nComponents:\n{json.dumps(payload.get('components', []), ensure_ascii=False, indent=2)}"
+        safe_components = _sanitize_components_for_llm(payload.get("components", []))
+        content += f"\n\n[A2UI Interaction Required]\nComponents:\n{json.dumps(safe_components, ensure_ascii=False, indent=2)}"
         content += "\n\nRespond with a JSON A2UI response for the input components."
 
         messages = self._build_conversation_messages(seed, history, content)

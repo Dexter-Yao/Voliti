@@ -30,6 +30,23 @@ _THINKING_RE = re.compile(r"```json:coach_thinking\s*\n(.*?)\n```", re.DOTALL)
 _REPLIES_RE = re.compile(r"```json:suggested_replies\s*\n(.*?)\n```", re.DOTALL)
 
 
+def _strip_binary_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """剥离 A2UI payload 中的 base64 图片数据，保留结构信息。
+
+    用于 transcript 序列化——避免 JSON 文件膨胀到几 MB。
+    """
+    components = payload.get("components")
+    if not components:
+        return payload
+    clean_components = []
+    for comp in components:
+        if comp.get("kind") == "image" and isinstance(comp.get("src"), str) and comp["src"].startswith("data:"):
+            clean_components.append({**comp, "src": "[data_url]"})
+        else:
+            clean_components.append(comp)
+    return {**payload, "components": clean_components}
+
+
 def _inject_timestamp(message: str) -> str:
     """在用户消息前注入 ISO 8601 时间戳，与 iOS 客户端行为一致。"""
     ts = datetime.now(UTC).isoformat()
@@ -131,7 +148,7 @@ async def run_conversation(
             role="coach",
             timestamp=datetime.now(UTC),
             text=coach_text or None,
-            a2ui_payload=pending_interrupt.payload if pending_interrupt else None,
+            a2ui_payload=_strip_binary_from_payload(pending_interrupt.payload) if pending_interrupt else None,
             images=all_images or None,
             coach_thinking=thinking,
             suggested_replies=replies,
@@ -175,21 +192,29 @@ async def run_conversation(
 
         # 纯文本响应 — 让 Auditor 决定下一步
         if not coach_text:
-            logger.warning("[%s] Empty coach response", seed.id)
+            logger.warning("[%s] Empty coach response (raw=%d chars, thinking=%s, replies=%s)",
+                           seed.id, len(raw_coach_text), thinking is not None, replies is not None)
+            transcript.end_reason = "empty_response"
             break
 
         user_turn_count = sum(1 for t in turns if t.role == "user")
         auditor_response = await auditor.respond_to_text(seed, turns, coach_text)
 
         decision = auditor_response.get("decision", "continue")
-        if decision == "end" and user_turn_count >= 6:
-            logger.info("[%s] Auditor ended: %s", seed.id, auditor_response.get("reason", ""))
-            transcript.end_reason = "auditor_ended"
+        if decision == "end":
+            reason = auditor_response.get("reason", "")
+            if user_turn_count >= 6:
+                logger.info("[%s] Auditor ended: %s", seed.id, reason)
+                transcript.end_reason = "auditor_ended"
+            else:
+                logger.info("[%s] Auditor ended early (turn %d): %s", seed.id, user_turn_count, reason)
+                transcript.end_reason = "auditor_ended_early"
             break
 
         user_message = auditor_response.get("message", "")
         if not user_message:
-            logger.warning("[%s] Auditor returned empty message", seed.id)
+            logger.warning("[%s] Auditor returned empty message (decision=%s)", seed.id, decision)
+            transcript.end_reason = "auditor_empty"
             break
 
         # 记录 User turn
@@ -226,6 +251,9 @@ async def _run_single_seed(
     client = CoachClient(config.server_url, config.assistant_id)
     client.with_user_id(user_id)
 
+    transcript: Transcript | None = None
+    score_card = ScoreCard(seed_id=seed.id)
+
     try:
         logger.info("[%s] Starting (user_id=%s)", seed.id, user_id)
 
@@ -240,28 +268,27 @@ async def _run_single_seed(
         transcript = await run_conversation(seed, thread_id, auditor, client, max_turns)
 
         # Judge 评分
-        score_card: ScoreCard
         if judge_fn:
             score_card = await judge_fn(seed, transcript)
-        else:
-            score_card = ScoreCard(seed_id=seed.id)
 
         logger.info("[%s] Completed: %d turns, end_reason=%s",
                     seed.id, transcript.turn_count, transcript.end_reason)
 
-        return SeedResult(seed=seed, transcript=transcript, score_card=score_card)
-
     except Exception:
         logger.exception("[%s] Failed", seed.id)
-        error_transcript = Transcript(
-            seed_id=seed.id,
-            seed_name=seed.name,
-            thread_id="error",
-            started_at=datetime.now(UTC),
-            finished_at=datetime.now(UTC),
-            end_reason="error",
-        )
-        return SeedResult(seed=seed, transcript=error_transcript, score_card=ScoreCard(seed_id=seed.id))
+        if transcript is not None:
+            # 保留已收集的对话数据，仅标记异常
+            transcript.end_reason = "error"
+            transcript.finished_at = datetime.now(UTC)
+        else:
+            transcript = Transcript(
+                seed_id=seed.id,
+                seed_name=seed.name,
+                thread_id="error",
+                started_at=datetime.now(UTC),
+                finished_at=datetime.now(UTC),
+                end_reason="error",
+            )
 
     finally:
         # 清理 Store
@@ -269,6 +296,8 @@ async def _run_single_seed(
             await clear_store(client.store, user_id=user_id)
         except Exception:
             logger.warning("[%s] Store cleanup failed", seed.id)
+
+    return SeedResult(seed=seed, transcript=transcript, score_card=score_card)
 
 
 async def run_evaluation(

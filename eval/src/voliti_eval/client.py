@@ -36,6 +36,30 @@ class A2UIInterruptEvent:
 CoachEvent = TextEvent | A2UIInterruptEvent
 
 
+def _text_from_content(content: Any) -> str:
+    """从 AI 消息的 content 字段提取纯文本。
+
+    LangChain AIMessage 的 content 取决于模型供应商：
+    - str: OpenAI chat completions 标准格式
+    - list[dict]: Anthropic 或 OpenAI reasoning 模型的 content blocks
+      例 [{"type": "text", "text": "..."}, {"type": "tool_use", ...}]
+    - None: 纯 tool call 中间态
+    """
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text", "")
+                if isinstance(text, str) and text.strip():
+                    parts.append(text.strip())
+            elif isinstance(block, str) and block.strip():
+                parts.append(block.strip())
+        return "\n".join(parts)
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # CoachClient
 # ---------------------------------------------------------------------------
@@ -135,15 +159,23 @@ class CoachClient:
 
             # 提取 AI 文本消息
             if chunk.event == "updates" and isinstance(chunk.data, dict):
-                for node_data in chunk.data.values():
+                for node_name, node_data in chunk.data.items():
                     if not isinstance(node_data, dict):
                         continue
                     messages = node_data.get("messages", [])
                     for msg in messages:
-                        if isinstance(msg, dict) and msg.get("type") == "ai":
-                            content = msg.get("content", "")
-                            if isinstance(content, str) and content.strip():
-                                collected_text_parts.append(content.strip())
+                        if not isinstance(msg, dict) or msg.get("type") != "ai":
+                            continue
+                        content = msg.get("content")
+                        tool_calls = msg.get("tool_calls", [])
+                        text = _text_from_content(content)
+                        if text:
+                            collected_text_parts.append(text)
+                        if tool_calls:
+                            names = [tc.get("name", "?") for tc in tool_calls if isinstance(tc, dict)]
+                            logger.debug("AI tool_calls from %s: %s", node_name, names)
+                        if not text and not tool_calls:
+                            logger.debug("AI message from %s: empty content (type=%s)", node_name, type(content).__name__)
 
         # flush 剩余文本
         if collected_text_parts:
@@ -153,12 +185,16 @@ class CoachClient:
 
 
 def _extract_images(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """从 A2UIPayload 中提取 ImageComponent。"""
+    """从 A2UIPayload 中提取 ImageComponent 元信息。
+
+    不存储 base64 数据——仅保留 alt 和 src 类型标记。
+    """
     images = []
     for comp in payload.get("components", []):
         if comp.get("kind") == "image":
+            src = comp.get("src", "")
             images.append({
-                "src": comp.get("src", ""),
+                "src": "[data_url]" if src.startswith("data:") else src,
                 "alt": comp.get("alt", ""),
             })
     return images
