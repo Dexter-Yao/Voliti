@@ -27,7 +27,8 @@ final class CoachViewModel {
     private let api = LangGraphAPI()
     private var modelContext: ModelContext?
     private var streamTask: Task<Void, Never>?
-    
+    private var syncService: StoreSyncService?
+
     private func trace(_ message: String) {
 #if DEBUG
         print("[CoachViewModel] \(message)")
@@ -42,6 +43,7 @@ final class CoachViewModel {
 
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
+        self.syncService = StoreSyncService(modelContext: modelContext)
         loadMessages()
     }
 
@@ -315,6 +317,9 @@ final class CoachViewModel {
             self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
+            Task { [weak self] in
+                await self?.syncService?.syncAll()
+            }
             self.trace("processStream finalized, cleanedChars=\(cleaned.count), replies=\(replies.count)")
             logger.info("processStream: final text=\(cleaned.count) chars, replies=\(replies.count)")
         }
