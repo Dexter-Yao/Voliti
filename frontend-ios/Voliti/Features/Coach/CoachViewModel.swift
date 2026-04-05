@@ -27,6 +27,12 @@ final class CoachViewModel {
     private let api = LangGraphAPI()
     private var modelContext: ModelContext?
     private var streamTask: Task<Void, Never>?
+    
+    private func trace(_ message: String) {
+#if DEBUG
+        print("[CoachViewModel] \(message)")
+#endif
+    }
 
     @ObservationIgnored
     @AppStorage("lastCheckinDate") private var lastCheckinDate: String = ""
@@ -130,6 +136,7 @@ final class CoachViewModel {
         guard !isStreaming else { return }
         suggestedReplies = []
 
+        trace("sendMessage start, textCount=\(text.count), hasImage=\(imageData != nil)")
         isStreaming = true
         errorMessage = nil
 
@@ -137,6 +144,7 @@ final class CoachViewModel {
             guard let self else { return }
             do {
                 let threadID = try await api.ensureThread()
+                trace("ensureThread ok, threadID=\(threadID)")
 
                 let userMessage = ChatMessage(
                     role: .user,
@@ -161,9 +169,12 @@ final class CoachViewModel {
                     message: text,
                     imageData: imageData
                 )
+                trace("streamRun created, entering processStream")
 
                 await processStream(stream, assistantMessage: assistantMessage)
+                trace("processStream returned")
             } catch {
+                trace("sendMessage failed: \(error.localizedDescription)")
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.isStreaming = false
@@ -231,6 +242,7 @@ final class CoachViewModel {
         var fullContent = ""
         var eventCount = 0
 
+        trace("processStream started")
         logger.info("processStream: started")
 
         for await event in stream {
@@ -240,6 +252,7 @@ final class CoachViewModel {
             switch event {
             case .token(let content):
                 guard !content.isEmpty else { break }
+                trace("event #\(eventCount): token \(content.count) chars")
                 fullContent = content
                 let stripped = Self.stripFencedBlocks(from: fullContent)
                 logger.debug("processStream: token \(eventCount), fullContent=\(fullContent.count) chars, stripped=\(stripped.count) chars")
@@ -249,6 +262,7 @@ final class CoachViewModel {
 
             case .message(_, let content):
                 guard !content.isEmpty else { break }
+                trace("event #\(eventCount): message \(content.count) chars")
                 fullContent = content
                 let stripped = Self.stripFencedBlocks(from: fullContent)
                 logger.info("processStream: message \(eventCount), fullContent=\(fullContent.count) chars, stripped=\(stripped.count) chars")
@@ -257,6 +271,7 @@ final class CoachViewModel {
                 }
 
             case .interrupt(let data):
+                trace("event #\(eventCount): interrupt \(data.count) bytes")
                 logger.info("processStream: interrupt at event \(eventCount), fullContent=\(fullContent.count) chars, data=\(data.count) bytes")
                 if let payload = try? JSONDecoder().decode(A2UIPayload.self, from: data) {
                     logger.info("processStream: A2UI decoded, \(payload.components.count) components")
@@ -270,14 +285,17 @@ final class CoachViewModel {
                     }
                     return
                 } else {
+                    trace("interrupt decode failed")
                     logger.error("processStream: A2UI decode FAILED")
                 }
 
             case .done:
+                trace("event #\(eventCount): done")
                 logger.info("processStream: done at event \(eventCount)")
                 break
 
             case .error(let error):
+                trace("event #\(eventCount): error \(error.localizedDescription)")
                 logger.error("processStream: error at event \(eventCount): \(error.localizedDescription)")
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
@@ -285,6 +303,7 @@ final class CoachViewModel {
             }
         }
 
+        trace("processStream loop ended, events=\(eventCount), fullContentChars=\(fullContent.count)")
         logger.info("processStream: loop ended after \(eventCount) events, fullContent=\(fullContent.count) chars")
 
         await MainActor.run {
@@ -296,6 +315,7 @@ final class CoachViewModel {
             self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
+            self.trace("processStream finalized, cleanedChars=\(cleaned.count), replies=\(replies.count)")
             logger.info("processStream: final text=\(cleaned.count) chars, replies=\(replies.count)")
         }
     }

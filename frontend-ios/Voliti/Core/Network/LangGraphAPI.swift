@@ -5,6 +5,12 @@ import Foundation
 
 struct LangGraphAPI: Sendable {
     private let sseClient = SSEClient()
+    
+    private func trace(_ message: String) {
+#if DEBUG
+        print("[LangGraphAPI] \(message)")
+#endif
+    }
 
     // MARK: - Thread Management
 
@@ -68,6 +74,7 @@ struct LangGraphAPI: Sendable {
         ]
 
         let request = try buildStreamRequest(threadID: threadID, body: body)
+        trace("streamRun request ready: threadID=\(threadID), textCount=\(message.count), hasImage=\(imageData != nil), url=\(request.url?.absoluteString ?? "<nil>")")
         return sseClient.stream(request: request)
     }
 
@@ -81,6 +88,7 @@ struct LangGraphAPI: Sendable {
         ]
 
         let request = try buildStreamRequest(threadID: threadID, body: body)
+        trace("resumeInterrupt request ready: threadID=\(threadID), action=\(action), url=\(request.url?.absoluteString ?? "<nil>")")
         return sseClient.stream(request: request)
     }
 
