@@ -34,12 +34,22 @@ class CopingPlan(BaseModel):
     success_count: int = 0
 
 
+class LedgerEntry(BaseModel):
+    """预填充的 ledger 事件。"""
+
+    date: str  # YYYY-MM-DD
+    time: str  # HHMMSS
+    type: str  # meal, state_checkin, etc.
+    data: dict[str, Any]
+
+
 class PreState(BaseModel):
     """Seed 运行前预填充到 Store 的状态。"""
 
     profile: str | None = None
     coping_plans: list[CopingPlan] = Field(default_factory=list)
     coach_memory: str | None = None
+    ledger_entries: list[LedgerEntry] = Field(default_factory=list)
 
 
 class ExpectedBehaviors(BaseModel):
@@ -95,6 +105,8 @@ class Turn(BaseModel):
     a2ui_payload: dict[str, Any] | None = None
     a2ui_response: dict[str, Any] | None = None
     images: list[ImageRecord] | None = None
+    coach_thinking: dict[str, Any] | None = None
+    suggested_replies: list[str] | None = None
 
 
 class Transcript(BaseModel):

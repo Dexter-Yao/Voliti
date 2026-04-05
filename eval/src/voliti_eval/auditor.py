@@ -42,6 +42,9 @@ a real person texts a coach app.
 - If Coach asks a question, answer in character before advancing your agenda.
 - You may express emotions (frustration, sadness, excitement) consistent \
 with your persona.
+- Coach responses may contain ```json:coach_thinking``` and \
+```json:suggested_replies``` blocks — ignore these metadata blocks and \
+respond only to the actual text content.
 - Speak in {persona_language_name}.
 
 ## A2UI Protocol — How to Respond to Interactive Components

@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -23,6 +25,42 @@ from voliti_eval.models import (
 from voliti_eval.store import clear_store, populate_store
 
 logger = logging.getLogger(__name__)
+
+_THINKING_RE = re.compile(r"```json:coach_thinking\s*\n(.*?)\n```", re.DOTALL)
+_REPLIES_RE = re.compile(r"```json:suggested_replies\s*\n(.*?)\n```", re.DOTALL)
+
+
+def _inject_timestamp(message: str) -> str:
+    """在用户消息前注入 ISO 8601 时间戳，与 iOS 客户端行为一致。"""
+    ts = datetime.now(UTC).isoformat()
+    return f"[{ts}] {message}"
+
+
+def _extract_structured_blocks(text: str) -> tuple[str, dict | None, list[str] | None]:
+    """从 Coach 文本中提取 coach_thinking 和 suggested_replies 块。
+
+    Returns: (clean_text, thinking_dict, replies_list)
+    """
+    thinking: dict | None = None
+    replies: list[str] | None = None
+
+    m = _THINKING_RE.search(text)
+    if m:
+        try:
+            thinking = json.loads(m.group(1))
+        except json.JSONDecodeError:
+            pass
+        text = text[:m.start()] + text[m.end():]
+
+    m = _REPLIES_RE.search(text)
+    if m:
+        try:
+            replies = json.loads(m.group(1))
+        except json.JSONDecodeError:
+            pass
+        text = text[:m.start()] + text[m.end():]
+
+    return text.strip(), thinking, replies
 
 
 async def run_conversation(
@@ -51,8 +89,9 @@ async def run_conversation(
     turns: list[Turn] = []
     turn_index = 0
 
-    # 发送初始消息
+    # 发送初始消息（注入时间戳）
     initial_msg = await auditor.generate_initial_message(seed)
+    timestamped_msg = _inject_timestamp(initial_msg)
     turns.append(Turn(
         index=turn_index,
         role="user",
@@ -62,7 +101,7 @@ async def run_conversation(
     turn_index += 1
 
     logger.info("[%s] User (initial): %s", seed.id, initial_msg[:80])
-    events = await client.send_message(thread_id, initial_msg)
+    events = await client.send_message(thread_id, timestamped_msg)
 
     while turn_index < max_turns * 2:  # *2 因为一个"轮"包含 user+coach
         # 处理 Coach 响应事件
@@ -81,7 +120,10 @@ async def run_conversation(
                         alt=img.get("alt", ""),
                     ))
 
-        coach_text = "\n".join(coach_text_parts) if coach_text_parts else ""
+        raw_coach_text = "\n".join(coach_text_parts) if coach_text_parts else ""
+
+        # 提取 coach_thinking 和 suggested_replies 结构化块
+        coach_text, thinking, replies = _extract_structured_blocks(raw_coach_text)
 
         # 记录 Coach turn
         coach_turn = Turn(
@@ -91,6 +133,8 @@ async def run_conversation(
             text=coach_text or None,
             a2ui_payload=pending_interrupt.payload if pending_interrupt else None,
             images=all_images or None,
+            coach_thinking=thinking,
+            suggested_replies=replies,
         )
         turns.append(coach_turn)
         turn_index += 1
@@ -158,7 +202,7 @@ async def run_conversation(
         turn_index += 1
 
         logger.info("[%s] User: %s", seed.id, user_message[:80])
-        events = await client.send_message(thread_id, user_message)
+        events = await client.send_message(thread_id, _inject_timestamp(user_message))
 
     else:
         transcript.end_reason = "max_turns"

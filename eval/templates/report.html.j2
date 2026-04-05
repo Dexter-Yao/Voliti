@@ -175,10 +175,30 @@
         </div>
         {% endif %}
 
+        {% if turn.coach_thinking %}
+        <div>
+          <div class="bubble-label">Coach Thinking (Turn {{ turn.index }})</div>
+          <div class="bubble" style="background: #f0f0f0; font-size: 0.8rem; color: #666; border-left: 3px solid #ccc;">
+            <strong>{{ turn.coach_thinking.get('strategy', '') }}</strong>
+            {% if turn.coach_thinking.get('observations') %}
+            <br>{{ turn.coach_thinking.observations | join(' · ') }}
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
         {% if turn.role == "coach" and turn.text %}
         <div>
           <div class="bubble-label">Coach (Turn {{ turn.index }})</div>
           <div class="bubble bubble-coach">{{ turn.text }}</div>
+        </div>
+        {% endif %}
+
+        {% if turn.suggested_replies %}
+        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin: 2px 0;">
+          {% for sr in turn.suggested_replies %}
+          <span style="background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">{{ sr }}</span>
+          {% endfor %}
         </div>
         {% endif %}
 

@@ -1,0 +1,95 @@
+# ABOUTME: 晚间复盘系统触发 — 测试 Coach 对 [daily_review] 的响应
+
+id: "10_daily_review"
+name: "晚间复盘触发"
+description: >
+  模拟 iOS 客户端在晚间自动发送 [daily_review] 系统消息，
+  测试 Coach 是否正确启动结构化复盘流程。
+
+persona:
+  name: "阿杰"
+  background: "27 岁设计师，加入计划 3 周，今天有 ledger 数据"
+  personality: "随和开朗，愿意配合复盘"
+  language: "zh"
+
+goal: >
+  以 [daily_review] 作为首条消息触发晚间复盘。
+  配合填写复盘表单（今天还行，有些小波动）。
+  观察 Coach 是否：使用 fan_out 采集反馈、引用当天 ledger 数据、
+  给出合适层级的反馈。
+
+initial_message: "[daily_review]"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 阿杰
+    identity_vision: 享受健康生活方式但不执着的人
+    pain_points: [weekend_vs_weekday]
+    high_risk_time: evening
+    checkin_dimensions: [weight]
+    notification_pref: minimal
+  coping_plans:
+    - id: "ls_003"
+      trigger:
+        situation: "周末朋友聚餐"
+        time_pattern: "18:00-22:00"
+        day_pattern: ["weekend"]
+        state_condition: "stress >= 4"
+      action: "点餐前先喝一杯水，选一个主菜为主，不额外加甜品"
+      status: "active"
+      activated_count: 3
+      success_count: 2
+  coach_memory: |
+    ## 阿杰 — Key Observations
+    - Low maintenance user, generally stable
+    - Week 3: steady progress
+  ledger_entries:
+    - date: "2026-04-04"
+      time: "083000"
+      type: "state_checkin"
+      data:
+        ts: "2026-04-04T08:30:00+08:00"
+        type: "state_checkin"
+        energy: 7
+        mood: 7
+        stress: 3
+        evidence: "早上状态不错"
+    - date: "2026-04-04"
+      time: "122000"
+      type: "meal"
+      data:
+        ts: "2026-04-04T12:20:00+08:00"
+        type: "meal"
+        summary: "公司楼下沙拉，鸡胸肉+蔬菜+油醋汁"
+        kcal: 450
+        confidence: 0.7
+        evidence: "中午吃了沙拉"
+        tags: ["work", "home"]
+    - date: "2026-04-04"
+      time: "190000"
+      type: "meal"
+      data:
+        ts: "2026-04-04T19:00:00+08:00"
+        type: "meal"
+        summary: "外卖炒饭+可乐"
+        kcal: 800
+        confidence: 0.5
+        evidence: "晚上点了外卖"
+        tags: ["takeout"]
+
+max_turns: 12
+
+expected_behaviors:
+  must:
+    - "识别 [daily_review] 为系统触发并启动晚间复盘"
+    - "使用 fan_out 采集用户对今天的主观感受"
+  should:
+    - "引用当天 ledger 数据总结（如餐食记录）"
+    - "给出适当层级的反馈"
+  must_not:
+    - "将 [daily_review] 作为普通文本回复"
+
+scoring_focus:
+  primary: ["D2_session_protocol"]
+  secondary: ["C1_intervention_dosage", "A4_listening_before_advising"]

@@ -54,6 +54,19 @@ pre_state:
     - Responds very well to LifeSign system, finds it useful
     - Afternoon slump + meeting fatigue is primary trigger
     - Has been showing steady improvement with LifeSign compliance
+  ledger_entries:
+    - date: "2026-04-03"
+      time: "153000"
+      type: "craving"
+      data:
+        ts: "2026-04-03T15:30:00+08:00"
+        type: "craving"
+        trigger: "开完项目评审会，很累想喝奶茶"
+        intensity: 7
+        action_taken: "喝了水，走到窗边站了2分钟"
+        outcome: "冲动减弱，没买奶茶"
+        evidence: "昨天下午开完会想喝奶茶，用了 LifeSign 的方法"
+        tags: ["afternoon", "meeting_fatigue"]
 
 max_turns: 14
 
