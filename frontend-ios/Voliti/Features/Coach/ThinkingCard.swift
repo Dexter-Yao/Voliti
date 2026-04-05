@@ -1,5 +1,5 @@
 // ABOUTME: Coach 思路卡片，展示教练的观察和策略选择
-// ABOUTME: 默认展开，点击切换折叠，视觉上与消息正文明确区分
+// ABOUTME: 默认折叠，点击展开，视觉上与消息正文明确区分
 
 import SwiftUI
 
@@ -12,7 +12,7 @@ struct ThinkingCard: View {
     init(strategy: String, observations: [String]) {
         self.strategy = strategy
         self.observations = observations
-        _isExpanded = State(initialValue: true)
+        _isExpanded = State(initialValue: false)
     }
 
     var body: some View {
