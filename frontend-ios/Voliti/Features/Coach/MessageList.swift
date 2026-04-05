@@ -96,17 +96,49 @@ private struct MessageBubble: View {
 
                 // 文本
                 if !message.textContent.isEmpty {
-                    if message.role == .assistant {
-                        Text(message.textContent)
-                            .starpathSerif()
-                    } else {
-                        Text(message.textContent)
-                            .starpathSans()
-                    }
+                    MessageContentView(
+                        text: message.textContent,
+                        role: message.role
+                    )
                 }
             }
 
             if message.role == .assistant { Spacer(minLength: 60) }
         }
+    }
+}
+
+// MARK: - Message Content View
+//
+// 消息文本渲染组件。根据角色选择排版样式，统一处理 Markdown。
+//   - Assistant: Serif 字体 + inline Markdown（bold/italic/code/链接/删除线）
+//   - User: Sans 字体，纯文本（用户输入不含 Markdown）
+//
+// 使用 Apple AttributedString(markdown:) 解析 inline Markdown，
+// interpretedSyntax = .inlineOnlyPreservingWhitespace 保留换行但不解析块级元素。
+
+private struct MessageContentView: View {
+    let text: String
+    let role: MessageRole
+
+    var body: some View {
+        switch role {
+        case .assistant:
+            Text(renderedMarkdown)
+                .starpathSerif()
+        case .user:
+            Text(text)
+                .starpathSans()
+        }
+    }
+
+    private var renderedMarkdown: AttributedString {
+        guard let attributed = try? AttributedString(
+            markdown: text,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) else {
+            return AttributedString(text)
+        }
+        return attributed
     }
 }

@@ -320,18 +320,33 @@ final class CoachViewModel {
         }
     }
 
-    // MARK: - Fenced JSON Block Stripping (Streaming)
+    // MARK: - Content Sanitization Pipeline
+    //
+    // Coach 消息从 SSE 流到屏幕需要剥离所有内部数据，只保留用户可见文本。
+    // 需要清洗的内容类型：
+    //   1. Fenced JSON blocks — coach_thinking / suggested_replies（由 LLM 按约定输出）
+    //   2. Tool output artifacts — write_file/read_file 返回的文件路径（LLM 偶尔回显）
+    // 每种模式用独立 regex，按顺序应用。新增模式在此处添加。
 
-    private static let fencedBlockPattern = try! NSRegularExpression(
-        pattern: "```json:(?:coach_thinking|suggested_replies)\\n[\\s\\S]*?(?:```|$)",
-        options: []
-    )
+    private static let sanitizationPatterns: [(NSRegularExpression, String)] = [
+        // Fenced JSON blocks（含未闭合的流式状态）
+        (try! NSRegularExpression(
+            pattern: "```json:(?:coach_thinking|suggested_replies)\\n[\\s\\S]*?(?:```|$)"
+        ), "fenced_block"),
+        // Tool output: Python 风格文件路径数组 ['/user/...', '/user/...']
+        (try! NSRegularExpression(
+            pattern: "\\['/user/[^\\]]*\\]"
+        ), "tool_output"),
+    ]
 
-    /// 流式文本中移除所有 fenced JSON block（含未闭合的），避免用户看到 raw JSON
+    /// 流式文本内容清洗：剥离所有内部数据，只保留用户可见文本
     static func stripFencedBlocks(from content: String) -> String {
-        let range = NSRange(content.startIndex..., in: content)
-        let stripped = fencedBlockPattern.stringByReplacingMatches(in: content, range: range, withTemplate: "")
-        return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
+        var text = content
+        for (pattern, _) in sanitizationPatterns {
+            let range = NSRange(text.startIndex..., in: text)
+            text = pattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Fenced JSON Block Extraction
