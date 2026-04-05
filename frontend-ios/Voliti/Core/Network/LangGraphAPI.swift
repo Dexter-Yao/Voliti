@@ -120,6 +120,31 @@ struct LangGraphAPI: Sendable {
         return value
     }
 
+    /// 从 LangGraph Store 搜索指定 namespace 下的所有 items
+    func searchStoreItems(namespace: [String]) async throws -> [[String: Any]] {
+        let url = APIConfiguration.baseURL.appendingPathComponent("store/items/search")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        Self.applyAuth(&request)
+
+        let body: [String: Any] = [
+            "namespace_prefix": namespace,
+            "limit": 100,
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = json["items"] as? [[String: Any]] else {
+            return []
+        }
+        return items
+    }
+
     // MARK: - Request Builder
 
     private func buildStreamRequest(threadID: String, body: [String: Any]) throws -> URLRequest {

@@ -76,5 +76,7 @@ private struct StarpathTabBar: View {
             BehaviorEvent.self,
             InterventionCard.self,
             Chapter.self,
+            LifeSignPlan.self,
+            DashboardConfig.self,
         ], inMemory: true)
 }
