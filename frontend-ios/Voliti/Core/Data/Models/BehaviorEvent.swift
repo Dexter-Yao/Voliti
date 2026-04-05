@@ -13,6 +13,11 @@ enum EventType: String, Codable {
     case goalUpdate = "goal_update"
     case appAction = "app_action"
     case signatureImage = "signature_image"
+    case lifesignCreated = "lifesign_created"
+    case lifesignUpdated = "lifesign_updated"
+    case lifesignDeleted = "lifesign_deleted"
+    case lifesignActivated = "lifesign_activated"
+    case lifesignSucceeded = "lifesign_succeeded"
 
     var label: String {
         switch self {
@@ -24,6 +29,11 @@ enum EventType: String, Codable {
         case .goalUpdate: "目标"
         case .appAction: "操作"
         case .signatureImage: "里程碑"
+        case .lifesignCreated: "预案创建"
+        case .lifesignUpdated: "预案更新"
+        case .lifesignDeleted: "预案删除"
+        case .lifesignActivated: "预案激活"
+        case .lifesignSucceeded: "预案成功"
         }
     }
 }
@@ -71,6 +81,10 @@ final class BehaviorEvent {
 
     // Signature Image
     var cardId: String?
+
+    // LifeSign
+    var planId: String?
+    var planName: String?
 
     init(
         id: String = UUID().uuidString,

@@ -70,6 +70,9 @@ struct EventRow: View {
             if let e = event.energy { parts.append("E:\(e)") }
             if let m = event.mood { parts.append("M:\(m)") }
             if let s = event.stress { parts.append("S:\(s)") }
+        case .lifesignCreated, .lifesignUpdated, .lifesignDeleted,
+             .lifesignActivated, .lifesignSucceeded:
+            if let name = event.planName { parts.append(name) }
         case .goalUpdate, .appAction, .signatureImage:
             break
         }
