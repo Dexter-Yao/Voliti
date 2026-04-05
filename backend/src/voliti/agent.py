@@ -28,16 +28,30 @@ def _resolve_user_namespace(ctx: Any) -> tuple[str, ...]:
     支持通过 configurable.user_id 传入自定义用户标识，
     实现多用户或评估场景下的 Store 隔离。
     默认回退到 ("voliti", "user")。
-    """
-    from langgraph.config import get_config
 
+    解析优先级：
+    1. ctx.runtime.config（DeepAgent 运行时注入）
+    2. langgraph.config.get_config()（LangGraph 上下文）
+    3. 默认 ("voliti", "user")
+    """
+    # 优先从 runtime config 读取（与 StoreBackend legacy 一致）
+    runtime_cfg = getattr(getattr(ctx, "runtime", None), "config", None)
+    if isinstance(runtime_cfg, dict):
+        user_id = runtime_cfg.get("configurable", {}).get("user_id")
+        if user_id:
+            return ("voliti", str(user_id))
+
+    # Fallback 到 LangGraph context
     try:
+        from langgraph.config import get_config
+
         cfg = get_config()
         user_id = cfg.get("configurable", {}).get("user_id")
         if user_id:
             return ("voliti", str(user_id))
     except Exception:  # noqa: BLE001
         pass
+
     return _DEFAULT_USER_NAMESPACE
 
 

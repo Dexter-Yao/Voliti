@@ -40,16 +40,16 @@ async def populate_store(
     ns = make_namespace(user_id)
 
     if pre_state.profile:
-        await store_client.put_item(ns, key="profile/context.md", value=_make_file_value(pre_state.profile))
-        logger.info("[%s] Populated profile/context.md", user_id)
+        await store_client.put_item(ns, key="/profile/context.md", value=_make_file_value(pre_state.profile))
+        logger.info("[%s] Populated /profile/context.md", user_id)
 
     # 生成 LifeSign 索引文件
     index_lines = ["# LifeSign Index"]
     for plan in pre_state.coping_plans:
         plan_data = plan.model_dump()
         plan_json = json.dumps(plan_data, ensure_ascii=False, indent=2)
-        await store_client.put_item(ns, key=f"coping_plans/{plan.id}.json", value=_make_file_value(plan_json))
-        logger.info("[%s] Populated coping_plans/%s.json", user_id, plan.id)
+        await store_client.put_item(ns, key=f"/coping_plans/{plan.id}.json", value=_make_file_value(plan_json))
+        logger.info("[%s] Populated /coping_plans/%s.json", user_id, plan.id)
         index_lines.append(
             f'- {plan.id}: "{plan.trigger.get("situation", "")}" → {plan.action} '
             f"[{plan.status}, {plan.success_count}/{plan.activated_count} success]"
@@ -57,13 +57,28 @@ async def populate_store(
 
     if pre_state.coping_plans:
         await store_client.put_item(
-            ns, key="coping_plans_index.md", value=_make_file_value("\n".join(index_lines))
+            ns, key="/coping_plans_index.md", value=_make_file_value("\n".join(index_lines))
         )
-        logger.info("[%s] Populated coping_plans_index.md", user_id)
+        logger.info("[%s] Populated /coping_plans_index.md", user_id)
 
+    # 将 LifeSign 索引追加到 coach memory（确保 Coach 在 agent_memory 中看到预案列表）
+    coach_memory_parts: list[str] = []
     if pre_state.coach_memory:
-        await store_client.put_item(ns, key="coach/AGENTS.md", value=_make_file_value(pre_state.coach_memory))
-        logger.info("[%s] Populated coach/AGENTS.md", user_id)
+        coach_memory_parts.append(pre_state.coach_memory)
+    if index_lines and len(index_lines) > 1:  # 有预案时追加索引
+        coach_memory_parts.append("\n".join(index_lines))
+
+    if coach_memory_parts:
+        await store_client.put_item(
+            ns, key="/coach/AGENTS.md", value=_make_file_value("\n\n".join(coach_memory_parts))
+        )
+        logger.info("[%s] Populated /coach/AGENTS.md (with LifeSign index)", user_id)
+
+    for entry in pre_state.ledger_entries:
+        entry_data = json.dumps(entry.data, ensure_ascii=False, indent=2)
+        key = f"/ledger/{entry.date}/{entry.time}_{entry.type}.json"
+        await store_client.put_item(ns, key=key, value=_make_file_value(entry_data))
+        logger.info("[%s] Populated %s", user_id, key)
 
 
 async def clear_store(store_client: Any, *, user_id: str = "user") -> None:
