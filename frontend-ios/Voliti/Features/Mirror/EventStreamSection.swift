@@ -7,7 +7,6 @@ struct EventStreamSection: View {
     let groups: [(date: Date, events: [BehaviorEvent])]
     let isExpanded: (Date) -> Bool
     let toggleExpanded: (Date) -> Void
-    let eventCount: (Date) -> Int
     let cardLookup: (String) -> InterventionCard?
     var onCardTap: ((InterventionCard) -> Void)?
 
@@ -150,15 +149,19 @@ struct EventStreamSection: View {
         return date < yesterday
     }
 
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "M月d日"
+        return f
+    }()
+
     private func dayLabel(_ date: Date) -> String {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         if date == today { return "今天" }
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
         if date == yesterday { return "昨天" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M月d日"
-        return formatter.string(from: date)
+        return Self.dayFormatter.string(from: date)
     }
 
     private func isWeekBoundary(at index: Int) -> Bool {

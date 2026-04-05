@@ -78,11 +78,6 @@ final class MirrorViewModel {
         }
     }
 
-    func eventCount(for date: Date) -> Int {
-        let group = filteredGroupedEvents.first { $0.date == date }
-        return group?.events.count ?? 0
-    }
-
     // MARK: - Card Lookup
 
     func card(for cardId: String) -> InterventionCard? {

@@ -41,7 +41,7 @@ struct FilterBar: View {
                                 : StarpathTokens.obsidian
                         )
                         .padding(.horizontal, StarpathTokens.spacingMD)
-                        .padding(.vertical, StarpathTokens.spacingXS + 2)
+                        .padding(.vertical, StarpathTokens.spacingSM)
                         .background(
                             filter == selected
                                 ? StarpathTokens.obsidian

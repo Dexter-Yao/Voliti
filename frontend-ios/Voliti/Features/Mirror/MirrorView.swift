@@ -57,7 +57,6 @@ struct MirrorView: View {
                             groups: viewModel.filteredGroupedEvents,
                             isExpanded: viewModel.isExpanded,
                             toggleExpanded: viewModel.toggleExpanded,
-                            eventCount: viewModel.eventCount,
                             cardLookup: viewModel.card(for:),
                             onCardTap: { card in
                                 viewModel.selectedCard = card
