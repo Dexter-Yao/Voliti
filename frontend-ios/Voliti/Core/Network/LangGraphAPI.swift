@@ -86,26 +86,25 @@ struct LangGraphAPI: Sendable {
 
     /// 从 LangGraph Store 获取单个 item 的 value
     func fetchStoreItem(namespace: [String], key: String) async throws -> [String: Any]? {
-        let url = APIConfiguration.baseURL.appendingPathComponent("store/items/search")
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        Self.applyAuth(&request)
-
-        let body: [String: Any] = [
-            "namespace_prefix": namespace,
-            "filter": ["key": key],
-            "limit": 1,
+        let ns = namespace.joined(separator: ".")
+        var components = URLComponents(
+            url: APIConfiguration.baseURL.appendingPathComponent("store/items"),
+            resolvingAgainstBaseURL: false
+        )!
+        components.queryItems = [
+            URLQueryItem(name: "namespace", value: ns),
+            URLQueryItem(name: "key", value: key),
         ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "GET"
+        Self.applyAuth(&request)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         try validateResponse(response)
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let items = json["items"] as? [[String: Any]],
-              let first = items.first,
-              let value = first["value"] as? [String: Any] else {
+              let value = json["value"] as? [String: Any] else {
             return nil
         }
         return value
