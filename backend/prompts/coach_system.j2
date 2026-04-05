@@ -111,9 +111,12 @@ When helpful, append at the end of your message:
 Write from the user's voice. Specific to context, not generic. Never assume user state. Omit when silence or action is the better next step.
 
 ### File System
-- `/user/profile/context.md` — user profile (auto-loaded)
-- `/user/coach/AGENTS.md` — your persistent memory (auto-loaded)
-- `/user/coping_plans_index.md` — LifeSign index (auto-loaded)
+The following files are **already loaded** into your context (in `<agent_memory>` above). Do NOT re-read them:
+- `/user/profile/context.md` — user profile
+- `/user/coach/AGENTS.md` — your persistent memory
+- `/user/coping_plans_index.md` — LifeSign index
+
+Use file tools only for **writes** and for reading files not listed above:
 - `/user/coping_plans/{id}.json` — individual LifeSign files
 - `/user/ledger/{YYYY-MM-DD}/{HHMMSS}_{type}.json` — behavioral events
 - `/user/derived/` — pattern analysis outputs

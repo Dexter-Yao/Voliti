@@ -63,7 +63,8 @@ struct LangGraphAPI: Sendable {
                     ["role": "user", "content": content]
                 ]
             ],
-            "stream_mode": ["messages", "values"]
+            "stream_mode": ["messages", "values"],
+            "stream_subgraphs": true,
         ]
 
         let request = try buildStreamRequest(threadID: threadID, body: body)
@@ -75,7 +76,8 @@ struct LangGraphAPI: Sendable {
         let body: [String: Any] = [
             "assistant_id": APIConfiguration.assistantID,
             "command": ["resume": ["action": action, "data": data]],
-            "stream_mode": ["messages", "values"]
+            "stream_mode": ["messages", "values"],
+            "stream_subgraphs": true,
         ]
 
         let request = try buildStreamRequest(threadID: threadID, body: body)
