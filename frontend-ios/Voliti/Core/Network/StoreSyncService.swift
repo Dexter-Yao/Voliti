@@ -11,6 +11,7 @@ private let logger = Logger(subsystem: "com.voliti", category: "StoreSyncService
 final class StoreSyncService {
     private let api = LangGraphAPI()
     private let modelContext: ModelContext
+    private static let isoFormatter = ISO8601DateFormatter()
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -44,7 +45,7 @@ final class StoreSyncService {
 
                 let lastUpdated: Date
                 if let str = lastUpdatedStr {
-                    lastUpdated = ISO8601DateFormatter().date(from: str) ?? .now
+                    lastUpdated = Self.isoFormatter.date(from: str) ?? .now
                 } else {
                     lastUpdated = .now
                 }
