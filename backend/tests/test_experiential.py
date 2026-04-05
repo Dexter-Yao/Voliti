@@ -21,7 +21,7 @@ TEST_PROMPT = "test prompt for intervention"
 def _prefill_cache() -> None:
     """预填充缓存，跳过 Gemini API 调用。"""
     cache_key = hashlib.sha256(TEST_PROMPT.encode()).hexdigest()
-    _intervention_cache[cache_key] = (FAKE_B64, FAKE_MIME)
+    _intervention_cache[cache_key] = (FAKE_B64, FAKE_MIME, FAKE_B64, FAKE_MIME)
     yield
     _intervention_cache.pop(cache_key, None)
 
@@ -149,47 +149,97 @@ class TestExperientialInterventionResponse:
 
 
 class TestExperientialCardPersistence:
-    """用户接受干预后，卡片应持久化到 Store。"""
+    """两阶段持久化：_pre_store_card 预写 pending，_finalize_card 确认或删除。"""
 
-    def test_persist_card_writes_to_store(self) -> None:
-        """_persist_card 应将卡片数据写入 Store。"""
+    def test_pre_store_card_writes_pending(self) -> None:
+        """_pre_store_card 应写入 status=pending 的卡片数据。"""
         from langgraph.store.memory import InMemoryStore
 
-        from voliti.tools.experiential import _persist_card
+        from voliti.tools.experiential import INTERVENTIONS_NAMESPACE, _pre_store_card
 
         store = InMemoryStore()
-        card_id = _persist_card(
+        _pre_store_card(
             store=store,
+            card_id="card_test01",
             image_data_url="data:image/jpeg;base64,abc123",
             caption="Test caption",
             purpose="future_self",
         )
 
-        items = store.search(("voliti", "user", "interventions"))
+        items = store.search(INTERVENTIONS_NAMESPACE)
         assert len(items) == 1
         item = items[0]
-        assert item.key == card_id
-        assert item.value["imageUrl"] == "data:image/jpeg;base64,abc123"
+        assert item.key == "card_test01"
+        assert item.value["imageData"] == "data:image/jpeg;base64,abc123"
         assert item.value["caption"] == "Test caption"
         assert item.value["purpose"] == "future_self"
+        assert item.value["status"] == "pending"
         assert "timestamp" in item.value
 
-    def test_persist_card_noop_when_store_is_none(self) -> None:
-        """store 为 None 时 _persist_card 应返回 None。"""
-        from voliti.tools.experiential import _persist_card
+    def test_pre_store_card_noop_when_store_is_none(self) -> None:
+        """store 为 None 时 _pre_store_card 应静默跳过。"""
+        from voliti.tools.experiential import _pre_store_card
 
-        result = _persist_card(
+        _pre_store_card(
             store=None,
+            card_id="card_test01",
             image_data_url="data:image/jpeg;base64,abc123",
             caption="Test",
             purpose="future_self",
         )
-        assert result is None
+
+    def test_finalize_card_accepted(self) -> None:
+        """accepted=True 应将 status 更新为 accepted。"""
+        from langgraph.store.memory import InMemoryStore
+
+        from voliti.tools.experiential import (
+            INTERVENTIONS_NAMESPACE,
+            _finalize_card,
+            _pre_store_card,
+        )
+
+        store = InMemoryStore()
+        _pre_store_card(
+            store=store,
+            card_id="card_test01",
+            image_data_url="data:image/jpeg;base64,abc123",
+            caption="Test",
+            purpose="future_self",
+        )
+        _finalize_card(store=store, card_id="card_test01", accepted=True)
+
+        item = store.get(INTERVENTIONS_NAMESPACE, "card_test01")
+        assert item is not None
+        assert item.value["status"] == "accepted"
+
+    def test_finalize_card_rejected(self) -> None:
+        """accepted=False 应删除预写入的 card。"""
+        from langgraph.store.memory import InMemoryStore
+
+        from voliti.tools.experiential import (
+            INTERVENTIONS_NAMESPACE,
+            _finalize_card,
+            _pre_store_card,
+        )
+
+        store = InMemoryStore()
+        _pre_store_card(
+            store=store,
+            card_id="card_test01",
+            image_data_url="data:image/jpeg;base64,abc123",
+            caption="Test",
+            purpose="future_self",
+        )
+        _finalize_card(store=store, card_id="card_test01", accepted=False)
+
+        item = store.get(INTERVENTIONS_NAMESPACE, "card_test01")
+        assert item is None
 
     @patch("voliti.tools.experiential.interrupt")
-    @patch("voliti.tools.experiential._persist_card")
-    def test_accept_triggers_persistence(self, mock_persist, mock_interrupt) -> None:  # noqa: ANN001
-        """用户接受时应调用 _persist_card。"""
+    @patch("voliti.tools.experiential._finalize_card")
+    @patch("voliti.tools.experiential._pre_store_card")
+    def test_accept_triggers_finalize_accepted(self, mock_pre_store, mock_finalize, mock_interrupt) -> None:  # noqa: ANN001
+        """用户接受时应调用 _finalize_card(accepted=True)。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
 
         compose_experiential_intervention.invoke({
@@ -198,12 +248,15 @@ class TestExperientialCardPersistence:
             "caption": "A glimpse.",
         })
 
-        mock_persist.assert_called_once()
+        mock_pre_store.assert_called_once()
+        mock_finalize.assert_called_once()
+        assert mock_finalize.call_args[1]["accepted"] is True
 
     @patch("voliti.tools.experiential.interrupt")
-    @patch("voliti.tools.experiential._persist_card")
-    def test_reject_does_not_persist(self, mock_persist, mock_interrupt) -> None:  # noqa: ANN001
-        """用户拒绝时不应调用 _persist_card。"""
+    @patch("voliti.tools.experiential._finalize_card")
+    @patch("voliti.tools.experiential._pre_store_card")
+    def test_reject_triggers_finalize_not_accepted(self, mock_pre_store, mock_finalize, mock_interrupt) -> None:  # noqa: ANN001
+        """用户拒绝时应调用 _finalize_card(accepted=False)。"""
         mock_interrupt.return_value = {"action": "reject"}
 
         compose_experiential_intervention.invoke({
@@ -211,12 +264,15 @@ class TestExperientialCardPersistence:
             "purpose": "future_self",
         })
 
-        mock_persist.assert_not_called()
+        mock_pre_store.assert_called_once()
+        mock_finalize.assert_called_once()
+        assert mock_finalize.call_args[1]["accepted"] is False
 
     @patch("voliti.tools.experiential.interrupt")
-    @patch("voliti.tools.experiential._persist_card")
-    def test_dismiss_does_not_persist(self, mock_persist, mock_interrupt) -> None:  # noqa: ANN001
-        """用户选择 dismiss 时不应调用 _persist_card。"""
+    @patch("voliti.tools.experiential._finalize_card")
+    @patch("voliti.tools.experiential._pre_store_card")
+    def test_dismiss_triggers_finalize_not_accepted(self, mock_pre_store, mock_finalize, mock_interrupt) -> None:  # noqa: ANN001
+        """用户选择 dismiss 时应调用 _finalize_card(accepted=False)。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "dismiss"}}
 
         compose_experiential_intervention.invoke({
@@ -224,7 +280,9 @@ class TestExperientialCardPersistence:
             "purpose": "future_self",
         })
 
-        mock_persist.assert_not_called()
+        mock_pre_store.assert_called_once()
+        mock_finalize.assert_called_once()
+        assert mock_finalize.call_args[1]["accepted"] is False
 
 
 class TestAspectRatioMapping:
