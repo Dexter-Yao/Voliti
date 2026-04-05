@@ -131,7 +131,6 @@ struct SSEClient: Sendable {
 
     nonisolated private static func parseValuesEvent(_ data: Data) -> SSEEvent? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            logger.debug("values event: JSON 解析失败")
             return nil
         }
 
