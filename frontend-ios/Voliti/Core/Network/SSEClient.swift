@@ -98,7 +98,7 @@ struct SSEClient: Sendable {
         case "messages/complete":
             return parseCompleteMessage(jsonData)
         case "values":
-            return parseValuesForInterrupt(jsonData)
+            return parseValuesEvent(jsonData)
         case "end":
             return .done
         default:
@@ -129,26 +129,31 @@ struct SSEClient: Sendable {
 
     private static let logger = Logger(subsystem: "voliti", category: "SSEClient")
 
-    nonisolated private static func parseValuesForInterrupt(_ data: Data) -> SSEEvent? {
+    nonisolated private static func parseValuesEvent(_ data: Data) -> SSEEvent? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             logger.debug("values event: JSON 解析失败")
             return nil
         }
-        guard let interrupt = json["interrupt"] as? [String: Any] else {
-            return nil  // values 事件不含 interrupt 是正常情况
-        }
-        guard let value = interrupt["value"] as? [[String: Any]],
-              let first = value.first else {
-            logger.warning("interrupt value 结构不符预期: \(String(describing: interrupt))")
-            return nil
+
+        // 优先检查 interrupt（A2UI 交互）
+        if let interrupt = json["interrupt"] as? [String: Any],
+           let value = interrupt["value"] as? [[String: Any]],
+           let first = value.first,
+           let type = first["type"] as? String, type == "a2ui",
+           let payloadData = try? JSONSerialization.data(withJSONObject: first) {
+            return .interrupt(payloadData)
         }
 
-        if let type = first["type"] as? String, type == "a2ui" {
-            if let payloadData = try? JSONSerialization.data(withJSONObject: first) {
-                return .interrupt(payloadData)
+        // 从 messages 数组提取最新 AI 消息（Coach 经过 tool calls 后的最终文本）
+        if let messages = json["messages"] as? [[String: Any]] {
+            for msg in messages.reversed() {
+                guard let type = msg["type"] as? String, type == "ai",
+                      let content = msg["content"] as? String,
+                      !content.isEmpty else { continue }
+                return .message(role: "assistant", content: content)
             }
         }
-        logger.debug("interrupt 非 a2ui 类型，已忽略")
+
         return nil
     }
 }
