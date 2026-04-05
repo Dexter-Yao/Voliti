@@ -17,6 +17,9 @@ final class MirrorViewModel {
     var selectedFilter: EventFilter = .all
     var expandedDates: Set<Date> = []
     var selectedCard: InterventionCard?
+    var lifeSignPlans: [LifeSignPlan] = []
+    var dashboardConfig: DashboardConfig?
+    var showLifeSignList = false
 
     private var allEvents: [BehaviorEvent] = []
     private var modelContext: ModelContext?
@@ -115,6 +118,26 @@ final class MirrorViewModel {
             cards = try modelContext.fetch(cardDescriptor)
         } catch {
             logger.error("Failed to load cards: \(error.localizedDescription)")
+        }
+
+        // LifeSign Plans
+        let planDescriptor = FetchDescriptor<LifeSignPlan>(
+            sortBy: [SortDescriptor(\.lastUpdated, order: .reverse)]
+        )
+        do {
+            lifeSignPlans = try modelContext.fetch(planDescriptor)
+        } catch {
+            logger.error("Failed to load LifeSign plans: \(error.localizedDescription)")
+        }
+
+        // Dashboard Config
+        let configDescriptor = FetchDescriptor<DashboardConfig>(
+            predicate: #Predicate { $0.id == "default" }
+        )
+        do {
+            dashboardConfig = try modelContext.fetch(configDescriptor).first
+        } catch {
+            logger.error("Failed to load dashboard config: \(error.localizedDescription)")
         }
 
         // Events

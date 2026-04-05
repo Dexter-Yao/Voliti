@@ -29,9 +29,20 @@ struct MirrorView: View {
 
                 // Dashboard
                 DashboardSection(
+                    config: viewModel.dashboardConfig,
                     latestWeight: viewModel.latestWeight,
-                    todayCalories: viewModel.todayCalories
+                    todayCalories: viewModel.todayCalories,
+                    userGoal: viewModel.dashboardConfig?.userGoal
                 )
+                .padding(.vertical, StarpathTokens.spacingLG)
+
+                StarpathDivider()
+                    .padding(.horizontal, StarpathTokens.spacingMD)
+
+                // LifeSign 摘要
+                LifeSignSummaryCard(plans: viewModel.lifeSignPlans) {
+                    viewModel.showLifeSignList = true
+                }
                 .padding(.vertical, StarpathTokens.spacingLG)
 
                 StarpathDivider()
@@ -76,6 +87,11 @@ struct MirrorView: View {
                 CardDetailView(card: card) {
                     viewModel.deleteCard(card)
                 }
+            }
+        }
+        .sheet(isPresented: $viewModel.showLifeSignList) {
+            NavigationStack {
+                LifeSignListView(plans: viewModel.lifeSignPlans)
             }
         }
     }
