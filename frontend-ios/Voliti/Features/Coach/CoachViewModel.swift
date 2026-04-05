@@ -229,27 +229,37 @@ final class CoachViewModel {
 
     private func processStream(_ stream: AsyncStream<SSEEvent>, assistantMessage: ChatMessage) async {
         var fullContent = ""
+        var eventCount = 0
+
+        logger.info("processStream: started")
 
         for await event in stream {
             if Task.isCancelled { break }
+            eventCount += 1
 
             switch event {
             case .token(let content):
                 guard !content.isEmpty else { break }
                 fullContent = content
+                let stripped = Self.stripFencedBlocks(from: fullContent)
+                logger.debug("processStream: token \(eventCount), fullContent=\(fullContent.count) chars, stripped=\(stripped.count) chars")
                 await MainActor.run {
-                    assistantMessage.textContent = Self.stripFencedBlocks(from: fullContent)
+                    assistantMessage.textContent = stripped
                 }
 
             case .message(_, let content):
                 guard !content.isEmpty else { break }
                 fullContent = content
+                let stripped = Self.stripFencedBlocks(from: fullContent)
+                logger.info("processStream: message \(eventCount), fullContent=\(fullContent.count) chars, stripped=\(stripped.count) chars")
                 await MainActor.run {
-                    assistantMessage.textContent = Self.stripFencedBlocks(from: fullContent)
+                    assistantMessage.textContent = stripped
                 }
 
             case .interrupt(let data):
+                logger.info("processStream: interrupt at event \(eventCount), fullContent=\(fullContent.count) chars, data=\(data.count) bytes")
                 if let payload = try? JSONDecoder().decode(A2UIPayload.self, from: data) {
+                    logger.info("processStream: A2UI decoded, \(payload.components.count) components")
                     await MainActor.run {
                         if !fullContent.isEmpty {
                             assistantMessage.textContent = Self.stripFencedBlocks(from: fullContent)
@@ -259,17 +269,23 @@ final class CoachViewModel {
                         self.isStreaming = false
                     }
                     return
+                } else {
+                    logger.error("processStream: A2UI decode FAILED")
                 }
 
             case .done:
+                logger.info("processStream: done at event \(eventCount)")
                 break
 
             case .error(let error):
+                logger.error("processStream: error at event \(eventCount): \(error.localizedDescription)")
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                 }
             }
         }
+
+        logger.info("processStream: loop ended after \(eventCount) events, fullContent=\(fullContent.count) chars")
 
         await MainActor.run {
             let (afterThinking, thinking) = Self.extractCoachThinking(from: fullContent)
@@ -280,6 +296,7 @@ final class CoachViewModel {
             self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
+            logger.info("processStream: final text=\(cleaned.count) chars, replies=\(replies.count)")
         }
     }
 
