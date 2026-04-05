@@ -139,10 +139,9 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse
     ) async {
         let identifier = response.notification.request.identifier
-        let link: DeepLink = (identifier == NotificationID.eveningReview) ? .review : .checkin
 
         await MainActor.run {
-            pendingDeepLink = link
+            pendingDeepLink = (identifier == NotificationID.eveningReview) ? .review : .checkin
         }
     }
 }

@@ -127,7 +127,7 @@ struct SSEClient: Sendable {
         return .message(role: type == "ai" ? "assistant" : "user", content: content)
     }
 
-    nonisolated(unsafe) private static let logger = Logger(subsystem: "voliti", category: "SSEClient")
+    private static let logger = Logger(subsystem: "voliti", category: "SSEClient")
 
     nonisolated private static func parseValuesForInterrupt(_ data: Data) -> SSEEvent? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
