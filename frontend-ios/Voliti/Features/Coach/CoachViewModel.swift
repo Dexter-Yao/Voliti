@@ -351,7 +351,11 @@ final class CoachViewModel {
             let range = NSRange(text.startIndex..., in: text)
             text = pattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
         }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 流式阶段 fenced block 正在逐字构建时，regex 还匹配不到完整 tag，
+        // 但剩余文本以 ``` 开头说明是 partial opening，不应展示给用户
+        if text.hasPrefix("```") { return "" }
+        return text
     }
 
     // MARK: - Fenced JSON Block Extraction

@@ -94,7 +94,7 @@ struct LangGraphAPI: Sendable {
 
     // MARK: - Store
 
-    /// 从 LangGraph Store 获取单个 item 的 value
+    /// 从 LangGraph Store 获取单个 item 的 value。item 不存在时返回 nil。
     func fetchStoreItem(namespace: [String], key: String) async throws -> [String: Any]? {
         let ns = namespace.joined(separator: ".")
         var components = URLComponents(
@@ -111,9 +111,12 @@ struct LangGraphAPI: Sendable {
         Self.applyAuth(&request)
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
 
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+        // Store 在 item 不存在时可能返回 404 或非 JSON 响应，视为 nil
+        guard let http = response as? HTTPURLResponse else { return nil }
+        guard (200..<300).contains(http.statusCode) else { return nil }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let value = json["value"] as? [String: Any] else {
             return nil
         }
