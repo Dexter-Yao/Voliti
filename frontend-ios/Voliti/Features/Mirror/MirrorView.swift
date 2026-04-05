@@ -7,6 +7,7 @@ import SwiftData
 struct MirrorView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = MirrorViewModel()
+    @AppStorage("onboardingComplete") private var onboardingComplete = false
 
     var body: some View {
         ScrollView {
@@ -14,6 +15,12 @@ struct MirrorView: View {
                 // Chapter Context
                 if let chapter = viewModel.chapter {
                     ChapterContextSection(chapter: chapter)
+                        .padding(.bottom, StarpathTokens.spacingLG)
+
+                    StarpathDivider()
+                        .padding(.horizontal, StarpathTokens.spacingMD)
+                } else if !onboardingComplete {
+                    onboardingGuide
                         .padding(.bottom, StarpathTokens.spacingLG)
 
                     StarpathDivider()
@@ -88,6 +95,17 @@ struct MirrorView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, StarpathTokens.spacingXL)
         .padding(.horizontal, StarpathTokens.spacingXL)
+    }
+
+    private var onboardingGuide: some View {
+        VStack(alignment: .leading, spacing: StarpathTokens.spacingSM) {
+            Text("与 Coach 完成首次对话后")
+                .starpathSerif(size: StarpathTokens.fontSizeLG)
+            Text("这里会显示你的数据面板")
+                .starpathSans()
+                .foregroundStyle(StarpathTokens.obsidian40)
+        }
+        .padding(.horizontal, StarpathTokens.spacingMD)
     }
 
     // MARK: - Pulse Data
