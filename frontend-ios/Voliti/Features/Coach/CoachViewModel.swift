@@ -235,12 +235,14 @@ final class CoachViewModel {
 
             switch event {
             case .token(let content):
+                guard !content.isEmpty else { break }
                 fullContent = content
                 await MainActor.run {
                     assistantMessage.textContent = Self.stripFencedBlocks(from: fullContent)
                 }
 
             case .message(_, let content):
+                guard !content.isEmpty else { break }
                 fullContent = content
                 await MainActor.run {
                     assistantMessage.textContent = Self.stripFencedBlocks(from: fullContent)
