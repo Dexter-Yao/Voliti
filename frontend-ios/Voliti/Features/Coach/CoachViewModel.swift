@@ -435,21 +435,22 @@ final class CoachViewModel {
 
     /// 从 LangGraph Store 下载原图，替换 InterventionCard 中的缩略图
     private func upgradeCardImage(card: InterventionCard, cardID: String) async {
-        let api = LangGraphAPI()
         let namespace = ["voliti", "user", "interventions"]
 
         do {
             guard let value = try await api.fetchStoreItem(namespace: namespace, key: cardID),
                   let imageDataURL = value["imageData"] as? String,
                   let fullImage = Data.fromDataURL(imageDataURL) else {
+                trace("upgradeCardImage: no image data for \(cardID)")
                 return
             }
 
             await MainActor.run {
                 card.imageData = fullImage
             }
+            trace("upgradeCardImage: upgraded \(cardID), \(fullImage.count) bytes")
         } catch {
-            // 下载失败时保留缩略图，不阻断用户体验
+            trace("upgradeCardImage failed: \(error.localizedDescription)")
         }
     }
 

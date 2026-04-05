@@ -2,7 +2,6 @@
 // ABOUTME: 基于 URLSession AsyncBytes，无第三方依赖
 
 import Foundation
-import os.log
 
 // MARK: - SSE Event Types
 
@@ -167,8 +166,6 @@ struct SSEClient: Sendable {
         }
         return .message(role: type == "ai" ? "assistant" : "user", content: content)
     }
-
-    private static let logger = Logger(subsystem: "voliti", category: "SSEClient")
 
     nonisolated private static func parseValuesEvent(_ data: Data) -> [SSEEvent] {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
