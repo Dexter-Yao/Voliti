@@ -225,10 +225,10 @@
 
         {% if turn.images %}
         {% for img in turn.images %}
-        {% if img.src and img.src.startswith('data:') %}
+        {% if img.src and img.src != '[data_url]' %}
         <div>
-          <div class="bubble-label">Generated Image</div>
-          <img class="eval-image" src="{{ img.src }}" alt="{{ img.alt }}" />
+          <div class="bubble-label">Generated Image ({{ img.alt }})</div>
+          <img class="eval-image" src="{{ img.src }}" alt="{{ img.alt }}" style="max-width: 384px; border-radius: 8px;" />
         </div>
         {% endif %}
         {% endfor %}

@@ -122,6 +122,8 @@ class A2UIPayload(BaseModel):
     type: Literal["a2ui"] = "a2ui"
     components: list[Component]
     layout: Literal["half", "three-quarter", "full"] = "three-quarter"
+    metadata: dict[str, str] = {}
+    """透传给前端的引用信息（如 card_id），不参与组件渲染。"""
 
 
 class A2UIResponse(BaseModel):

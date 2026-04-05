@@ -185,16 +185,18 @@ class CoachClient:
 
 
 def _extract_images(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """从 A2UIPayload 中提取 ImageComponent 元信息。
+    """从 A2UIPayload 中提取 ImageComponent 信息。
 
-    不存储 base64 数据——仅保留 alt 和 src 类型标记。
+    保留缩略图 base64 data URL（~50KB，用于 eval 报告渲染）。
+    同时提取 payload.metadata 中的 card_id（如果存在）。
     """
+    card_id = payload.get("metadata", {}).get("card_id", "")
     images = []
     for comp in payload.get("components", []):
         if comp.get("kind") == "image":
-            src = comp.get("src", "")
             images.append({
-                "src": "[data_url]" if src.startswith("data:") else src,
+                "src": comp.get("src", ""),
                 "alt": comp.get("alt", ""),
+                "card_id": card_id,
             })
     return images

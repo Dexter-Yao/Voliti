@@ -112,7 +112,7 @@ async def _run(seeds: list[Seed], config: EvalConfig) -> None:
     click.echo(f"Judge: {config.judge_model.deployment} (reasoning={config.judge_model.reasoning_effort})")
     click.echo()
 
-    result = await run_evaluation(seeds, config, judge_fn=judge.score)
+    result = await run_evaluation(seeds, config, judge_fn=judge.score, output_dir=str(output_dir))
 
     # 保存 transcript 和评分
     for sr in result.seed_results:

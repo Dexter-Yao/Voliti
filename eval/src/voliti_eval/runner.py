@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
+import os
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -80,12 +82,36 @@ def _extract_structured_blocks(text: str) -> tuple[str, dict | None, list[str] |
     return text.strip(), thinking, replies
 
 
+def _save_image_to_file(data_url: str, output_dir: str, filename: str) -> str | None:
+    """将 base64 data URL 解码并保存为图片文件，返回相对路径。
+
+    文件保存到 {output_dir}/images/{filename}.{ext}，
+    返回相对路径 images/{filename}.{ext}（供 report.html 引用）。
+    """
+    if not data_url.startswith("data:"):
+        return None
+    try:
+        header, b64_data = data_url.split(",", 1)
+        raw = base64.b64decode(b64_data)
+        ext = "jpg" if "jpeg" in header else "png"
+        rel_path = f"images/{filename}.{ext}"
+        abs_path = os.path.join(output_dir, rel_path)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        with open(abs_path, "wb") as f:
+            f.write(raw)
+        return rel_path
+    except Exception:
+        logger.warning("Failed to save image: %s", filename)
+        return None
+
+
 async def run_conversation(
     seed: Seed,
     thread_id: str,
     auditor: Auditor,
     client: CoachClient,
     max_turns: int,
+    output_dir: str = "",
 ) -> Transcript:
     """执行单个 seed 的完整对话循环。
 
@@ -131,9 +157,16 @@ async def run_conversation(
                 coach_text_parts.append(event.text)
             elif isinstance(event, A2UIInterruptEvent):
                 pending_interrupt = event
-                for img in event.images:
+                for img_idx, img in enumerate(event.images):
+                    src = img.get("src", "")
+                    # 将缩略图保存为文件（~50KB），transcript 引用相对路径
+                    if output_dir and src.startswith("data:"):
+                        filename = f"{seed.id}_turn{turn_index}_img{img_idx}"
+                        saved = _save_image_to_file(src, output_dir, filename)
+                        if saved:
+                            src = saved
                     all_images.append(ImageRecord(
-                        src=img.get("src", ""),
+                        src=src,
                         alt=img.get("alt", ""),
                     ))
 
@@ -245,6 +278,7 @@ async def _run_single_seed(
     config: EvalConfig,
     auditor: Auditor,
     judge_fn: Any | None,
+    output_dir: str = "",
 ) -> SeedResult:
     """执行单个 seed 的完整流程（Store 隔离 → 对话 → 评分）。"""
     user_id = f"eval_{seed.id}"
@@ -265,7 +299,7 @@ async def _run_single_seed(
         # 创建线程 + 运行对话
         thread_id = await client.create_thread()
         max_turns = seed.max_turns or config.max_turns_default
-        transcript = await run_conversation(seed, thread_id, auditor, client, max_turns)
+        transcript = await run_conversation(seed, thread_id, auditor, client, max_turns, output_dir=output_dir)
 
         # Judge 评分
         if judge_fn:
@@ -304,6 +338,7 @@ async def run_evaluation(
     seeds: list[Seed],
     config: EvalConfig,
     judge_fn: Any = None,
+    output_dir: str = "",
 ) -> EvalResult:
     """并发执行所有 seed 场景，每个 seed 使用独立的 Store namespace。
 
@@ -311,6 +346,7 @@ async def run_evaluation(
         seeds: 要运行的 seed 列表。
         config: 评估配置。
         judge_fn: 可选的 Judge 评分函数，签名 (Seed, Transcript) -> ScoreCard。
+        output_dir: 评估输出目录，图片保存到其 images/ 子目录。
     """
     result = EvalResult(
         run_id=datetime.now(UTC).strftime("%Y%m%d_%H%M%S"),
@@ -327,7 +363,7 @@ async def run_evaluation(
     auditor = Auditor(config.auditor_model)
 
     logger.info("Running %d seeds concurrently", len(seeds))
-    tasks = [_run_single_seed(seed, config, auditor, judge_fn) for seed in seeds]
+    tasks = [_run_single_seed(seed, config, auditor, judge_fn, output_dir=output_dir) for seed in seeds]
     seed_results = await asyncio.gather(*tasks)
 
     # 按 seed ID 排序保持输出一致性
