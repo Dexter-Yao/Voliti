@@ -12,6 +12,7 @@ enum EventType: String, Codable {
     case stateCheckin = "state_checkin"
     case goalUpdate = "goal_update"
     case appAction = "app_action"
+    case signatureImage = "signature_image"
 
     var label: String {
         switch self {
@@ -22,6 +23,7 @@ enum EventType: String, Codable {
         case .stateCheckin: "状态"
         case .goalUpdate: "目标"
         case .appAction: "操作"
+        case .signatureImage: "里程碑"
         }
     }
 }
@@ -66,6 +68,9 @@ final class BehaviorEvent {
     // Goal / App Action
     var details: String?
     var action: String?
+
+    // Signature Image
+    var cardId: String?
 
     init(
         id: String = UUID().uuidString,
