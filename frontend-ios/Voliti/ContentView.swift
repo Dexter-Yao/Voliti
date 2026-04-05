@@ -1,4 +1,4 @@
-// ABOUTME: 应用根视图，自定义 TabBar 承载三个页签
+// ABOUTME: 应用根视图，自定义 TabBar 承载两个页签（COACH + MIRROR）
 // ABOUTME: Starpath Protocol 规范：mono 字体、无图标、2px bottom border
 
 import SwiftUI
@@ -8,15 +8,14 @@ struct ContentView: View {
     @Environment(NotificationService.self) private var notificationService
     @State private var selectedTab = 0
 
-    private let tabs = ["COACH", "MAP", "JOURNAL"]
+    private let tabs = ["COACH", "MIRROR"]
 
     var body: some View {
         VStack(spacing: 0) {
             Group {
                 switch selectedTab {
                 case 0: CoachView()
-                case 1: MapView()
-                case 2: JournalView()
+                case 1: MirrorView()
                 default: CoachView()
                 }
             }
