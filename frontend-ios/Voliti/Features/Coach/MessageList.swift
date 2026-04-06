@@ -72,7 +72,7 @@ private struct MessageBubble: View {
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: StarpathTokens.spacingXS) {
                 // 思路卡片（仅 assistant 消息）
                 if message.role == .assistant, let strategy = message.thinkingStrategy {
-                    ThinkingCard(strategy: strategy, observations: message.thinkingObservations ?? [])
+                    ThinkingCard(strategy: strategy, observations: message.thinkingObservations ?? [], actions: message.thinkingActions ?? [])
                 }
 
                 // 图片附件

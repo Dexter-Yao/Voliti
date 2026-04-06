@@ -31,11 +31,11 @@ struct MirrorView: View {
 
                 // North Star
                 NorthStarMetric(
-                    label: "北极星",
-                    value: viewModel.latestWeight.map { String(format: "%.1f", $0) },
-                    unit: "KG",
-                    delta: viewModel.weightDelta,
-                    trendData: viewModel.weightTrend,
+                    label: viewModel.northStarConfig?.label ?? "北极星",
+                    value: viewModel.northStarDisplayValue,
+                    unit: viewModel.northStarConfig?.unit ?? "KG",
+                    delta: viewModel.northStarDelta,
+                    trendData: viewModel.northStarTrend,
                     onViewAll: { showWeightHistory = true }
                 )
                 .padding(.vertical, StarpathTokens.spacingLG)

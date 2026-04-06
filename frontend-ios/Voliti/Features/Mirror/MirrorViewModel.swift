@@ -1,5 +1,5 @@
 // ABOUTME: MIRROR 页 ViewModel，统一查询 Chapter + BehaviorEvent + InterventionCard
-// ABOUTME: 提供北极星指标、支持性指标、动态过滤、按日分组事件
+// ABOUTME: 指标数据从 DashboardConfig 读取（Coach 写入），不做本地计算
 
 import Foundation
 import SwiftData
@@ -33,30 +33,26 @@ final class MirrorViewModel {
         loadData()
     }
 
-    // MARK: - North Star
+    // MARK: - North Star (from DashboardConfig)
 
-    var latestWeight: Double? {
-        allEvents
-            .first { $0.type == .weighIn && $0.weightKg != nil }?
-            .weightKg
+    var northStarConfig: NorthStarMetricConfig? {
+        dashboardConfig?.northStar
     }
 
-    var weightDelta: Delta? {
-        let weighIns = allEvents
-            .filter { $0.type == .weighIn && $0.weightKg != nil }
-            .sorted { $0.timestamp > $1.timestamp }
-        guard weighIns.count >= 2,
-              let latest = weighIns.first?.weightKg,
-              let weekAgo = weighIns.first(where: {
-                  Calendar.current.dateComponents([.day], from: $0.timestamp, to: .now).day ?? 0 >= 6
-              })?.weightKg
-        else { return nil }
-        let diff = latest - weekAgo
-        // 减脂场景：体重下降是正向
-        return Delta(value: diff, period: "本周", isPositive: diff <= 0)
+    var northStarDisplayValue: String? {
+        northStarConfig?.currentValue?.displayText
     }
 
-    var weightTrend: [Double?] {
+    var northStarDelta: Delta? {
+        // Delta requires historical data — for now return nil
+        // Coach can write trend data in future iterations
+        nil
+    }
+
+    var northStarTrend: [Double?] {
+        // Trend requires 7-day historical data
+        // For weight, compute from ledger as a convenience
+        guard northStarConfig?.key == "weight" else { return [] }
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         return (0..<7).reversed().map { daysAgo in
@@ -72,63 +68,30 @@ final class MirrorViewModel {
         }
     }
 
-    // MARK: - Support Metrics
-
-    var todayCalories: Int? {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: .now)
-        let meals = allEvents.filter {
-            $0.type == .meal
-                && $0.kcal != nil
-                && calendar.startOfDay(for: $0.timestamp) == todayStart
-        }
-        guard !meals.isEmpty else { return nil }
-        return meals.compactMap(\.kcal).reduce(0) { $0 + Int($1) }
-    }
-
-    var todayStateScore: Int? {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: .now)
-        return allEvents
-            .first {
-                $0.type == .stateCheckin
-                    && calendar.startOfDay(for: $0.timestamp) == todayStart
-            }?.energy
-    }
-
-    var weekConsistency: String? {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        let weekStart = calendar.date(byAdding: .day, value: -6, to: today)!
-        var daysWithEvents = Set<Date>()
-        for event in allEvents where event.timestamp >= weekStart {
-            daysWithEvents.insert(calendar.startOfDay(for: event.timestamp))
-        }
-        let count = daysWithEvents.count
-        guard count > 0 else { return nil }
-        return "\(count)/7"
-    }
+    // MARK: - Support Metrics (from DashboardConfig)
 
     var supportMetrics: [SupportMetricItem] {
+        let configs = dashboardConfig?.supportMetrics ?? []
+        guard !configs.isEmpty else {
+            return defaultSupportMetrics
+        }
+        return configs
+            .sorted { $0.order < $1.order }
+            .map { config in
+                SupportMetricItem(
+                    key: config.key,
+                    label: config.label,
+                    value: config.currentValue?.displayText,
+                    subLabel: config.unit.isEmpty ? nil : config.unit
+                )
+            }
+    }
+
+    private var defaultSupportMetrics: [SupportMetricItem] {
         [
-            SupportMetricItem(
-                key: "calories",
-                label: "今日摄入",
-                value: todayCalories.map { "\($0)" },
-                subLabel: "KCAL"
-            ),
-            SupportMetricItem(
-                key: "state",
-                label: "今日状态",
-                value: todayStateScore.map { "\($0)/10" },
-                subLabel: nil
-            ),
-            SupportMetricItem(
-                key: "consistency",
-                label: "本周一致性",
-                value: weekConsistency,
-                subLabel: nil
-            ),
+            SupportMetricItem(key: "calories", label: "今日摄入", value: nil, subLabel: "KCAL"),
+            SupportMetricItem(key: "state", label: "今日状态", value: nil, subLabel: nil),
+            SupportMetricItem(key: "consistency", label: "本周一致性", value: nil, subLabel: nil),
         ]
     }
 

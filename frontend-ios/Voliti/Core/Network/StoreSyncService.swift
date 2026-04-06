@@ -1,5 +1,5 @@
 // ABOUTME: LangGraph Store → SwiftData 同步服务
-// ABOUTME: 对话结束后拉取 LifeSign 和 DashboardConfig，写入本地
+// ABOUTME: 对话结束后拉取 LifeSign、DashboardConfig、Chapter，写入本地
 
 import Foundation
 import SwiftData
@@ -22,6 +22,7 @@ final class StoreSyncService {
     func syncAll() async {
         await syncLifeSignPlans()
         await syncDashboardConfig()
+        await syncChapter()
     }
 
     // MARK: - LifeSign Plans
@@ -98,36 +99,85 @@ final class StoreSyncService {
                 return
             }
 
-            guard let metricsRaw = value["metrics"] as? [[String: Any]] else { return }
-
-            let metrics = metricsRaw.enumerated().compactMap { index, raw -> DashboardMetric? in
-                guard let key = raw["key"] as? String,
-                      let label = raw["label"] as? String else { return nil }
-                let unit = raw["unit"] as? String ?? ""
-                let order = raw["order"] as? Int ?? index
-                return DashboardMetric(key: key, label: label, unit: unit, order: order)
-            }
-
-            let userGoal = value["user_goal"] as? String
-
             let descriptor = FetchDescriptor<DashboardConfig>(
                 predicate: #Predicate { $0.id == "default" }
             )
-            if let existing = try modelContext.fetch(descriptor).first {
-                existing.metrics = metrics.sorted { $0.order < $1.order }
-                existing.userGoal = userGoal
-                existing.lastUpdated = .now
-            } else {
-                let config = DashboardConfig(
-                    metrics: metrics.sorted { $0.order < $1.order },
-                    userGoal: userGoal
-                )
+            let existing = try modelContext.fetch(descriptor).first
+
+            let config = existing ?? DashboardConfig()
+            if existing == nil {
                 modelContext.insert(config)
             }
 
-            logger.info("Dashboard config sync: \(metrics.count) metrics")
+            // Parse north_star
+            if let nsRaw = value["north_star"] as? [String: Any] {
+                let nsData = try JSONSerialization.data(withJSONObject: nsRaw)
+                config.northStarJSON = nsData
+            }
+
+            // Parse support_metrics
+            if let smRaw = value["support_metrics"] as? [[String: Any]] {
+                let smData = try JSONSerialization.data(withJSONObject: smRaw)
+                config.supportMetricsJSON = smData
+            }
+
+            config.userGoal = value["user_goal"] as? String
+            config.lastUpdated = .now
+
+            logger.info("Dashboard config sync: north_star=\(config.northStar?.key ?? "nil"), support=\(config.supportMetrics.count)")
         } catch {
             logger.error("Dashboard config sync failed: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Chapter
+
+    func syncChapter() async {
+        do {
+            guard let value = try await api.fetchStoreItem(
+                namespace: ["voliti", "user", "chapter"],
+                key: "current"
+            ) else {
+                logger.info("No current chapter in Store")
+                return
+            }
+
+            guard let chapterId = value["id"] as? String,
+                  let identityStatement = value["identity_statement"] as? String,
+                  let goal = value["goal"] as? String else {
+                logger.error("Chapter data missing required fields")
+                return
+            }
+
+            let startDate: Date
+            if let dateStr = value["start_date"] as? String {
+                startDate = Self.isoFormatter.date(from: dateStr) ?? .now
+            } else {
+                startDate = .now
+            }
+
+            let descriptor = FetchDescriptor<Chapter>(
+                sortBy: [SortDescriptor(\.startDate, order: .reverse)]
+            )
+            let chapters = try modelContext.fetch(descriptor)
+
+            if let existing = chapters.first, existing.id == chapterId {
+                existing.identityStatement = identityStatement
+                existing.goal = goal
+                existing.startDate = startDate
+            } else {
+                let chapter = Chapter(
+                    id: chapterId,
+                    identityStatement: identityStatement,
+                    goal: goal,
+                    startDate: startDate
+                )
+                modelContext.insert(chapter)
+            }
+
+            logger.info("Chapter sync: \(chapterId) — \(identityStatement)")
+        } catch {
+            logger.error("Chapter sync failed: \(error.localizedDescription)")
         }
     }
 }

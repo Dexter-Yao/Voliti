@@ -18,6 +18,7 @@ enum EventType: String, Codable {
     case lifesignDeleted = "lifesign_deleted"
     case lifesignActivated = "lifesign_activated"
     case lifesignSucceeded = "lifesign_succeeded"
+    case chapterTransition = "chapter_transition"
 
     var label: String {
         switch self {
@@ -34,6 +35,7 @@ enum EventType: String, Codable {
         case .lifesignDeleted: "预案删除"
         case .lifesignActivated: "预案激活"
         case .lifesignSucceeded: "预案成功"
+        case .chapterTransition: "篇章"
         }
     }
 }

@@ -6,12 +6,14 @@ import SwiftUI
 struct ThinkingCard: View {
     let strategy: String
     let observations: [String]
+    let actions: [String]
 
     @State private var isExpanded: Bool
 
-    init(strategy: String, observations: [String]) {
+    init(strategy: String, observations: [String], actions: [String] = []) {
         self.strategy = strategy
         self.observations = observations
+        self.actions = actions
         _isExpanded = State(initialValue: false)
     }
 
@@ -43,15 +45,29 @@ struct ThinkingCard: View {
             .buttonStyle(.plain)
 
             // 展开区域
-            if isExpanded && !observations.isEmpty {
-                VStack(alignment: .leading, spacing: StarpathTokens.spacingXS) {
-                    ForEach(Array(observations.enumerated()), id: \.offset) { _, observation in
-                        HStack(alignment: .top, spacing: StarpathTokens.spacingSM) {
-                            Text("·")
-                                .foregroundStyle(StarpathTokens.obsidian40)
-                            Text(observation)
-                                .starpathSans()
-                                .foregroundStyle(StarpathTokens.obsidian40)
+            if isExpanded {
+                VStack(alignment: .leading, spacing: StarpathTokens.spacingSM) {
+                    if !observations.isEmpty {
+                        ForEach(Array(observations.enumerated()), id: \.offset) { _, observation in
+                            HStack(alignment: .top, spacing: StarpathTokens.spacingSM) {
+                                Text("·")
+                                    .foregroundStyle(StarpathTokens.obsidian40)
+                                Text(observation)
+                                    .starpathSans()
+                                    .foregroundStyle(StarpathTokens.obsidian40)
+                            }
+                        }
+                    }
+
+                    if !actions.isEmpty {
+                        ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
+                            HStack(alignment: .top, spacing: StarpathTokens.spacingSM) {
+                                Text("→")
+                                    .foregroundStyle(StarpathTokens.copper)
+                                Text(action)
+                                    .starpathSans()
+                                    .foregroundStyle(StarpathTokens.obsidian)
+                            }
                         }
                     }
                 }

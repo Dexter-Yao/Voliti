@@ -19,6 +19,7 @@ final class ChatMessage {
     var threadID: String
     var thinkingStrategy: String?
     var thinkingObservations: [String]?
+    var thinkingActions: [String]?
 
     init(
         id: String = UUID().uuidString,
@@ -28,7 +29,8 @@ final class ChatMessage {
         timestamp: Date = .now,
         threadID: String,
         thinkingStrategy: String? = nil,
-        thinkingObservations: [String]? = nil
+        thinkingObservations: [String]? = nil,
+        thinkingActions: [String]? = nil
     ) {
         self.id = id
         self.role = role
@@ -38,5 +40,6 @@ final class ChatMessage {
         self.threadID = threadID
         self.thinkingStrategy = thinkingStrategy
         self.thinkingObservations = thinkingObservations
+        self.thinkingActions = thinkingActions
     }
 }

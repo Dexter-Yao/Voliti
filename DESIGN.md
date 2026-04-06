@@ -186,6 +186,83 @@
 - 字体：Mono 11px · obsidian-40 · 居中
 - 需要实现为独立的时间戳组件
 
+## Onboarding — 全屏对话
+
+### 设计意图
+
+Onboarding 是 Coach 的独白时刻。视觉上把 Coach 升格为前景，把界面降格为背景。用户感受到的是"一位教练在关注我"，而不是"一个表单要我填"。
+
+### 布局
+
+- 全屏覆盖（fullScreenCover），无 Tab 栏，无导航栏
+- 背景：parchment
+- 内容垂直居中偏上（top 30% 留白）
+- 左右 padding：spacingXL (32px)
+
+### 两个视觉阶段
+
+| 阶段 | Coach 消息 | 用户回复 | InputBar |
+|------|-----------|---------|----------|
+| 居中模式（Step 1-2） | Serif 18px · 居中 | Quick Reply pills（垂直排列） | 隐藏 |
+| 对话模式（Step 3+） | Serif 16px · 左对齐 | 自由输入 + 语音 | 显示 |
+
+过渡动画：300ms ease-out（Starpath fanout token）
+
+### Coach 标识
+
+- "VOLITI COACH" — Mono 12px · copper · uppercase · letter-spacing 2px
+- 位于屏幕垂直 30% 处，居中
+- 仅在 Step 1 显示，后续消息流中不重复
+
+### Quick Reply pills
+
+- 垂直排列，居中对齐
+- Sans 14px · obsidian-10 边框 · Capsule 圆角
+- 间距 spacingSM (8px)
+- 底部 padding spacingXL (32px)
+- 最后一个选项触发 InputBar 出现（"让我想想" / "我想说说"）
+
+### 语音输入
+
+InputBar 和 Quick Reply 区域均支持语音按钮（麦克风图标，语音转文字后作为文本输入）。
+
+### 三步对话内容
+
+**Step 1：称呼**
+```
+"你好，我是你的教练。
+ 怎么称呼你？"
+```
+回复方式：文本输入框 + 语音
+
+**Step 2：Future Self（场景）**
+```
+"[名字]，闭上眼想一下 —
+ 你最享受的自己是什么样的？"
+```
+Quick Reply: "精力充沛，从容不迫" / "穿上喜欢的衣服，很自信" / "能掌控自己的节奏" / "让我想想"
+
+**Step 3：State（当前距离）**
+```
+"那现在呢 —
+ 你觉得离那个状态有多远？"
+```
+Quick Reply: "差一点点" / "有距离，但方向清楚" / "挺远的，不知道从哪开始"
+
+三步完成后，Coach 自主判断是否发送 fan_out 结构化表单深入采集，或直接完成 Onboarding。
+
+### Onboarding 完成过渡
+
+1. Coach 完成 profile / dashboardConfig / chapter 写入
+2. 触发 `future_self` ceremony image（A2UI 全屏面板）
+3. StoreSyncService.syncAll() 确认数据到位
+4. Tab 栏从底部滑入（300ms ease-out）
+5. 对话历史保留在 COACH Tab 中
+
+### 共享会话
+
+OnboardingView 和 COACH Tab 共享同一 thread_id。Onboarding 中的对话在进入 COACH Tab 后仍然可见。
+
 ## MIRROR Tab — 展示层
 
 ### 页面结构（从上到下）

@@ -314,6 +314,7 @@ final class CoachViewModel {
             assistantMessage.textContent = cleaned
             assistantMessage.thinkingStrategy = thinking?.strategy
             assistantMessage.thinkingObservations = thinking?.observations
+            assistantMessage.thinkingActions = thinking?.actions
             self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
@@ -387,17 +388,18 @@ final class CoachViewModel {
     private struct CoachThinkingPayload: Decodable {
         let strategy: String
         let observations: [String]?
+        let actions: [String]?
     }
 
-    /// 从 Assistant 消息中提取 coach_thinking 标记并返回策略和观察
-    static func extractCoachThinking(from content: String) -> (String, (strategy: String, observations: [String])?) {
+    /// 从 Assistant 消息中提取 coach_thinking 标记并返回策略、观察和操作
+    static func extractCoachThinking(from content: String) -> (String, (strategy: String, observations: [String], actions: [String])?) {
         let (cleaned, data) = extractTaggedJSON(from: content, using: thinkingRegex)
         guard let data else { return (cleaned, nil) }
         guard let payload = try? JSONDecoder().decode(CoachThinkingPayload.self, from: data) else {
             logger.warning("coach_thinking block matched but JSON decode failed")
             return (cleaned, nil)
         }
-        return (cleaned, (payload.strategy, payload.observations ?? []))
+        return (cleaned, (payload.strategy, payload.observations ?? [], payload.actions ?? []))
     }
 
     /// 从 Assistant 消息中提取 suggested_replies 标记并返回清理后的文本和建议列表
