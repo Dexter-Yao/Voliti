@@ -1,0 +1,99 @@
+# ABOUTME: 指标治理 — 测试 Coach 写入正确的 dashboardConfig JSON 结构
+# ABOUTME: 验证 4 种指标类型（numeric/scale/ordinal/ratio）和 current_value 更新
+
+id: "11_metrics_governance"
+name: "指标治理完整性"
+description: >
+  模拟已完成 Onboarding 的用户，在多轮对话中报告体重、饮食、状态数据，
+  测试 Coach 是否正确更新 dashboardConfig 的 current_value，
+  以及是否在对话中自然解释指标变化。
+
+persona:
+  name: "晓晴"
+  background: "31 岁数据分析师，加入计划 2 周，注重数据和结构"
+  personality: "理性精确，喜欢看到量化进展"
+  language: "zh"
+
+goal: >
+  报告今天称了体重（73.1kg，比上周降了 0.5），吃了午餐（约 600 卡），
+  状态还不错（精力 8/10）。
+  观察 Coach 是否在对话后更新 dashboardConfig 的 current_value，
+  以及是否在 coach_thinking.actions 中记录指标更新操作。
+
+initial_message: "今天称了一下，73.1kg，比上周轻了 0.5。中午吃的鸡胸肉便当大概 600 卡，状态还不错"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 晓晴
+    identity_vision: 用数据驱动自我管理的分析师
+    pain_points: [irregular_meals]
+    high_risk_time: late_evening
+    notification_pref: active
+  dashboard_config:
+    north_star:
+      key: "weight"
+      label: "体重"
+      type: "numeric"
+      unit: "KG"
+      delta_direction: "decrease"
+      current_value:
+        value: 73.6
+        unit: "kg"
+    support_metrics:
+      - key: "calories"
+        label: "今日摄入"
+        type: "numeric"
+        unit: "KCAL"
+        order: 0
+        current_value:
+          value: 1500
+          unit: "kcal"
+      - key: "state"
+        label: "今日状态"
+        type: "scale"
+        unit: "/10"
+        order: 1
+        current_value:
+          value: 6
+          min: 1
+          max: 10
+      - key: "consistency"
+        label: "本周一致性"
+        type: "ratio"
+        unit: ""
+        order: 2
+        current_value:
+          numerator: 3
+          denominator: 7
+    user_goal: "8 周 73.6kg → 70kg"
+  chapter:
+    id: "ch_002"
+    identity_statement: "用数据驱动自我管理的分析师"
+    goal: "建立稳定的工作日饮食记录习惯"
+    start_date: "2026-03-25T00:00:00Z"
+  coach_memory: |
+    ## 晓晴 — Key Observations
+    - Data-oriented user, appreciates metrics and trends
+    - Week 2: starting to build consistency
+
+max_turns: 8
+
+expected_behaviors:
+  must:
+    - "记录体重事件到 ledger（weigh_in: 73.1kg）"
+    - "记录饮食事件到 ledger（meal: ~600 kcal）"
+    - "在对话结束后更新 dashboardConfig 的 current_value"
+  should:
+    - "更新 north_star.current_value 为 73.1"
+    - "更新 calories.current_value 为 600（或累计值）"
+    - "更新 state.current_value 为 8"
+    - "在 coach_thinking.actions 中提及指标更新"
+    - "在对话中自然提及体重变化趋势（不用技术语言）"
+  must_not:
+    - "提及文件路径或 Store 操作"
+    - "忽略用户报告的数据不做记录"
+
+scoring_focus:
+  primary: ["D3_metrics_governance", "E3_action_transparency"]
+  secondary: ["E1_thinking_transparency", "A3_brevity_discipline"]

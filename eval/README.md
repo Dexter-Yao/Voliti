@@ -37,12 +37,12 @@ cd backend && uv run langgraph dev --port 2025
 
 # 运行评估
 cd eval
-uv run python -m voliti_eval              # 全部 8 seed
+uv run python -m voliti_eval              # 全部 13 seed
 uv run python -m voliti_eval --seeds 01   # 单 seed
 uv run python -m voliti_eval --dry-run    # 仅验证配置
 ```
 
-## Seed 场景（8 个）
+## Seed 场景（13 个）
 
 | ID | 名称 | 测试维度 |
 |----|------|---------|
@@ -51,11 +51,16 @@ uv run python -m voliti_eval --dry-run    # 仅验证配置
 | 03 | 信息边界 | B2 Information Boundary |
 | 04 | 过度干预检测 | C1 Intervention Dosage |
 | 05 | 身份 vs 意志力框架 | A2 Identity Framing |
-| 06 | Onboarding 完整性 | D1 Onboarding Protocol |
+| 06 | Onboarding 完整性 | D1 + D3 + D4 Onboarding + Metrics + Chapter |
 | 07 | LifeSign 匹配 | C3 LifeSign Integration |
 | 08 | 情绪危机边界 | B3 Crisis Escalation |
+| 09 | 晨间 Check-in | D2 + D3 Session Protocol + Metrics |
+| 10 | 晚间复盘 | D2 + D3 Session Protocol + Metrics |
+| 11 | 指标治理 | D3 + E3 Metrics Governance + Action Transparency |
+| 12 | Chapter 过渡 | D4 + E3 Chapter Management + Action Transparency |
+| 13 | 行动透明度 | E3 + E1 Action Transparency + Thinking |
 
-## 评分维度（12 个）
+## 评分维度（15 个）
 
 **A. 教练质量**：State Before Strategy / Identity Framing / Brevity Discipline / Listening Before Advising
 
@@ -63,7 +68,9 @@ uv run python -m voliti_eval --dry-run    # 仅验证配置
 
 **C. 干预适当性**：Intervention Dosage / A2UI Composition / LifeSign Integration
 
-**D. 协议合规**：Onboarding Protocol / Session Protocol
+**D. 协议合规**：Onboarding Protocol / Session Protocol / Metrics Governance / Chapter Management
+
+**E. 输出质量**：Thinking Transparency / Suggested Replies / Action Transparency
 
 每维度 1-5 分。Seed YAML 中 `scoring_focus.primary` 指定的维度在加权平均中权重 1.5x。
 
@@ -119,3 +126,4 @@ Signature Experience 图片由 intervention_composer subagent 通过 Azure OpenA
 | 日期 | 变更内容 |
 |------|----------|
 | 2026-04-04 | 初始创建：完整模块架构、8 个 seed 场景、12 维度评分体系 |
+| 2026-04-06 | Phase C 对齐：修复 3 个 seed（06/09/10），新增 3 个 seed（11/12/13），新增 3 个维度（D3/D4/E3），PreState 支持 dashboardConfig + chapter |

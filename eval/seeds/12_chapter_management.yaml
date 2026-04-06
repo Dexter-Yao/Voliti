@@ -1,0 +1,128 @@
+# ABOUTME: Chapter 管理 — 测试 Coach 是否在适当时机发起 Chapter 过渡
+# ABOUTME: 验证 archive + 新 Chapter 创建 + chapter_transition 事件 + identity_evolution 图像
+
+id: "12_chapter_management"
+name: "Chapter 过渡管理"
+description: >
+  模拟一个在当前 Chapter 中已有显著行为变化的用户，
+  多个 LifeSign 累计成功，行为模式稳定。
+  测试 Coach 是否能识别 Chapter 过渡时机，
+  正确执行 archive + 新 Chapter 创建 + 事件记录 + 图像触发。
+
+persona:
+  name: "志远"
+  background: "35 岁技术总监，加入计划 6 周，已完成多个 LifeSign 里程碑"
+  personality: "目标导向，善于反思，乐于接受新挑战"
+  language: "zh"
+
+goal: >
+  分享最近的感悟："最近感觉工作日的饮食已经完全成习惯了，
+  不需要刻意提醒自己了。我觉得我现在更关心的是周末怎么保持节奏。"
+  这段话暗示身份阶段已变化（从"建立工作日习惯"到"扩展到全周"）。
+  观察 Coach 是否识别到这是一个 Chapter 过渡信号。
+
+initial_message: "最近一个月感觉工作日的饮食已经完全成习惯了，不需要刻意提醒自己了。我觉得我现在更关心的是周末怎么保持节奏"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 志远
+    identity_vision: 无论忙闲都能做出清醒选择的人
+    pain_points: [weekend_vs_weekday, social_dining]
+    notification_pref: active
+  dashboard_config:
+    north_star:
+      key: "weight"
+      label: "体重"
+      type: "numeric"
+      unit: "KG"
+      delta_direction: "decrease"
+      current_value:
+        value: 72.0
+        unit: "kg"
+    support_metrics:
+      - key: "calories"
+        label: "今日摄入"
+        type: "numeric"
+        unit: "KCAL"
+        order: 0
+        current_value:
+          value: 1400
+          unit: "kcal"
+      - key: "state"
+        label: "今日状态"
+        type: "scale"
+        unit: "/10"
+        order: 1
+        current_value:
+          value: 8
+          min: 1
+          max: 10
+      - key: "consistency"
+        label: "本周一致性"
+        type: "ratio"
+        unit: ""
+        order: 2
+        current_value:
+          numerator: 6
+          denominator: 7
+    user_goal: "12 周 75kg → 70kg"
+  chapter:
+    id: "ch_002"
+    identity_statement: "在工作日能提前准备午餐的人"
+    goal: "建立工作日饮食节奏"
+    start_date: "2026-02-25T00:00:00Z"
+  coping_plans:
+    - id: "ls_001"
+      trigger:
+        situation: "工作日中午不知道吃什么"
+        time_pattern: "11:00-13:00"
+      action: "前一晚准备便当，或点固定的健康外卖"
+      status: "active"
+      activated_count: 20
+      success_count: 16
+    - id: "ls_002"
+      trigger:
+        situation: "加班后想吃宵夜"
+        time_pattern: "21:00-23:00"
+      action: "泡一杯热茶，看 10 分钟书再决定"
+      status: "active"
+      activated_count: 8
+      success_count: 5
+    - id: "ls_003"
+      trigger:
+        situation: "周末朋友聚餐"
+        time_pattern: "18:00-22:00"
+        day_pattern: ["weekend"]
+      action: "点餐前先喝水，选一个主菜，不加甜品"
+      status: "active"
+      activated_count: 4
+      success_count: 2
+  coach_memory: |
+    ## 志远 — Key Observations
+    - Excellent compliance with weekday LifeSign (ls_001: 16/20 success)
+    - Weekday eating pattern now stable and automatic
+    - Weekend remains the growth edge
+    - Approaching 6 weeks — Chapter transition may be warranted
+
+max_turns: 16
+
+expected_behaviors:
+  must:
+    - "识别用户表达了身份阶段的变化信号"
+    - "在对话中自然地提议或暗示 Chapter 过渡"
+  should:
+    - "归档当前 Chapter 到 /user/chapter/archive/ch_002.json"
+    - "创建新 Chapter（identity_statement 反映新阶段）"
+    - "写入 chapter_transition 事件到 ledger"
+    - "触发 identity_evolution 图像"
+    - "新 Chapter 的 identity_statement 建立在前一个基础上"
+    - "在对话中用教练语言解释这个过渡的意义"
+  must_not:
+    - "忽略用户的身份变化信号继续按旧 Chapter 对话"
+    - "使用技术术语解释 Chapter 操作"
+    - "强制过渡（应该是对话中自然发生的）"
+
+scoring_focus:
+  primary: ["D4_chapter_management", "E3_action_transparency"]
+  secondary: ["A2_identity_framing", "C3_lifesign_integration"]

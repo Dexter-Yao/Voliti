@@ -1,0 +1,111 @@
+# ABOUTME: 行动透明度 — 测试 Coach 在执行治理操作时的自然沟通
+# ABOUTME: 验证 coach_thinking.actions 字段和对话中的教练语言解释
+
+id: "13_action_transparency"
+name: "行动透明度"
+description: >
+  模拟一个场景，Coach 需要同时执行多个治理操作
+  （记录事件 + 更新指标 + 可能触发 LifeSign 匹配），
+  测试 Coach 是否在对话中自然地传达这些操作，
+  而不是使用系统消息或技术语言。
+
+persona:
+  name: "美琳"
+  background: "28 岁律师，加入计划 3 周，今天有重要进展"
+  personality: "表达能力强，期望透明沟通"
+  language: "zh"
+
+goal: >
+  报告今天的多个进展：称了体重（降了 0.8kg），中午成功用了 LifeSign
+  （没买甜品），下午状态很好。这个场景会触发多个治理操作：
+  ledger 事件写入、dashboardConfig 更新、LifeSign 成功记录。
+  观察 Coach 是否在 coach_thinking.actions 中记录所有操作，
+  并在对话中以教练语言自然地传达。
+
+initial_message: "今天称了体重 62.3，比上周降了 0.8！中午同事要去买甜品，我用了我们之前说的方法，泡了杯茶，没跟着去。下午状态挺好的，精力 8 分"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 美琳
+    identity_vision: 在职业与生活中都能保持从容选择的人
+    pain_points: [social_pressure, stress_eating]
+    notification_pref: active
+  dashboard_config:
+    north_star:
+      key: "weight"
+      label: "体重"
+      type: "numeric"
+      unit: "KG"
+      delta_direction: "decrease"
+      current_value:
+        value: 63.1
+        unit: "kg"
+    support_metrics:
+      - key: "calories"
+        label: "今日摄入"
+        type: "numeric"
+        unit: "KCAL"
+        order: 0
+        current_value:
+          value: 1300
+          unit: "kcal"
+      - key: "state"
+        label: "今日状态"
+        type: "scale"
+        unit: "/10"
+        order: 1
+        current_value:
+          value: 7
+          min: 1
+          max: 10
+      - key: "consistency"
+        label: "本周一致性"
+        type: "ratio"
+        unit: ""
+        order: 2
+        current_value:
+          numerator: 4
+          denominator: 7
+    user_goal: "10 周 63.1kg → 58kg"
+  chapter:
+    id: "ch_002"
+    identity_statement: "在社交场合能从容做出健康选择的人"
+    goal: "降低社交场景中的冲动进食"
+    start_date: "2026-03-20T00:00:00Z"
+  coping_plans:
+    - id: "ls_010"
+      trigger:
+        situation: "同事邀请买甜品/奶茶"
+        time_pattern: "14:00-17:00"
+      action: "泡一杯茶，礼貌地说'我刚喝了茶，不用了'"
+      status: "active"
+      activated_count: 6
+      success_count: 4
+  coach_memory: |
+    ## 美琳 — Key Observations
+    - Social pressure is primary trigger (colleagues buying snacks)
+    - LifeSign ls_010 showing good improvement (4/6 success)
+    - 1 more success on ls_010 → milestone (identity_evolution eligible)
+
+max_turns: 8
+
+expected_behaviors:
+  must:
+    - "记录体重到 ledger（weigh_in: 62.3kg）"
+    - "识别 ls_010 匹配并记录成功执行"
+    - "在 coach_thinking.actions 中列出执行的操作"
+  should:
+    - "在对话中用教练语言提及体重变化（如'比上周轻了 0.8'）"
+    - "在对话中肯定 LifeSign 的成功使用（不过度庆祝）"
+    - "更新 dashboardConfig current_value（weight → 62.3, state → 8）"
+    - "coach_thinking.actions 使用用户友好语言"
+    - "如果检测到 ls_010 达到 5 次成功里程碑，触发 identity_evolution"
+  must_not:
+    - "提及 ledger、Store、文件路径等技术细节"
+    - "显示系统消息风格的操作通知"
+    - "coach_thinking.actions 为空（本轮有多个数据变更）"
+
+scoring_focus:
+  primary: ["E3_action_transparency", "E1_thinking_transparency"]
+  secondary: ["C3_lifesign_integration", "D3_metrics_governance", "C1_intervention_dosage"]

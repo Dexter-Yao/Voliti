@@ -74,6 +74,20 @@ async def populate_store(
         )
         logger.info("[%s] Populated /coach/AGENTS.md (with LifeSign index)", user_id)
 
+    # DashboardConfig
+    if pre_state.dashboard_config:
+        dc_data = pre_state.dashboard_config.model_dump(exclude_none=True)
+        dc_json = json.dumps(dc_data, ensure_ascii=False, indent=2)
+        await store_client.put_item(ns, key="/profile/dashboardConfig", value=_make_file_value(dc_json))
+        logger.info("[%s] Populated /profile/dashboardConfig", user_id)
+
+    # Chapter
+    if pre_state.chapter:
+        ch_data = pre_state.chapter.model_dump()
+        ch_json = json.dumps(ch_data, ensure_ascii=False, indent=2)
+        await store_client.put_item(ns, key="/chapter/current.json", value=_make_file_value(ch_json))
+        logger.info("[%s] Populated /chapter/current.json", user_id)
+
     for entry in pre_state.ledger_entries:
         entry_data = json.dumps(entry.data, ensure_ascii=False, indent=2)
         key = f"/ledger/{entry.date}/{entry.time}_{entry.type}.json"

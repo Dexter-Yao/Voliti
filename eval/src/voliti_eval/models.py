@@ -43,6 +43,23 @@ class LedgerEntry(BaseModel):
     data: dict[str, Any]
 
 
+class DashboardConfigData(BaseModel):
+    """预填充的 DashboardConfig，对应 Coach 写入的 /user/profile/dashboardConfig。"""
+
+    north_star: dict[str, Any] | None = None
+    support_metrics: list[dict[str, Any]] = Field(default_factory=list)
+    user_goal: str | None = None
+
+
+class ChapterData(BaseModel):
+    """预填充的 Chapter，对应 Coach 写入的 /user/chapter/current.json。"""
+
+    id: str
+    identity_statement: str
+    goal: str
+    start_date: str  # ISO 8601
+
+
 class PreState(BaseModel):
     """Seed 运行前预填充到 Store 的状态。"""
 
@@ -50,6 +67,8 @@ class PreState(BaseModel):
     coping_plans: list[CopingPlan] = Field(default_factory=list)
     coach_memory: str | None = None
     ledger_entries: list[LedgerEntry] = Field(default_factory=list)
+    dashboard_config: DashboardConfigData | None = None
+    chapter: ChapterData | None = None
 
 
 class ExpectedBehaviors(BaseModel):

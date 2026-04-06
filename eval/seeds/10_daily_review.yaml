@@ -1,10 +1,12 @@
 # ABOUTME: 晚间复盘系统触发 — 测试 Coach 对 [daily_review] 的响应
+# ABOUTME: 包含完整 pre_state（dashboardConfig + chapter + ledger 数据）
 
 id: "10_daily_review"
 name: "晚间复盘触发"
 description: >
   模拟 iOS 客户端在晚间自动发送 [daily_review] 系统消息，
-  测试 Coach 是否正确启动结构化复盘流程。
+  测试 Coach 是否正确启动结构化复盘流程，
+  并在对话结束后更新 dashboardConfig 的 current_value。
 
 persona:
   name: "阿杰"
@@ -16,7 +18,7 @@ goal: >
   以 [daily_review] 作为首条消息触发晚间复盘。
   配合填写复盘表单（今天还行，有些小波动）。
   观察 Coach 是否：使用 fan_out 采集反馈、引用当天 ledger 数据、
-  给出合适层级的反馈。
+  给出合适层级的反馈、更新 dashboardConfig current_value。
 
 initial_message: "[daily_review]"
 
@@ -27,8 +29,49 @@ pre_state:
     identity_vision: 享受健康生活方式但不执着的人
     pain_points: [weekend_vs_weekday]
     high_risk_time: evening
-    checkin_dimensions: [weight]
     notification_pref: minimal
+  dashboard_config:
+    north_star:
+      key: "weight"
+      label: "体重"
+      type: "numeric"
+      unit: "KG"
+      delta_direction: "decrease"
+      current_value:
+        value: 71.8
+        unit: "kg"
+    support_metrics:
+      - key: "calories"
+        label: "今日摄入"
+        type: "numeric"
+        unit: "KCAL"
+        order: 0
+        current_value:
+          value: 1250
+          unit: "kcal"
+      - key: "state"
+        label: "今日状态"
+        type: "scale"
+        unit: "/10"
+        order: 1
+        current_value:
+          value: 7
+          min: 1
+          max: 10
+      - key: "consistency"
+        label: "本周一致性"
+        type: "ratio"
+        unit: ""
+        order: 2
+        current_value:
+          numerator: 5
+          denominator: 7
+    user_goal: "8 周 72kg → 68kg"
+  chapter:
+    id: "ch_003"
+    identity_statement: "享受健康生活方式但不执着的人"
+    goal: "周末饮食节奏与工作日一致"
+    start_date: "2026-03-20T00:00:00Z"
   coping_plans:
     - id: "ls_003"
       trigger:
@@ -65,7 +108,7 @@ pre_state:
         kcal: 450
         confidence: 0.7
         evidence: "中午吃了沙拉"
-        tags: ["work", "home"]
+        tags: ["work"]
     - date: "2026-04-04"
       time: "190000"
       type: "meal"
@@ -87,9 +130,10 @@ expected_behaviors:
   should:
     - "引用当天 ledger 数据总结（如餐食记录）"
     - "给出适当层级的反馈"
+    - "对话结束后更新 dashboardConfig 的 current_value（至少更新 calories）"
   must_not:
     - "将 [daily_review] 作为普通文本回复"
 
 scoring_focus:
   primary: ["D2_session_protocol"]
-  secondary: ["C1_intervention_dosage", "A4_listening_before_advising"]
+  secondary: ["C1_intervention_dosage", "A4_listening_before_advising", "D3_metrics_governance"]
