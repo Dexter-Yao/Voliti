@@ -9,6 +9,8 @@ struct NorthStarMetric: View {
     let unit: String
     let delta: Delta?
     let trendData: [Double?]
+    var onViewAll: (() -> Void)?
+    @State private var selectedDayIndex: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: StarpathTokens.spacingSM) {
@@ -40,13 +42,18 @@ struct NorthStarMetric: View {
             trendChart
 
             // 查看全部
-            if value != nil {
-                HStack {
-                    Spacer()
-                    Text("查看全部记录 \u{203A}")
-                        .starpathMono(size: 10)
-                        .foregroundStyle(StarpathTokens.obsidian40)
+            if value != nil, let onViewAll {
+                Button(action: onViewAll) {
+                    HStack {
+                        Spacer()
+                        Text("查看全部记录 \u{203A}")
+                            .starpathMono(size: 10)
+                            .foregroundStyle(StarpathTokens.obsidian40)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, StarpathTokens.spacingMD)
@@ -107,31 +114,55 @@ struct NorthStarMetric: View {
             HStack(alignment: .bottom, spacing: 4) {
                 ForEach(Array(trendData.enumerated()), id: \.offset) { index, dataPoint in
                     let isToday = index == trendData.count - 1
+                    let isSelected = selectedDayIndex == index
                     if let val = dataPoint {
                         let normalized = CGFloat((val - minVal) / range)
                         let height = max(2, normalized * 36 + 4)
-                        Rectangle()
-                            .fill(isToday ? StarpathTokens.copper : StarpathTokens.obsidian10)
-                            .frame(maxWidth: .infinity, minHeight: 2, idealHeight: height, maxHeight: height)
+                        VStack(spacing: 2) {
+                            if isSelected {
+                                Text(String(format: "%.1f", val))
+                                    .font(.custom("JetBrainsMono-Regular", size: 9))
+                                    .foregroundStyle(StarpathTokens.copper)
+                            }
+                            Rectangle()
+                                .fill(barColor(isToday: isToday, isSelected: isSelected))
+                                .frame(maxWidth: .infinity, minHeight: 2, idealHeight: height, maxHeight: height)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedDayIndex = isSelected ? nil : index
+                            }
+                        }
                     } else {
-                        // 无数据的天数留空
                         Color.clear
                             .frame(maxWidth: .infinity, minHeight: 2, idealHeight: 2, maxHeight: 40)
                     }
                 }
             }
-            .frame(height: 40)
+            .frame(minHeight: 40)
 
             // 日期标签
             HStack(spacing: 0) {
-                ForEach(Array(dayLabels().enumerated()), id: \.offset) { _, label in
-                    Text(label)
+                ForEach(Array(dayLabels().enumerated()), id: \.offset) { index, dayLabel in
+                    Text(dayLabel)
                         .font(.custom("JetBrainsMono-Regular", size: 9))
-                        .foregroundStyle(StarpathTokens.obsidian40)
+                        .foregroundStyle(
+                            selectedDayIndex == index
+                                ? StarpathTokens.copper
+                                : StarpathTokens.obsidian40
+                        )
                         .frame(maxWidth: .infinity)
                 }
             }
         }
+    }
+
+    private func barColor(isToday: Bool, isSelected: Bool) -> Color {
+        if isSelected { return StarpathTokens.copper }
+        if isToday { return StarpathTokens.copper }
+        return StarpathTokens.obsidian10
     }
 
     private func dayLabels() -> [String] {

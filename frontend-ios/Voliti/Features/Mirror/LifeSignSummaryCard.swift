@@ -1,4 +1,4 @@
-// ABOUTME: MIRROR 页 LifeSign 摘要卡片，Dashboard 与 Pulse 之间的独立一级入口
+// ABOUTME: MIRROR 页 LifeSign 摘要卡片，支持性指标与事件流之间的独立一级入口
 // ABOUTME: 展示预案数量和本周执行统计，点击进入 LifeSign 列表
 
 import SwiftUI

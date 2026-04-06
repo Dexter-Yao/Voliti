@@ -8,8 +8,10 @@ struct MirrorView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = MirrorViewModel()
     @AppStorage("onboardingComplete") private var onboardingComplete = false
+    @State private var showWeightHistory = false
 
     var body: some View {
+        NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Chapter Context
@@ -33,7 +35,8 @@ struct MirrorView: View {
                     value: viewModel.latestWeight.map { String(format: "%.1f", $0) },
                     unit: "KG",
                     delta: viewModel.weightDelta,
-                    trendData: viewModel.weightTrend
+                    trendData: viewModel.weightTrend,
+                    onViewAll: { showWeightHistory = true }
                 )
                 .padding(.vertical, StarpathTokens.spacingLG)
 
@@ -98,6 +101,11 @@ struct MirrorView: View {
                 LifeSignListView(plans: viewModel.lifeSignPlans)
             }
         }
+        .navigationDestination(isPresented: $showWeightHistory) {
+            WeightHistoryView()
+        }
+        .toolbar(.hidden)
+        } // NavigationStack
     }
 
     // MARK: - Empty State

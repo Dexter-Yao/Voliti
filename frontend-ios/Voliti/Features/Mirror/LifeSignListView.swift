@@ -25,7 +25,7 @@ struct LifeSignListView: View {
             .padding(.vertical, StarpathTokens.spacingLG)
         }
         .background(StarpathTokens.parchment)
-        .navigationTitle("LifeSign")
+        .navigationTitle("预案")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
