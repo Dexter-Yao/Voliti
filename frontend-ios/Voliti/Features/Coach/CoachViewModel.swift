@@ -447,7 +447,7 @@ final class CoachViewModel {
 
         let event = BehaviorEvent(
             timestamp: card.timestamp,
-            type: .signatureImage,
+            type: .moment,
             evidence: "",
             summary: caption
         )

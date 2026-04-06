@@ -24,20 +24,19 @@ struct ThinkingCard: View {
                 }
             } label: {
                 HStack(spacing: StarpathTokens.spacingSM) {
-                    // TODO: [design-system] 替换为 SF Symbol lightbulb.min + obsidian40
-                    Text("💡")
-                        .font(.system(size: StarpathTokens.fontSizeSM))
+                    Image(systemName: "lightbulb.min")
+                        .font(.system(size: StarpathTokens.fontSizeXS))
+                        .foregroundStyle(StarpathTokens.obsidian40)
 
-                    // TODO: [design-system] 替换为 .starpathSans()
                     Text(strategy)
-                        .font(.system(size: StarpathTokens.fontSizeSM))
+                        .starpathSans()
                         .foregroundStyle(StarpathTokens.obsidian40)
                         .lineLimit(isExpanded ? nil : 1)
 
                     Spacer()
 
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10))
+                        .font(.system(size: StarpathTokens.fontSizeXS))
                         .foregroundStyle(StarpathTokens.obsidian40)
                 }
             }
@@ -46,24 +45,22 @@ struct ThinkingCard: View {
             // 展开区域
             if isExpanded && !observations.isEmpty {
                 VStack(alignment: .leading, spacing: StarpathTokens.spacingXS) {
-                    // TODO: [design-system] observation 文本替换为 .starpathSans()
                     ForEach(Array(observations.enumerated()), id: \.offset) { _, observation in
                         HStack(alignment: .top, spacing: StarpathTokens.spacingSM) {
                             Text("·")
                                 .foregroundStyle(StarpathTokens.obsidian40)
                             Text(observation)
-                                .font(.system(size: StarpathTokens.fontSizeSM))
+                                .starpathSans()
                                 .foregroundStyle(StarpathTokens.obsidian40)
                         }
                     }
                 }
                 .padding(.top, StarpathTokens.spacingXS)
-                .padding(.leading, StarpathTokens.spacingMD + StarpathTokens.spacingSM)
+                .padding(.leading, StarpathTokens.spacingLG)
             }
         }
         .padding(.horizontal, StarpathTokens.spacingSM)
         .padding(.vertical, StarpathTokens.spacingSM)
-        // TODO: [design-system] 左边框补充 border token
         .overlay(
             Rectangle()
                 .frame(width: 2)

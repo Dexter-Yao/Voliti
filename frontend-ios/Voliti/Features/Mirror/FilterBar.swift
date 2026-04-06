@@ -1,18 +1,18 @@
 // ABOUTME: MIRROR 页事件流过滤器，单选 pill 按钮组
-// ABOUTME: 过滤器映射：全部/里程碑（signatureImage）/数据（weighIn, stateCheckin）/饮食（meal, waterIntake）
+// ABOUTME: 过滤器映射：全部/时刻（moment）/数据（weighIn, stateCheckin）/饮食（meal, waterIntake）
 
 import SwiftUI
 
 enum EventFilter: String, CaseIterable {
     case all = "全部"
-    case milestone = "里程碑"
+    case moment = "时刻"
     case data = "数据"
     case diet = "饮食"
 
     var matchingTypes: Set<EventType>? {
         switch self {
         case .all: nil
-        case .milestone: [.signatureImage]
+        case .moment: [.moment]
         case .data: [.weighIn, .stateCheckin]
         case .diet: [.meal, .waterIntake]
         }
@@ -34,7 +34,7 @@ struct FilterBar: View {
                     selected = filter
                 } label: {
                     Text(filter.rawValue)
-                        .font(.system(size: StarpathTokens.fontSizeSM, weight: .medium))
+                        .starpathSans()
                         .foregroundStyle(
                             filter == selected
                                 ? StarpathTokens.parchment

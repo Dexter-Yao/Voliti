@@ -1,5 +1,5 @@
 // ABOUTME: MIRROR 页统一事件流区域
-// ABOUTME: 日折叠、过滤器联动、里程碑缩略图、周边界粗线
+// ABOUTME: 日折叠、过滤器联动、时刻缩略图、周边界粗线
 
 import SwiftUI
 
@@ -45,9 +45,9 @@ struct EventStreamSection: View {
 
     private func eventRow(_ event: BehaviorEvent) -> some View {
         Group {
-            if event.type == .signatureImage, let cardId = event.cardId,
+            if event.type == .moment, let cardId = event.cardId,
                let card = cardLookup(cardId) {
-                milestoneRow(event: event, card: card)
+                momentRow(event: event, card: card)
             } else {
                 EventRow(event: event)
                     .padding(.horizontal, StarpathTokens.spacingMD)
@@ -55,7 +55,7 @@ struct EventStreamSection: View {
         }
     }
 
-    private func milestoneRow(event: BehaviorEvent, card: InterventionCard) -> some View {
+    private func momentRow(event: BehaviorEvent, card: InterventionCard) -> some View {
         Button {
             onCardTap?(card)
         } label: {

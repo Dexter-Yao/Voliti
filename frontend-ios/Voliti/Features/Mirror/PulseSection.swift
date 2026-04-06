@@ -23,7 +23,7 @@ struct PulseSection: View {
                             ? CGFloat(count) / CGFloat(maxCount) * 32
                             : 0
                         Rectangle()
-                            .fill(StarpathTokens.obsidian.opacity(0.3))
+                            .fill(StarpathTokens.obsidian20)
                             .frame(width: 8, height: max(2, height))
                     }
                 }

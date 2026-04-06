@@ -28,12 +28,12 @@ struct InputBar: View {
                                 onSuggestionTap?(reply)
                             } label: {
                                 Text(reply)
-                                    .font(.system(size: StarpathTokens.fontSizeSM))
+                                    .starpathSans()
                                     .foregroundStyle(StarpathTokens.obsidian)
                                     .padding(.horizontal, StarpathTokens.spacingSM)
                                     .padding(.vertical, StarpathTokens.spacingXS)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 16)
+                                        Capsule()
                                             .stroke(StarpathTokens.obsidian20, lineWidth: 1)
                                     )
                             }
@@ -69,15 +69,15 @@ struct InputBar: View {
                 // 附件按钮
                 PhotosPicker(selection: $selectedPhoto, matching: .images) {
                     Image(systemName: "plus")
-                        .font(.system(size: 16))
+                        .font(.system(size: StarpathTokens.fontSizeBase))
                         .foregroundStyle(StarpathTokens.obsidian40)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 44, height: 44)
                 }
 
                 // 文本输入
                 TextField("", text: $text, axis: .vertical)
                     .lineLimit(1...5)
-                    .font(.system(size: StarpathTokens.fontSizeSM))
+                    .font(.custom("DMSans-Regular", size: StarpathTokens.fontSizeSM))
                     .foregroundStyle(StarpathTokens.obsidian)
                     .padding(.horizontal, StarpathTokens.spacingSM)
                     .padding(.vertical, StarpathTokens.spacingSM)
@@ -125,12 +125,13 @@ struct InputBar: View {
             send()
         } label: {
             Image(systemName: "arrow.up")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: StarpathTokens.fontSizeSM, weight: .semibold))
                 .foregroundStyle(StarpathTokens.parchment)
                 .frame(width: 32, height: 32)
                 .background(StarpathTokens.obsidian)
                 .clipShape(Circle())
         }
+        .frame(width: 44, height: 44)
     }
 
     private var micButton: some View {
@@ -138,9 +139,9 @@ struct InputBar: View {
             toggleRecording()
         } label: {
             Image(systemName: speechService.isRecording ? "stop.circle.fill" : "mic")
-                .font(.system(size: 16))
+                .font(.system(size: StarpathTokens.fontSizeBase))
                 .foregroundStyle(speechService.isRecording ? StarpathTokens.riskRed : StarpathTokens.obsidian40)
-                .frame(width: 32, height: 32)
+                .frame(width: 44, height: 44)
         }
         .disabled(!speechService.isAuthorized || disabled)
     }

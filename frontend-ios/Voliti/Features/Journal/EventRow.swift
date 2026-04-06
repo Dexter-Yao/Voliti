@@ -73,7 +73,7 @@ struct EventRow: View {
         case .lifesignCreated, .lifesignUpdated, .lifesignDeleted,
              .lifesignActivated, .lifesignSucceeded:
             if let name = event.planName { parts.append(name) }
-        case .goalUpdate, .appAction, .signatureImage:
+        case .goalUpdate, .appAction, .moment:
             break
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

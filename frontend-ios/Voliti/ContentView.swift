@@ -65,6 +65,9 @@ private struct StarpathTabBar: View {
         }
         .padding(.horizontal, StarpathTokens.spacingMD)
         .background(StarpathTokens.parchment)
+        .overlay(alignment: .top) {
+            StarpathDivider()
+        }
     }
 }
 

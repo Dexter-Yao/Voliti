@@ -14,7 +14,7 @@ struct ChapterContextSection: View {
 
             // 身份宣言
             Text(chapter.identityStatement)
-                .starpathSerif(size: StarpathTokens.fontSizeLG)
+                .starpathSerif(size: StarpathTokens.fontSizeXL)
 
             // 目标
             Text(chapter.goal)
