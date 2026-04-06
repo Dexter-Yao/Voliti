@@ -3,14 +3,14 @@
 
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, Undefined
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 
 class PromptRegistry:
     """全局提示词管理中心，基于 Jinja2 模板引擎。
 
     模板文件使用 .j2 扩展名。Jinja2 注释（{# ... #}）不会出现在渲染结果中。
-    使用 Undefined 允许模板中未传递的变量被 `is defined` 测试检查。
+    使用 StrictUndefined 确保未定义变量立即报错。
     """
 
     _env: Environment | None = None
@@ -20,7 +20,7 @@ class PromptRegistry:
         """从指定目录加载 Jinja2 模板环境。"""
         cls._env = Environment(
             loader=FileSystemLoader(str(prompts_dir)),
-            undefined=Undefined,
+            undefined=StrictUndefined,
             keep_trailing_newline=True,
         )
 
