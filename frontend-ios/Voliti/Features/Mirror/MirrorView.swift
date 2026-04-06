@@ -1,5 +1,5 @@
-// ABOUTME: MIRROR 页主视图，组合 Chapter Context + Dashboard + Pulse + Event Stream
-// ABOUTME: 纯展示层，所有数据来自 MirrorViewModel
+// ABOUTME: MIRROR 页主视图，按 DESIGN.md 层级组合各区域
+// ABOUTME: Chapter → NorthStar → Support → LifeSign → Filter + EventStream
 
 import SwiftUI
 import SwiftData
@@ -27,14 +27,22 @@ struct MirrorView: View {
                         .padding(.horizontal, StarpathTokens.spacingMD)
                 }
 
-                // Dashboard
-                DashboardSection(
-                    config: viewModel.dashboardConfig,
-                    latestWeight: viewModel.latestWeight,
-                    todayCalories: viewModel.todayCalories,
-                    userGoal: viewModel.dashboardConfig?.userGoal
+                // North Star
+                NorthStarMetric(
+                    label: "北极星",
+                    value: viewModel.latestWeight.map { String(format: "%.1f", $0) },
+                    unit: "KG",
+                    delta: viewModel.weightDelta,
+                    trendData: viewModel.weightTrend
                 )
                 .padding(.vertical, StarpathTokens.spacingLG)
+
+                StarpathDivider()
+                    .padding(.horizontal, StarpathTokens.spacingMD)
+
+                // Support Metrics
+                SupportMetricSection(metrics: viewModel.supportMetrics)
+                    .padding(.vertical, StarpathTokens.spacingLG)
 
                 StarpathDivider()
                     .padding(.horizontal, StarpathTokens.spacingMD)
@@ -48,18 +56,14 @@ struct MirrorView: View {
                 StarpathDivider()
                     .padding(.horizontal, StarpathTokens.spacingMD)
 
-                // Pulse
-                PulseSection(mealCounts: mealCountsLast7Days)
-                    .padding(.vertical, StarpathTokens.spacingLG)
-
-                StarpathDivider()
-                    .padding(.horizontal, StarpathTokens.spacingMD)
-
                 // Event Stream
                 VStack(alignment: .leading, spacing: StarpathTokens.spacingMD) {
-                    FilterBar(selected: $viewModel.selectedFilter)
-                        .padding(.horizontal, StarpathTokens.spacingMD)
-                        .padding(.top, StarpathTokens.spacingLG)
+                    FilterBar(
+                        typeCounts: viewModel.eventTypeCounts,
+                        selectedType: $viewModel.selectedFilterType
+                    )
+                    .padding(.horizontal, StarpathTokens.spacingMD)
+                    .padding(.top, StarpathTokens.spacingLG)
 
                     if viewModel.filteredGroupedEvents.isEmpty {
                         emptyState
@@ -121,18 +125,5 @@ struct MirrorView: View {
                 .foregroundStyle(StarpathTokens.obsidian40)
         }
         .padding(.horizontal, StarpathTokens.spacingMD)
-    }
-
-    // MARK: - Pulse Data
-
-    private var mealCountsLast7Days: [Int] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        return (0..<7).reversed().map { daysAgo in
-            let date = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
-            return viewModel.groupedEvents
-                .first { $0.date == date }?
-                .events.filter { $0.type == .meal }.count ?? 0
-        }
     }
 }

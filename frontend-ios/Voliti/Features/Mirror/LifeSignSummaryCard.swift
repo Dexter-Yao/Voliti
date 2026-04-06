@@ -12,6 +12,7 @@ struct LifeSignSummaryCard: View {
             VStack(alignment: .leading, spacing: StarpathTokens.spacingSM) {
                 Text("LIFESIGN")
                     .starpathMono()
+                    .foregroundStyle(StarpathTokens.copper)
 
                 if plans.isEmpty {
                     Text("与 Coach 对话中创建你的第一个应对预案")

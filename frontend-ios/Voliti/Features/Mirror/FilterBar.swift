@@ -1,62 +1,65 @@
-// ABOUTME: MIRROR 页事件流过滤器，单选 pill 按钮组
-// ABOUTME: 过滤器映射：全部/时刻（moment）/数据（weighIn, stateCheckin）/饮食（meal, waterIntake）
+// ABOUTME: MIRROR 页事件流动态过滤器，只显示有记录的事件类型
+// ABOUTME: 每个 pill 带计数，零记录类型不渲染
 
 import SwiftUI
 
-enum EventFilter: String, CaseIterable {
-    case all = "全部"
-    case moment = "时刻"
-    case data = "数据"
-    case diet = "饮食"
-
-    var matchingTypes: Set<EventType>? {
-        switch self {
-        case .all: nil
-        case .moment: [.moment]
-        case .data: [.weighIn, .stateCheckin]
-        case .diet: [.meal, .waterIntake]
-        }
-    }
-
-    func matches(_ event: BehaviorEvent) -> Bool {
-        guard let types = matchingTypes else { return true }
-        return types.contains(event.type)
-    }
-}
-
 struct FilterBar: View {
-    @Binding var selected: EventFilter
+    let typeCounts: [(type: EventType, count: Int)]
+    @Binding var selectedType: EventType?
 
     var body: some View {
         HStack(spacing: StarpathTokens.spacingSM) {
-            ForEach(EventFilter.allCases, id: \.self) { filter in
-                Button {
-                    selected = filter
-                } label: {
-                    Text(filter.rawValue)
-                        .starpathSans()
-                        .foregroundStyle(
-                            filter == selected
-                                ? StarpathTokens.parchment
-                                : StarpathTokens.obsidian
-                        )
-                        .padding(.horizontal, StarpathTokens.spacingMD)
-                        .padding(.vertical, StarpathTokens.spacingSM)
-                        .background(
-                            filter == selected
-                                ? StarpathTokens.obsidian
-                                : Color.clear
-                        )
-                        .clipShape(Capsule())
-                        .overlay {
-                            if filter != selected {
-                                Capsule()
-                                    .stroke(StarpathTokens.obsidian10, lineWidth: 1)
-                            }
-                        }
+            // 全部
+            filterPill(
+                label: "全部",
+                count: typeCounts.reduce(0) { $0 + $1.count },
+                isSelected: selectedType == nil
+            ) {
+                selectedType = nil
+            }
+
+            // 各类型
+            ForEach(typeCounts, id: \.type) { item in
+                filterPill(
+                    label: item.type.label,
+                    count: item.count,
+                    isSelected: selectedType == item.type
+                ) {
+                    selectedType = item.type
                 }
             }
+
             Spacer()
+        }
+    }
+
+    private func filterPill(label: String, count: Int, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: StarpathTokens.spacingXS) {
+                Text(label)
+                    .starpathSans(size: 13)
+                Text("\(count)")
+                    .starpathMono(size: 10, uppercase: false)
+            }
+            .foregroundStyle(
+                isSelected
+                    ? StarpathTokens.parchment
+                    : StarpathTokens.obsidian
+            )
+            .padding(.horizontal, StarpathTokens.spacingMD)
+            .padding(.vertical, StarpathTokens.spacingSM)
+            .background(
+                isSelected
+                    ? StarpathTokens.obsidian
+                    : Color.clear
+            )
+            .clipShape(Capsule())
+            .overlay {
+                if !isSelected {
+                    Capsule()
+                        .stroke(StarpathTokens.obsidian10, lineWidth: 1)
+                }
+            }
         }
     }
 }
