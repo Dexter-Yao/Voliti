@@ -42,7 +42,7 @@ struct ProfileInfoSection: View {
     // MARK: - Label Mapping
     // ABOUTME: 新增 model 字段时同步更新此映射
 
-    private static let keyLabels: [String: String] = [
+    static let keyLabels: [String: String] = [
         "name": "称呼",
         "goal": "目标",
         "current_weight": "当前体重",
@@ -54,7 +54,7 @@ struct ProfileInfoSection: View {
         "motivation": "动力来源",
     ]
 
-    private static func labelFor(_ key: String) -> String {
+    static func labelFor(_ key: String) -> String {
         keyLabels[key] ?? key
     }
 }
