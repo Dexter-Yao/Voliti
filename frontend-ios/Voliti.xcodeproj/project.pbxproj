@@ -6,7 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		346B26D72F840BB0002EA247 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 348831932F6D16E200F3075A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3488319A2F6D16E200F3075A;
+			remoteInfo = Voliti;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		346B26D32F840BB0002EA247 /* VolitiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VolitiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3488319B2F6D16E200F3075A /* Voliti.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Voliti.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -21,6 +32,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		346B26D42F840BB0002EA247 /* VolitiTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VolitiTests;
+			sourceTree = "<group>";
+		};
 		3488319D2F6D16E200F3075A /* Voliti */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -32,6 +48,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		346B26D02F840BB0002EA247 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		348831982F6D16E200F3075A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -46,6 +69,7 @@
 			isa = PBXGroup;
 			children = (
 				3488319D2F6D16E200F3075A /* Voliti */,
+				346B26D42F840BB0002EA247 /* VolitiTests */,
 				3488319C2F6D16E200F3075A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				3488319B2F6D16E200F3075A /* Voliti.app */,
+				346B26D32F840BB0002EA247 /* VolitiTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +86,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		346B26D22F840BB0002EA247 /* VolitiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 346B26D92F840BB0002EA247 /* Build configuration list for PBXNativeTarget "VolitiTests" */;
+			buildPhases = (
+				346B26CF2F840BB0002EA247 /* Sources */,
+				346B26D02F840BB0002EA247 /* Frameworks */,
+				346B26D12F840BB0002EA247 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				346B26D82F840BB0002EA247 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				346B26D42F840BB0002EA247 /* VolitiTests */,
+			);
+			name = VolitiTests;
+			packageProductDependencies = (
+			);
+			productName = VolitiTests;
+			productReference = 346B26D32F840BB0002EA247 /* VolitiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		3488319A2F6D16E200F3075A /* Voliti */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 348831A92F6D16E300F3075A /* Build configuration list for PBXNativeTarget "Voliti" */;
@@ -93,6 +141,10 @@
 				LastSwiftUpdateCheck = 2630;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					346B26D22F840BB0002EA247 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 3488319A2F6D16E200F3075A;
+					};
 					3488319A2F6D16E200F3075A = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -113,11 +165,19 @@
 			projectRoot = "";
 			targets = (
 				3488319A2F6D16E200F3075A /* Voliti */,
+				346B26D22F840BB0002EA247 /* VolitiTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		346B26D12F840BB0002EA247 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		348831992F6D16E200F3075A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -128,6 +188,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		346B26CF2F840BB0002EA247 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		348831972F6D16E200F3075A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,7 +204,59 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		346B26D82F840BB0002EA247 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3488319A2F6D16E200F3075A /* Voliti */;
+			targetProxy = 346B26D72F840BB0002EA247 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		346B26DA2F840BB0002EA247 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = K4JPZ55NN4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = shuhaoyao.VolitiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Voliti.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Voliti";
+			};
+			name = Debug;
+		};
+		346B26DB2F840BB0002EA247 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = K4JPZ55NN4;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = shuhaoyao.VolitiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Voliti.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Voliti";
+			};
+			name = Release;
+		};
 		348831AA2F6D16E300F3075A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -330,6 +449,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		346B26D92F840BB0002EA247 /* Build configuration list for PBXNativeTarget "VolitiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				346B26DA2F840BB0002EA247 /* Debug */,
+				346B26DB2F840BB0002EA247 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		348831962F6D16E200F3075A /* Build configuration list for PBXProject "Voliti" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
