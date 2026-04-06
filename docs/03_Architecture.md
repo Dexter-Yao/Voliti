@@ -17,14 +17,15 @@ Voliti is a multi-agent system that maintains coaching continuity across session
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     LangGraph Dev Server (:2024)                     │
+│                     LangGraph Dev Server (:2025)                     │
 │                                                                       │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │                    Coach Agent (DeepAgent)                      │ │
 │  │  Model: gpt-5.4 (Azure OpenAI)                                │ │
 │  │  Tools: fan_out (A2UI)                                         │ │
 │  │  Subagents: intervention_composer                              │ │
-│  │  Memory: /user/coach/AGENTS.md, /user/profile/context.md      │ │
+│  │  Memory: /user/coach/AGENTS.md, /user/profile/context.md,     │ │
+│  │          /user/coping_plans_index.md                          │ │
 │  │                                                                │ │
 │  │  ┌──────────────────────────────────────────────────────────┐ │ │
 │  │  │         Intervention Composer (Subagent)                  │ │ │
@@ -49,6 +50,7 @@ Voliti is a multi-agent system that maintains coaching continuity across session
 │  │    → gpt-5.4-nano              │                               │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                       │
+│  SessionModeMiddleware (onboarding mode prompt injection)            │
 │  SummarizationMiddleware (85% context triggers compression)          │
 └───────────────────────────┬───────────────────────────────────────────┘
                             │ SSE stream + interrupt
@@ -77,7 +79,8 @@ agent = create_deep_agent(
     model=ModelRegistry.get("coach"),  # gpt-5.4 (Azure OpenAI)
     system_prompt=PromptRegistry.get("coach_system"),
     backend=composite_backend,
-    memory=["/user/coach/AGENTS.md", "/user/profile/context.md"],
+    memory=["/user/coach/AGENTS.md", "/user/profile/context.md", "/user/coping_plans_index.md"],
+    middleware=[SessionModeMiddleware()],
     tools=[fan_out],
     subagents=[intervention_composer],
 )
@@ -162,7 +165,7 @@ agent = create_deep_agent(
     └── AGENTS.md               # Coach persistent memory
 ```
 
-**Event Schema:** Coach-defined, not enforced by backend. 通用维度模型（kind + metrics + context），详见`/docs/event-system-redesign.md`
+**Event Schema:** Coach-defined, not enforced by backend. 通用维度模型（kind + metrics + context + refs + quality markers），详见 `backend/prompts/coach_system.j2` Event Recording 段落
 
 **Writing Strategy:**
 - Async event recording (user silence ≥5 min or session end)
@@ -315,10 +318,15 @@ cd backend && uv run langgraph dev --port 2025
 
 ## Testing Strategy
 
-**Unit Tests:**
+**Unit Tests (Backend):**
 - A2UI component validation (`tests/test_a2ui.py`)
 - Event schema validation (agent-driven, not enforced)
 - Model/Prompt registry (`tests/test_model_registry.py`)
+
+**Unit Tests (iOS — VolitiTests target, Swift Testing):**
+- MetricComputer：currentValue、trend、delta、format（15 测试）
+- BehaviorEvent：metrics/context JSON 编解码、kind 映射（4 测试）
+- ProfileInfoSection：key-label 映射（2 测试）
 
 **Integration Tests:**
 - Coach agent conversation flows
@@ -358,3 +366,4 @@ cd backend && uv run langgraph dev --port 2025
 | 2026-02-12 | 激进清理：删除冗余理论/伦理内容（约60-80行），替换为对01_Product_Foundation.md的引用；新增文档导航表与Evergreen说明；控制篇幅至2000字左右 |
 | 2026-03-20 | 前端架构更新为 iOS 原生客户端（SwiftUI + SwiftData）；路径引用 doc/ → docs/；A2UI 组件数量 7 → 8 |
 | 2026-04-01 | 模型全面迁移 Gemini 3 → Azure OpenAI GPT-5.4 系列 + gpt-image-1.5 |
+| 2026-04-06 | 新增 SessionModeMiddleware；memory 列表补充 coping_plans_index；Event Schema 引用更新；VolitiTests 测试策略段落；端口 2024→2025 |

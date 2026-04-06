@@ -70,7 +70,7 @@ Voliti/
 - 遵循 Apple API Design Guidelines 命名规范
 - SwiftUI 优先于 UIKit
 - Feature-based 项目结构分组
-- XCTest 单元测试，XCUITest UI 测试
+- Swift Testing 框架单元测试（VolitiTests target），XCUITest UI 测试
 
 ## 架构约定
 
@@ -117,3 +117,4 @@ Key routing rules:
 | 2026-03-20 | 项目重组为 Monorepo（frontend-ios + backend + docs）；iOS 原生客户端迁移；文档路径 doc/ → docs/ |
 | 2026-03-31 | 添加 gstack skills 配置段落 |
 | 2026-04-04 | 新增 eval/ 评估模块；dev server 端口 2024 → 2025 |
+| 2026-04-06 | Swift 测试框架更新 XCTest → Swift Testing（VolitiTests target） |
