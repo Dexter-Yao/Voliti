@@ -304,17 +304,17 @@
 
 ## 待办事项
 
-| 编号 | 事项 | 优先级 |
-|------|------|--------|
-| TODO-1 | 北极星指标 + 支持性指标的 Coach 治理机制（Onboarding 设定 + 对话中调整） | 高 |
-| TODO-2 | Chapter / 身份宣言的设定和更新机制 | 高 |
-| TODO-3 | 趋势图点击查看历史记录的交互详设 | 中 |
-| TODO-4 | Filter 标签动态生成的数据结构适配 | 中 |
-| TODO-5 | TimestampSeparator 组件实现 | 中 |
-| TODO-6 | 用户消息背景宽度适配内容的 SwiftUI 实现 | 中 |
-| TODO-7 | LXGW WenKai / DM Sans / JetBrains Mono 字体文件集成到 Xcode 项目 | 高 |
-| TODO-8 | design-tokens.json 更新对齐 v2 | 中 |
-| TODO-9 | component-rules.json 更新对齐 v2 | 中 |
+| 编号 | 事项 | 优先级 | 状态 |
+|------|------|--------|------|
+| TODO-1 | 北极星指标 + 支持性指标的 Coach 治理机制（Onboarding 设定 + 对话中调整） | 高 | 待做 |
+| TODO-2 | Chapter / 身份宣言的设定和更新机制 | 高 | 待做 |
+| TODO-3 | 趋势图点击查看历史记录的交互详设 | 中 | 待做 |
+| TODO-4 | Filter 标签动态生成的数据结构适配 | 中 | 已完成 |
+| TODO-5 | TimestampSeparator 组件实现 | 中 | 已完成 |
+| TODO-6 | 用户消息背景宽度适配内容的 SwiftUI 实现 | 中 | 已完成 |
+| TODO-7 | LXGW WenKai / DM Sans / JetBrains Mono 字体文件集成到 Xcode 项目 | 高 | 已完成 |
+| TODO-8 | design-tokens.json 更新对齐 v2 | 中 | 已完成 |
+| TODO-9 | component-rules.json 更新对齐 v2 | 中 | 已完成 |
 
 ---
 
