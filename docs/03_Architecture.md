@@ -5,8 +5,7 @@
 ## 相关文档
 
 - `/docs/01_Product_Foundation.md` — 产品理论与目标定位（理论基础、Guardrail、数据结构）
-- `/docs/02_Design_System.md` — 设计系统规范（Starpath Protocol）
-- `/docs/04_UI_Specification.md` — UI线框与交互细节
+- `/DESIGN.md` — 设计系统规范（Starpath Protocol v2）
 - `/docs/05_Image_Generation.md` — 教练干预技术指南
 
 ## Overview
@@ -56,7 +55,7 @@ Voliti is a multi-agent system that maintains coaching continuity across session
 │                  iOS Native Client (SwiftUI + SwiftData)               │
 │  CoachView → MessageList + InputBar                                   │
 │  FanOutPanel (slide-in: half / three-quarter / full) → A2UIRenderer   │
-│  TabView → Coach / Map / Journal                                      │
+│  TabView → Coach / Mirror                                             │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 

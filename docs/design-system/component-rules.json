@@ -1,7 +1,7 @@
 {
   "_comment": "Starpath Protocol — 组件渲染规则，供 AI 生成前端代码时直接引用",
-  "_version": "1.0.0",
-  "_updated": "2026-03-08",
+  "_version": "2.0.0",
+  "_updated": "2026-04-06",
   "_token_source": "machine/design-tokens.json",
 
   "a2ui_primitives": {
@@ -216,7 +216,7 @@
     },
 
     "BottomTabBar": {
-      "description": "底部标签栏，三页签（COACH / MAP / JOURNAL）Signal Tower 风格",
+      "description": "底部标签栏，两页签（COACH / MIRROR）Signal Tower 风格",
       "token_refs": {
         "height": "layout.tab_bar_height",
         "font": "typography.font.mono",
@@ -246,7 +246,7 @@
       },
       "layout": {
         "display": "grid",
-        "grid-template-columns": "1fr 1fr 1fr"
+        "grid-template-columns": "1fr 1fr"
       },
       "forbidden": ["icons", "labels with emoji", "active tab with background fill", "dividers between tabs"]
     },
@@ -323,18 +323,22 @@
         "font-family": "var(--font-sans)",
         "font-size": "14px",
         "color": "var(--color-obsidian)",
-        "background": "none",
-        "padding": "0"
+        "background": "rgba(26, 24, 22, 0.05)",
+        "border-radius": "12px",
+        "max-width": "fit-content",
+        "padding": "var(--spacing-sm) var(--spacing-md)"
       },
+      "user_message_note": "用户消息背景宽度适配内容，不使用固定宽度",
       "timestamp": {
-        "condition": "only when gap > 30 minutes",
+        "_comment": "时间戳规则已拆分为独立组件 TimestampSeparator，此处保留向后兼容字段",
+        "condition": "delegated to TimestampSeparator component",
         "font-family": "var(--font-mono)",
-        "font-size": "12px",
+        "font-size": "11px",
         "color": "var(--color-obsidian-40)",
         "text-align": "center"
       },
       "message_gap": "16px",
-      "forbidden": ["bubble backgrounds", "avatar images", "read receipts", "typing indicator with animation"]
+      "forbidden": ["bubble backgrounds", "avatar images", "read receipts", "typing indicator with animation", "fixed width on user message background"]
     },
 
     "MapCard": {
@@ -379,8 +383,8 @@
       "forbidden": ["border-radius > 0 on card container", "gradient overlay on image", "like/share buttons"]
     },
 
-    "JournalEntry": {
-      "description": "Journal 页条目，逆时间序，仅显示有数据的日子",
+    "LogEntry": {
+      "description": "日志（Log）事件流条目，逆时间序，仅显示有数据的日子",
       "date_header": {
         "font-family": "var(--font-serif)",
         "font-size": "16px",
@@ -443,6 +447,162 @@
         "secondary": "ObsidianPill solid (「暂停一下」)"
       },
       "forbidden": ["warning icon", "red color", "emotional language", "exclamation marks"]
+    },
+
+    "TimestampSeparator": {
+      "description": "聊天时间戳分隔组件，按消息间隔规则显示",
+      "css_rules": {
+        "font-family": "var(--font-mono)",
+        "font-size": "11px",
+        "color": "var(--color-obsidian-40)",
+        "text-align": "center"
+      },
+      "display_rules": {
+        "gap_lt_5min": {
+          "condition": "消息间隔 < 5 分钟",
+          "action": "不显示，消息合入同一组"
+        },
+        "gap_5_to_30min": {
+          "condition": "消息间隔 5 ~ 30 分钟",
+          "format": "仅时间，24h 制",
+          "example": "09:12"
+        },
+        "gap_30min_to_midnight": {
+          "condition": "消息间隔 30 分钟 ~ 当天跨午",
+          "format": "居中，含上午/下午标记",
+          "example_zh": "下午 3:20",
+          "example_en": "3:20 PM"
+        },
+        "gap_cross_day_lt_7d": {
+          "condition": "跨天且 < 7 天",
+          "format": "相对日 + 时间",
+          "example_zh": "昨天 15:20",
+          "example_en": "Yesterday 15:20"
+        },
+        "gap_gte_7d": {
+          "condition": "间隔 ≥ 7 天",
+          "format": "完整日期 + 时间",
+          "example_zh": "3月28日 09:00",
+          "example_en": "Mar 28 09:00"
+        }
+      },
+      "forbidden": ["inline timestamp within message row", "bold or colored timestamp text", "background behind timestamp"]
+    },
+
+    "NorthStarMetric": {
+      "description": "MIRROR 页北极星指标区域，含数值 + 7日趋势图",
+      "label": {
+        "font-family": "var(--font-mono)",
+        "font-size": "10px",
+        "color": "var(--color-copper)",
+        "text-transform": "uppercase",
+        "prefix": "★"
+      },
+      "value": {
+        "font-family": "var(--font-serif)",
+        "font-size": "36px",
+        "color": "var(--color-obsidian)"
+      },
+      "unit": {
+        "font-family": "var(--font-mono)",
+        "font-size": "12px",
+        "color": "var(--color-obsidian-40)"
+      },
+      "delta": {
+        "font-family": "var(--font-mono)",
+        "font-size": "12px",
+        "positive_color": "var(--color-aligned)",
+        "negative_color": "var(--color-risk-red)"
+      },
+      "trend_chart": {
+        "height": "40px",
+        "bar_inactive": "var(--color-obsidian-10)",
+        "bar_today": "var(--color-copper)",
+        "bar_tapped": "var(--color-copper-40)",
+        "date_label": {
+          "font-family": "var(--font-mono)",
+          "font-size": "9px",
+          "color": "var(--color-obsidian-40)"
+        },
+        "view_all_link": {
+          "font-family": "var(--font-mono)",
+          "font-size": "10px",
+          "color": "var(--color-obsidian-40)",
+          "text-align": "right"
+        },
+        "tappable": true
+      },
+      "empty_states": {
+        "no_data": "破折号 '—' + '待设定'",
+        "partial_data": "有天数的柱子正常显示，其余位置空白（不用占位柱）"
+      },
+      "forbidden": ["激励色彩", "pulse 动画", "colored bar for non-today days", "fixed chart width ignoring content"]
+    },
+
+    "SupportMetric": {
+      "description": "MIRROR 页支持性指标，固定 3 列等宽",
+      "layout": {
+        "display": "grid",
+        "grid-template-columns": "1fr 1fr 1fr",
+        "column_separator": "1px solid var(--color-obsidian-10)",
+        "first_column_border": "none"
+      },
+      "label": {
+        "font-family": "var(--font-mono)",
+        "font-size": "10px",
+        "color": "var(--color-obsidian-40)",
+        "text-transform": "uppercase"
+      },
+      "value": {
+        "font-family": "var(--font-serif)",
+        "font-size": "20px",
+        "color": "var(--color-obsidian)"
+      },
+      "sub_label": {
+        "font-family": "var(--font-mono)",
+        "font-size": "10px",
+        "color": "var(--color-obsidian-40)"
+      },
+      "empty_value": "—",
+      "forbidden": ["超过 3 列", "彩色数值", "图标装饰", "卡片容器包裹单列"]
+    },
+
+    "DynamicFilterBar": {
+      "description": "MIRROR 页事件流动态过滤器，仅显示有记录的事件类型",
+      "layout": {
+        "display": "flex",
+        "flex-wrap": "nowrap",
+        "overflow-x": "auto",
+        "gap": "var(--spacing-xs)"
+      },
+      "pill": {
+        "font-family": "var(--font-sans)",
+        "font-size": "13px",
+        "border": "1px solid var(--color-obsidian-10)",
+        "border-radius": "999px",
+        "padding": "6px 12px",
+        "transition": "all 150ms ease"
+      },
+      "pill_count": {
+        "font-family": "var(--font-mono)",
+        "font-size": "10px",
+        "display": "inline",
+        "margin-left": "4px"
+      },
+      "pill_idle": {
+        "background": "transparent",
+        "color": "var(--color-obsidian)"
+      },
+      "pill_active": {
+        "background": "var(--color-obsidian)",
+        "color": "var(--color-parchment)",
+        "border-color": "var(--color-obsidian)"
+      },
+      "render_rules": {
+        "zero_count_hidden": true,
+        "all_tab": "始终显示，显示全部事件总数"
+      },
+      "forbidden": ["显示零记录类型的标签", "彩色激活态", "下拉菜单样式"]
     }
   }
 }

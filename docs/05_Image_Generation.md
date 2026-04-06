@@ -111,7 +111,7 @@ contrast element. Large generous white space comprising 40-60% of composition.
 Linear divisions, no containers or shadows. Quiet confidence, never decorative.
 ```
 
-**暖黑主题（Map 页专用）**：
+**暖黑主题（暗色场景干预专用）**：
 ```
 Style: hand-drawn celestial cartography on warm dark background (#2A2520)
 with subtle aged paper texture. Stars in low-saturation cool blue (#8AACB8)

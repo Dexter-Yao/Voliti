@@ -1,7 +1,7 @@
 {
   "_comment": "Starpath Protocol — Voliti 设计 tokens，对应 globals.css CSS 变量",
-  "_version": "1.0.0",
-  "_updated": "2026-03-08",
+  "_version": "2.0.0",
+  "_updated": "2026-04-06",
 
   "color": {
     "_comment": "核心色彩",
@@ -11,9 +11,14 @@
       "usage": "主文字、主按钮背景、强调元素"
     },
     "parchment": {
-      "value": "#F5F1EB",
+      "value": "#F4F0E8",
       "css_var": "--color-parchment",
       "usage": "页面背景、面板背景、主按钮文字"
+    },
+    "copper": {
+      "value": "#B87333",
+      "css_var": "--color-copper",
+      "usage": "信号色：预案标题、IF/THEN 标记、北极星标签、趋势图活跃柱"
     },
     "warm-dark": {
       "value": "#2A2520",
@@ -35,6 +40,11 @@
       "css_var": "--color-aligned-cool",
       "usage": "图片生成专用，对齐状态冷蓝，Gemini prompt 星光色"
     },
+    "obsidian-05": {
+      "value": "rgba(26, 24, 22, 0.05)",
+      "css_var": "--color-obsidian-05",
+      "usage": "用户消息背景面板"
+    },
     "obsidian-10": {
       "value": "rgba(26, 24, 22, 0.10)",
       "css_var": "--color-obsidian-10",
@@ -55,6 +65,11 @@
       "css_var": "--color-obsidian-40",
       "usage": "次要标签、时间戳、占位符文字"
     },
+    "copper-40": {
+      "value": "rgba(184, 115, 51, 0.40)",
+      "css_var": "--color-copper-40",
+      "usage": "趋势图活跃柱"
+    },
     "forbidden": [
       "medical blue (#0000FF series)",
       "motivational orange (#FF6B00 series)",
@@ -67,17 +82,17 @@
   "typography": {
     "font": {
       "serif": {
-        "value": "'Noto Serif SC', serif",
+        "value": "'LXGW WenKai', serif",
         "css_var": "--font-serif",
-        "usage": "叙事层：Coach 消息、Journal 文本、教练洞察文案、Map 卡片文案"
+        "usage": "叙事层：Coach 消息、Journal 文本、教练洞察文案、Map 卡片文案、身份宣言、指标数值"
       },
       "sans": {
-        "value": "'Inter', sans-serif",
+        "value": "'DM Sans', sans-serif",
         "css_var": "--font-sans",
         "usage": "界面层：用户消息、输入框、按钮文案、数据摘要"
       },
       "mono": {
-        "value": "'IBM Plex Mono', monospace",
+        "value": "'JetBrains Mono', monospace",
         "css_var": "--font-mono",
         "usage": "信号层：底部标签栏、时间戳、数值指标、数据标签"
       }
@@ -107,6 +122,11 @@
         "value": "24px",
         "css_var": "--font-size-xl",
         "usage": "Map 页身份宣言、空状态提示标题"
+      },
+      "2xl": {
+        "value": "36px",
+        "css_var": "--font-size-2xl",
+        "usage": "北极星指标数值"
       }
     },
     "line_height": {
