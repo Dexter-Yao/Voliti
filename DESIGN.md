@@ -1,5 +1,9 @@
 # Design System — Voliti (Starpath Protocol v2)
 
+> 设计哲学与交互原则见 [`docs/02_Design_Philosophy.md`](docs/02_Design_Philosophy.md)。
+> 产品定位与理论基础见 [`docs/01_Product_Foundation.md`](docs/01_Product_Foundation.md)。
+> 机器可读 tokens 见 [`docs/design-system/design-tokens.json`](docs/design-system/design-tokens.json)。
+
 ## 产品上下文
 - **产品定义：** AI 减脂领导力教练，训练用户在真实生活场景中的决策能力
 - **目标用户：** 理性、上进的知识工作者/管理者。信息储备充足，但压力/疲劳/社交持续打断节奏
@@ -318,12 +322,12 @@
 
 | 文件 | 内容 |
 |------|------|
-| `/tmp/starpath-v2-variant-A.html` | Variant A: Noto Serif SC + Inter + IBM Plex Mono |
-| `/tmp/starpath-v2-variant-B.html` | Variant B: LXGW WenKai + DM Sans + JetBrains Mono (选定) |
-| `/tmp/starpath-v2-variant-C.html` | Variant C: Source Serif 4 + Geist + Geist Mono |
-| `/tmp/starpath-v2-chat-variants.html` | 聊天界面 3 种方案对比 (中英双语) |
-| `/tmp/starpath-v2-chat-final.html` | 聊天界面最终方案 + 时间戳规则 + 命名约定 (中英双语) |
-| `/tmp/starpath-v2-mirror-metrics.html` | MIRROR 指标体系重组 + 空状态设计 (中英双语) |
+| `~/.gstack/projects/Voliti/designs/starpath-v2-mockups/starpath-v2-variant-A.html` | Variant A: Noto Serif SC + Inter + IBM Plex Mono |
+| `~/.gstack/projects/Voliti/designs/starpath-v2-mockups/starpath-v2-variant-B.html` | Variant B: LXGW WenKai + DM Sans + JetBrains Mono (选定) |
+| `~/.gstack/projects/Voliti/designs/starpath-v2-mockups/starpath-v2-variant-C.html` | Variant C: Source Serif 4 + Geist + Geist Mono |
+| `~/.gstack/projects/Voliti/designs/starpath-v2-mockups/starpath-v2-chat-variants.html` | 聊天界面 3 种方案对比 (中英双语) |
+| `~/.gstack/projects/Voliti/designs/starpath-v2-mockups/starpath-v2-chat-final.html` | 聊天界面最终方案 + 时间戳规则 + 命名约定 (中英双语) |
+| `~/.gstack/projects/Voliti/designs/starpath-v2-mockups/starpath-v2-mirror-metrics.html` | MIRROR 指标体系重组 + 空状态设计 (中英双语) |
 | `~/.gstack/projects/Voliti/designs/design-audit-20260406/starpath-protocol-audit.md` | Starpath v1 源码审计报告 |
 
 ---

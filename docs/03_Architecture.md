@@ -4,9 +4,10 @@
 
 ## 相关文档
 
-- `/docs/01_Product_Foundation.md` — 产品理论与目标定位（理论基础、Guardrail、数据结构）
-- `/DESIGN.md` — 设计系统规范（Starpath Protocol v2）
-- `/docs/05_Image_Generation.md` — 教练干预技术指南
+- `/docs/01_Product_Foundation.md` — 产品定位与理论基础
+- `/docs/02_Design_Philosophy.md` — 设计理念与交互原则
+- `/DESIGN.md` — 设计规格（tokens、色值、组件）
+- `/docs/04_Image_Generation.md` — 图像生成技术指南
 
 ## Overview
 
