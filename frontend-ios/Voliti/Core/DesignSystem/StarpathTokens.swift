@@ -1,5 +1,5 @@
-// ABOUTME: Starpath Protocol 设计 tokens，定义颜色、字体、间距等视觉常量
-// ABOUTME: 所有值精确映射 docs/design-system/design-tokens.json
+// ABOUTME: Starpath Protocol v2 设计 tokens，定义颜色、字体、间距等视觉常量
+// ABOUTME: 所有值精确映射 DESIGN.md + docs/design-system/design-tokens.json
 
 import SwiftUI
 
@@ -10,8 +10,8 @@ enum StarpathTokens {
     /// 主文字、主按钮背景、强调元素 (#1A1816)
     static let obsidian = Color(red: 0.102, green: 0.094, blue: 0.086)
 
-    /// 页面背景、面板背景、主按钮文字 (#F5F1EB)
-    static let parchment = Color(red: 0.961, green: 0.945, blue: 0.922)
+    /// 页面背景、面板背景、主按钮文字 (#F4F0E8)
+    static let parchment = Color(red: 0.957, green: 0.941, blue: 0.910)
 
     /// Map 页暗色主题背景 (#2A2520)
     static let warmDark = Color(red: 0.165, green: 0.145, blue: 0.125)
@@ -25,7 +25,18 @@ enum StarpathTokens {
     /// 对齐状态冷蓝变体，图片生成与 Map 卡片状态指示 (#8AACB8)
     static let alignedCool = Color(red: 0.541, green: 0.675, blue: 0.722)
 
+    // MARK: - 信号色
+
+    /// 预案标题、IF/THEN 标记、北极星标签、趋势图活跃柱 (#B87333)
+    static let copper = Color(red: 0.722, green: 0.451, blue: 0.200)
+
+    /// 趋势图活跃柱
+    static let copper40 = copper.opacity(0.40)
+
     // MARK: - 透明度变体
+
+    /// 用户消息背景面板
+    static let obsidian05 = obsidian.opacity(0.05)
 
     /// 细分割线、输入框边框、滑块轨道
     static let obsidian10 = obsidian.opacity(0.10)
@@ -53,8 +64,11 @@ enum StarpathTokens {
     /// 扇出面板标题 (18px)
     static let fontSizeLG: CGFloat = 18
 
-    /// Map 页身份宣言 (24px)
+    /// 身份宣言、指标数值 (24px)
     static let fontSizeXL: CGFloat = 24
+
+    /// 北极星指标数值 (36px)
+    static let fontSize2XL: CGFloat = 36
 
     // MARK: - 间距
 

@@ -45,7 +45,7 @@ private struct StarpathTabBar: View {
                 } label: {
                     VStack(spacing: StarpathTokens.spacingXS) {
                         Text(label)
-                            .font(.system(size: StarpathTokens.fontSizeXS, design: .monospaced))
+                            .font(.custom("JetBrainsMono-Regular", size: StarpathTokens.fontSizeXS))
                             .tracking(2)
                             .foregroundStyle(
                                 index == selectedIndex

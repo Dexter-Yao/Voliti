@@ -1,5 +1,5 @@
-// ABOUTME: 对话消息列表，Coach 左对齐 Serif / 用户右对齐 Sans
-// ABOUTME: 无气泡背景，间隔 > 30 分钟时显示时间戳
+// ABOUTME: 对话消息列表，Coach 左对齐 Serif / 用户右对齐 Sans + 圆角面板
+// ABOUTME: 时间戳由 TimestampSeparator 组件按 5 级规则自动显示
 
 import SwiftUI
 
@@ -15,15 +15,11 @@ struct MessageList: View {
                 LazyVStack(alignment: .leading, spacing: StarpathTokens.messageGap) {
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                         VStack(spacing: StarpathTokens.spacingXS) {
-                            // 时间戳（间隔 > 30 分钟时显示）
-                            if shouldShowTimestamp(at: index) {
-                                Text(message.timestamp, style: .time)
-                                    .starpathMono()
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.top, StarpathTokens.spacingSM)
-                            }
+                            TimestampSeparator(
+                                current: message.timestamp,
+                                previous: index > 0 ? messages[index - 1].timestamp : nil
+                            )
 
-                            // 消息内容
                             MessageBubble(message: message)
                         }
                         .id(message.id)
@@ -62,12 +58,6 @@ struct MessageList: View {
         }
     }
 
-    private func shouldShowTimestamp(at index: Int) -> Bool {
-        guard index > 0 else { return true }
-        let current = messages[index].timestamp
-        let previous = messages[index - 1].timestamp
-        return current.timeIntervalSince(previous) > 1800 // 30 分钟
-    }
 }
 
 // MARK: - Message Bubble
@@ -129,6 +119,10 @@ private struct MessageContentView: View {
         case .user:
             Text(text)
                 .starpathSans()
+                .padding(.horizontal, StarpathTokens.spacingSM + StarpathTokens.spacingXS)
+                .padding(.vertical, StarpathTokens.spacingSM)
+                .background(StarpathTokens.obsidian05)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 

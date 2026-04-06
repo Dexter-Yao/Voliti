@@ -1,5 +1,5 @@
-// ABOUTME: Starpath Protocol 排版 ViewModifier，提供三层字体样式
-// ABOUTME: serif（叙事层）、sans（界面层）、mono（信号层）
+// ABOUTME: Starpath Protocol v2 排版 ViewModifier，提供三层字体样式
+// ABOUTME: serif（叙事层 LXGW WenKai）、sans（界面层 DM Sans）、mono（信号层 JetBrains Mono）
 
 import SwiftUI
 
@@ -10,7 +10,7 @@ struct StarpathSerifModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.custom("NotoSerifSC-Regular", size: size))
+            .font(.custom("LXGWWenKai-Regular", size: size))
             .foregroundStyle(StarpathTokens.obsidian)
             .lineSpacing(size * (StarpathTokens.lineHeightBody - 1))
     }
@@ -23,7 +23,7 @@ struct StarpathSansModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.system(size: size, design: .default))
+            .font(.custom("DMSans-Regular", size: size))
             .foregroundStyle(StarpathTokens.obsidian)
     }
 }
@@ -36,7 +36,7 @@ struct StarpathMonoModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.system(size: size, design: .monospaced))
+            .font(.custom("JetBrainsMono-Regular", size: size))
             .foregroundStyle(StarpathTokens.obsidian40)
             .textCase(uppercase ? .uppercase : nil)
             .tracking(uppercase ? 2 : 0)
