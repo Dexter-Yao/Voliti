@@ -6,6 +6,7 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(NotificationService.self) private var notificationService
+    @AppStorage("onboardingComplete") private var onboardingComplete = false
     @State private var selectedTab = 0
 
     private let tabs = ["COACH", "MIRROR"]
@@ -26,7 +27,12 @@ struct ContentView: View {
         .onChange(of: notificationService.pendingDeepLink) { _, newValue in
             guard newValue != nil else { return }
             selectedTab = 0
-            // pendingDeepLink 由 CoachView 消费后清除
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { !onboardingComplete },
+            set: { if $0 { onboardingComplete = false } }
+        )) {
+            OnboardingView()
         }
     }
 }

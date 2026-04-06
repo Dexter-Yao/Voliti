@@ -1,0 +1,159 @@
+// ABOUTME: Onboarding 全屏对话界面，Coach 发起对话
+// ABOUTME: 两个视觉阶段：居中模式（Coach 独白）→ 对话模式（正常聊天）
+
+import SwiftUI
+import SwiftData
+
+struct OnboardingView: View {
+    @Environment(\.modelContext) private var modelContext
+    @State private var viewModel = CoachViewModel()
+    @State private var phase: OnboardingPhase = .welcome
+    @State private var selectedReply: String?
+
+    var body: some View {
+        ZStack {
+            StarpathTokens.parchment
+                .ignoresSafeArea()
+
+            switch phase {
+            case .welcome:
+                welcomePhase
+            case .conversation:
+                conversationPhase
+            }
+        }
+        .onAppear {
+            viewModel.configure(modelContext: modelContext)
+        }
+        .sheet(item: $viewModel.activeInterrupt) { payload in
+            FanOutPanel(
+                payload: payload,
+                onSubmit: { data in
+                    viewModel.submitA2UIResponse(data)
+                },
+                onReject: {
+                    viewModel.rejectA2UI()
+                },
+                onSkip: {
+                    viewModel.skipA2UI()
+                }
+            )
+            .presentationDetents(payload.layout.detents)
+            .presentationDragIndicator(.hidden)
+            .presentationBackground(StarpathTokens.parchment.opacity(0.98))
+        }
+    }
+
+    // MARK: - Welcome Phase (centered, Coach speaks first)
+
+    private var welcomePhase: some View {
+        VStack(spacing: 0) {
+            Spacer()
+                .frame(minHeight: 60)
+
+            // Coach 标识
+            Text("VOLITI COACH")
+                .font(.custom("JetBrainsMono-Regular", size: StarpathTokens.fontSizeXS))
+                .foregroundStyle(StarpathTokens.copper)
+                .tracking(2)
+                .padding(.bottom, StarpathTokens.spacingLG)
+
+            // Coach 欢迎消息
+            if let firstMessage = viewModel.messages.first(where: { $0.role == .assistant }) {
+                Text(firstMessage.textContent)
+                    .starpathSerif(size: StarpathTokens.fontSizeLG)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, StarpathTokens.spacingXL)
+                    .padding(.bottom, StarpathTokens.spacingXL)
+            } else {
+                // Coach 还没发消息，显示加载
+                ProgressView()
+                    .tint(StarpathTokens.obsidian40)
+                    .padding(.bottom, StarpathTokens.spacingXL)
+            }
+
+            Spacer()
+
+            // Quick Reply pills (vertical)
+            if !viewModel.suggestedReplies.isEmpty {
+                VStack(spacing: StarpathTokens.spacingSM) {
+                    ForEach(viewModel.suggestedReplies, id: \.self) { reply in
+                        Button {
+                            selectReply(reply)
+                        } label: {
+                            Text(reply)
+                                .starpathSans()
+                                .foregroundStyle(StarpathTokens.obsidian)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, StarpathTokens.spacingSM + 2)
+                                .background(
+                                    Capsule()
+                                        .stroke(StarpathTokens.obsidian10, lineWidth: 1)
+                                )
+                        }
+                    }
+                }
+                .padding(.horizontal, StarpathTokens.spacingXL)
+                .padding(.bottom, StarpathTokens.spacingXL)
+            }
+
+            // 文字输入区（当最后一个 pill 是"让我想想"类触发时显示）
+            if viewModel.suggestedReplies.isEmpty && viewModel.messages.count > 0 {
+                InputBar(
+                    onSend: { text, imageData in
+                        viewModel.sendMessage(text, imageData: imageData)
+                        transitionToConversation()
+                    },
+                    disabled: viewModel.isStreaming
+                )
+            }
+        }
+    }
+
+    // MARK: - Conversation Phase (normal chat, no Tab bar)
+
+    private var conversationPhase: some View {
+        ZStack(alignment: .bottom) {
+            MessageList(
+                messages: viewModel.messages,
+                isStreaming: viewModel.isStreaming
+            )
+
+            VStack(spacing: 0) {
+                StarpathDivider()
+                InputBar(
+                    onSend: { text, imageData in
+                        viewModel.sendMessage(text, imageData: imageData)
+                    },
+                    disabled: viewModel.isStreaming,
+                    suggestedReplies: viewModel.suggestedReplies,
+                    onSuggestionTap: { reply in
+                        viewModel.suggestedReplies = []
+                        viewModel.sendMessage(reply, imageData: nil)
+                    }
+                )
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func selectReply(_ reply: String) {
+        viewModel.suggestedReplies = []
+        viewModel.sendMessage(reply, imageData: nil)
+        transitionToConversation()
+    }
+
+    private func transitionToConversation() {
+        withAnimation(.easeOut(duration: 0.3)) {
+            phase = .conversation
+        }
+    }
+}
+
+// MARK: - Phase
+
+private enum OnboardingPhase {
+    case welcome
+    case conversation
+}
