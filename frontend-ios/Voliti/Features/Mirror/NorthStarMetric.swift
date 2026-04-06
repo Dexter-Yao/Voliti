@@ -160,24 +160,25 @@ struct NorthStarMetric: View {
     }
 
     private func barColor(isToday: Bool, isSelected: Bool) -> Color {
-        if isSelected { return StarpathTokens.copper }
-        if isToday { return StarpathTokens.copper }
-        return StarpathTokens.obsidian10
+        (isSelected || isToday) ? StarpathTokens.copper : StarpathTokens.obsidian10
     }
+
+    private static let weekdayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale.current
+        f.dateFormat = "E"
+        return f
+    }()
 
     private func dayLabels() -> [String] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
         return (0..<7).reversed().map { daysAgo in
             let date = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
             if daysAgo == 0 {
                 return Locale.current.language.languageCode?.identifier == "zh" ? "今" : "Today"
             }
-            formatter.dateFormat = "E"
-            let short = formatter.string(from: date)
-            return String(short.prefix(1))
+            return String(Self.weekdayFormatter.string(from: date).prefix(1))
         }
     }
 }

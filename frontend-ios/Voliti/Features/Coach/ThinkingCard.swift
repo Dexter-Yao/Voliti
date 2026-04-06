@@ -45,30 +45,13 @@ struct ThinkingCard: View {
             .buttonStyle(.plain)
 
             // 展开区域
-            if isExpanded {
+            if isExpanded && (!observations.isEmpty || !actions.isEmpty) {
                 VStack(alignment: .leading, spacing: StarpathTokens.spacingSM) {
-                    if !observations.isEmpty {
-                        ForEach(Array(observations.enumerated()), id: \.offset) { _, observation in
-                            HStack(alignment: .top, spacing: StarpathTokens.spacingSM) {
-                                Text("·")
-                                    .foregroundStyle(StarpathTokens.obsidian40)
-                                Text(observation)
-                                    .starpathSans()
-                                    .foregroundStyle(StarpathTokens.obsidian40)
-                            }
-                        }
+                    ForEach(Array(observations.enumerated()), id: \.offset) { _, text in
+                        itemRow(bullet: "·", text: text, color: StarpathTokens.obsidian40)
                     }
-
-                    if !actions.isEmpty {
-                        ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
-                            HStack(alignment: .top, spacing: StarpathTokens.spacingSM) {
-                                Text("→")
-                                    .foregroundStyle(StarpathTokens.copper)
-                                Text(action)
-                                    .starpathSans()
-                                    .foregroundStyle(StarpathTokens.obsidian)
-                            }
-                        }
+                    ForEach(Array(actions.enumerated()), id: \.offset) { _, text in
+                        itemRow(bullet: "→", text: text, color: StarpathTokens.obsidian, bulletColor: StarpathTokens.copper)
                     }
                 }
                 .padding(.top, StarpathTokens.spacingXS)
@@ -83,5 +66,15 @@ struct ThinkingCard: View {
                 .foregroundStyle(StarpathTokens.obsidian10),
             alignment: .leading
         )
+    }
+
+    private func itemRow(bullet: String, text: String, color: Color, bulletColor: Color? = nil) -> some View {
+        HStack(alignment: .top, spacing: StarpathTokens.spacingSM) {
+            Text(bullet)
+                .foregroundStyle(bulletColor ?? color)
+            Text(text)
+                .starpathSans()
+                .foregroundStyle(color)
+        }
     }
 }

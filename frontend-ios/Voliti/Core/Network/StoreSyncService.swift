@@ -20,9 +20,10 @@ final class StoreSyncService {
     // MARK: - Full Sync
 
     func syncAll() async {
-        await syncLifeSignPlans()
-        await syncDashboardConfig()
-        await syncChapter()
+        async let a: () = syncLifeSignPlans()
+        async let b: () = syncDashboardConfig()
+        async let c: () = syncChapter()
+        _ = await (a, b, c)
     }
 
     // MARK: - LifeSign Plans
@@ -156,12 +157,12 @@ final class StoreSyncService {
                 startDate = .now
             }
 
-            let descriptor = FetchDescriptor<Chapter>(
-                sortBy: [SortDescriptor(\.startDate, order: .reverse)]
+            var descriptor = FetchDescriptor<Chapter>(
+                predicate: #Predicate { $0.id == chapterId }
             )
-            let chapters = try modelContext.fetch(descriptor)
+            descriptor.fetchLimit = 1
 
-            if let existing = chapters.first, existing.id == chapterId {
+            if let existing = try modelContext.fetch(descriptor).first {
                 existing.identityStatement = identityStatement
                 existing.goal = goal
                 existing.startDate = startDate

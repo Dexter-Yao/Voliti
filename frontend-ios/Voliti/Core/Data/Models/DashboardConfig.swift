@@ -22,23 +22,34 @@ final class DashboardConfig {
         self.lastUpdated = lastUpdated
     }
 
+    @Transient private var _northStarCache: NorthStarMetricConfig??
+    @Transient private var _supportMetricsCache: [SupportMetricConfig]?
+
     var northStar: NorthStarMetricConfig? {
         get {
-            guard let data = northStarJSON else { return nil }
-            return try? JSONDecoder().decode(NorthStarMetricConfig.self, from: data)
+            if let cached = _northStarCache { return cached }
+            guard let data = northStarJSON else { _northStarCache = .some(nil); return nil }
+            let decoded = try? JSONDecoder().decode(NorthStarMetricConfig.self, from: data)
+            _northStarCache = .some(decoded)
+            return decoded
         }
         set {
             northStarJSON = try? JSONEncoder().encode(newValue)
+            _northStarCache = .some(newValue)
         }
     }
 
     var supportMetrics: [SupportMetricConfig] {
         get {
-            guard let data = supportMetricsJSON else { return [] }
-            return (try? JSONDecoder().decode([SupportMetricConfig].self, from: data)) ?? []
+            if let cached = _supportMetricsCache { return cached }
+            guard let data = supportMetricsJSON else { _supportMetricsCache = []; return [] }
+            let decoded = (try? JSONDecoder().decode([SupportMetricConfig].self, from: data)) ?? []
+            _supportMetricsCache = decoded
+            return decoded
         }
         set {
             supportMetricsJSON = try? JSONEncoder().encode(newValue)
+            _supportMetricsCache = newValue
         }
     }
 }

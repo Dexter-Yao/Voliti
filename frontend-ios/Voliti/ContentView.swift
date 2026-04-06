@@ -30,7 +30,7 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: Binding(
             get: { !onboardingComplete },
-            set: { if $0 { onboardingComplete = false } }
+            set: { if !$0 { onboardingComplete = true } }
         )) {
             OnboardingView()
         }

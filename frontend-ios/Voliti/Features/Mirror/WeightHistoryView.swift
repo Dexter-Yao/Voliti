@@ -69,7 +69,7 @@ struct WeightHistoryView: View {
         var descriptor = FetchDescriptor<BehaviorEvent>(
             sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
         )
-        descriptor.fetchLimit = 500
+        descriptor.fetchLimit = 200
         do {
             let all = try modelContext.fetch(descriptor)
             records = all.filter { $0.type == .weighIn }
