@@ -40,21 +40,30 @@ struct LangGraphAPI: Sendable {
 
     /// 确保有可用的 Coaching Thread ID
     func ensureThread() async throws -> String {
-        if let existing = APIConfiguration.threadID {
-            return existing
-        }
-        let threadID = try await createThread(metadata: ["session_mode": "coaching"])
-        APIConfiguration.threadID = threadID
-        return threadID
+        try await ensureThread(
+            existing: APIConfiguration.threadID,
+            sessionMode: "coaching",
+            save: { APIConfiguration.threadID = $0 }
+        )
     }
 
     /// 确保有可用的 Onboarding Thread ID
     func ensureOnboardingThread() async throws -> String {
-        if let existing = APIConfiguration.onboardingThreadID {
-            return existing
-        }
-        let threadID = try await createThread(metadata: ["session_mode": "onboarding"])
-        APIConfiguration.onboardingThreadID = threadID
+        try await ensureThread(
+            existing: APIConfiguration.onboardingThreadID,
+            sessionMode: "onboarding",
+            save: { APIConfiguration.onboardingThreadID = $0 }
+        )
+    }
+
+    private func ensureThread(
+        existing: String?,
+        sessionMode: String,
+        save: @Sendable (String) -> Void
+    ) async throws -> String {
+        if let existing { return existing }
+        let threadID = try await createThread(metadata: ["session_mode": sessionMode])
+        save(threadID)
         return threadID
     }
 
@@ -175,9 +184,12 @@ struct LangGraphAPI: Sendable {
     /// 清除指定 namespace 下的所有 Store items
     func deleteStoreItems(namespace: [String]) async throws {
         let items = try await searchStoreItems(namespace: namespace)
-        for item in items {
-            guard let key = item["key"] as? String else { continue }
-            try await deleteStoreItem(namespace: namespace, key: key)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for item in items {
+                guard let key = item["key"] as? String else { continue }
+                group.addTask { try await self.deleteStoreItem(namespace: namespace, key: key) }
+            }
+            try await group.waitForAll()
         }
     }
 
@@ -210,8 +222,11 @@ struct LangGraphAPI: Sendable {
             ["voliti", "user", "ledger"],
             ["voliti", "user", "coping_plans"],
         ]
-        for ns in namespaces {
-            try await deleteStoreItems(namespace: ns)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for ns in namespaces {
+                group.addTask { try await self.deleteStoreItems(namespace: ns) }
+            }
+            try await group.waitForAll()
         }
     }
 

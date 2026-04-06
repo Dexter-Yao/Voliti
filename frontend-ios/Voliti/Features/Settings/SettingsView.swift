@@ -285,11 +285,7 @@ struct SettingsView: View {
             let warning = await ResetService.resetAll(modelContext: modelContext)
             resetWarning = warning
             isResetting = false
-
-            // dismiss + delay → ContentView 检测 onboardingComplete=false → fullScreenCover
             dismiss()
-            try? await Task.sleep(for: .milliseconds(300))
-            UserDefaults.standard.set(false, forKey: "onboardingComplete")
         }
     }
 

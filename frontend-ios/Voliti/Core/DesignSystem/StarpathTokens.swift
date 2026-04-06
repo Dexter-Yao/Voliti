@@ -13,6 +13,9 @@ enum StarpathTokens {
     /// 页面背景、面板背景、主按钮文字 (#F4F0E8)
     static let parchment = Color(red: 0.957, green: 0.941, blue: 0.910)
 
+    /// Onboarding 采集界面微暖偏移底色 (#F4EDE3)
+    static let onboardingWarm = Color(red: 0.957, green: 0.929, blue: 0.890)
+
     /// Map 页暗色主题背景 (#2A2520)
     static let warmDark = Color(red: 0.165, green: 0.145, blue: 0.125)
 
@@ -86,4 +89,23 @@ enum StarpathTokens {
 
     /// 消息间距
     static let messageGap: CGFloat = 16
+}
+
+// MARK: - Settings Toolbar
+
+extension View {
+    /// Settings 齿轮按钮，用于 CoachView 和 MirrorView 的 toolbar leading 位置
+    func settingsToolbar() -> some View {
+        toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 14))
+                        .foregroundStyle(StarpathTokens.obsidian40)
+                }
+            }
+        }
+    }
 }

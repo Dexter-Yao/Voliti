@@ -37,17 +37,7 @@ struct CoachView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                NavigationLink {
-                    SettingsView()
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 14))
-                        .foregroundStyle(StarpathTokens.obsidian40)
-                }
-            }
-        }
+        .settingsToolbar()
         .onAppear {
             viewModel.configure(modelContext: modelContext)
             viewModel.triggerDailyCheckinIfNeeded()

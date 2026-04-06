@@ -15,12 +15,9 @@ struct OnboardingView: View {
     /// re-entry 模式跳过 Step 1-2，直接进入对话模式
     var isReEntry: Bool = false
 
-    /// Onboarding 采集界面的微暖底色
-    private let onboardingBackground = Color(red: 0.957, green: 0.929, blue: 0.890) // #F4EDE3
-
     var body: some View {
         ZStack {
-            onboardingBackground
+            StarpathTokens.onboardingWarm
                 .ignoresSafeArea()
 
             // Copper 渐变呼吸线
@@ -206,12 +203,16 @@ private struct CopperBreathingLine: View {
     @State private var opacity: Double = 0.1
 
     var body: some View {
-        LinearGradient(
-            colors: [.clear, StarpathTokens.copper, .clear],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-        .frame(width: UIScreen.main.bounds.width * 0.6, height: 1)
+        GeometryReader { geo in
+            LinearGradient(
+                colors: [.clear, StarpathTokens.copper, .clear],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(width: geo.size.width * 0.6, height: 1)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(height: 1)
         .opacity(opacity)
         .onAppear {
             withAnimation(
