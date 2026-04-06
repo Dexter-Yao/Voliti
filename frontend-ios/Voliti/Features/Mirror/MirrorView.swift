@@ -36,6 +36,7 @@ struct MirrorView: View {
                     unit: viewModel.northStarConfig?.unit ?? "KG",
                     delta: viewModel.northStarDelta,
                     trendData: viewModel.northStarTrend,
+                    trendQualities: viewModel.northStarTrendQualities,
                     onViewAll: { showWeightHistory = true }
                 )
                 .padding(.vertical, StarpathTokens.spacingLG)

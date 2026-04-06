@@ -59,6 +59,11 @@ final class MirrorViewModel {
         return MetricComputer.trend(for: config.key, from: metricEvents)
     }
 
+    var northStarTrendQualities: [MetricQuality?] {
+        guard let config = northStarConfig else { return [] }
+        return MetricComputer.trendQualities(for: config.key, from: metricEvents)
+    }
+
     // MARK: - Support Metrics (computed from event stream)
 
     var supportMetrics: [SupportMetricItem] {

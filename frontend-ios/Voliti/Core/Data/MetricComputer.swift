@@ -38,6 +38,27 @@ enum MetricComputer {
         }
     }
 
+    /// N 天趋势的 quality 数组，与 trend() 对应
+    static func trendQualities(for key: String, days: Int = 7, from events: [BehaviorEvent]) -> [MetricQuality?] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+
+        return (0..<days).reversed().map { daysAgo in
+            let dayStart = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
+
+            return events
+                .filter { $0.timestamp >= dayStart && $0.timestamp < dayEnd }
+                .sorted { $0.timestamp > $1.timestamp }
+                .lazy
+                .compactMap { event in
+                    event.metrics.first { $0.key == key && $0.quality != .missing }
+                }
+                .first?
+                .quality
+        }
+    }
+
     /// 差值：当前值 vs period 前同日的值
     static func delta(
         for key: String,

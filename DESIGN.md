@@ -299,7 +299,8 @@ OnboardingView 和 COACH Tab 共享同一 thread_id。Onboarding 中的对话在
 - 单位：Mono 12px · obsidian-40
 - Delta：Mono 12px · aligned（正向）/ risk-red（负向）
 - 7日趋势：直接在数值下方，柱状图，高度 40px
-  - 非活跃柱：obsidian-10
+  - reported 柱：obsidian-10（非活跃）/ copper（今日/选中）
+  - estimated 柱：同色但 opacity 0.4，视觉传达"推断值"
   - 今日柱：copper
   - hover/tap 状态：copper-40
   - 日期标签：Mono 9px · obsidian-40

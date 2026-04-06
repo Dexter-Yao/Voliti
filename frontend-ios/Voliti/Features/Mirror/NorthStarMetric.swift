@@ -9,6 +9,7 @@ struct NorthStarMetric: View {
     let unit: String
     let delta: Delta?
     let trendData: [Double?]
+    var trendQualities: [MetricQuality?] = []
     var onViewAll: (() -> Void)?
     @State private var selectedDayIndex: Int?
 
@@ -125,7 +126,7 @@ struct NorthStarMetric: View {
                                     .foregroundStyle(StarpathTokens.copper)
                             }
                             Rectangle()
-                                .fill(barColor(isToday: isToday, isSelected: isSelected))
+                                .fill(barColor(isToday: isToday, isSelected: isSelected, index: index))
                                 .frame(maxWidth: .infinity, minHeight: 2, idealHeight: height, maxHeight: height)
                         }
                         .frame(maxWidth: .infinity)
@@ -159,8 +160,10 @@ struct NorthStarMetric: View {
         }
     }
 
-    private func barColor(isToday: Bool, isSelected: Bool) -> Color {
-        (isSelected || isToday) ? StarpathTokens.copper : StarpathTokens.obsidian10
+    private func barColor(isToday: Bool, isSelected: Bool, index: Int) -> Color {
+        let base: Color = (isSelected || isToday) ? StarpathTokens.copper : StarpathTokens.obsidian10
+        let isEstimated = index < trendQualities.count && trendQualities[index] == .estimated
+        return isEstimated ? base.opacity(0.4) : base
     }
 
     private static let weekdayFormatter: DateFormatter = {
