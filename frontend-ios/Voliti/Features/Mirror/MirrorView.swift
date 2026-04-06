@@ -108,7 +108,19 @@ struct MirrorView: View {
                 metricLabel: viewModel.northStarConfig?.label ?? "体重记录"
             )
         }
-        .toolbar(.hidden)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 14))
+                        .foregroundStyle(StarpathTokens.obsidian40)
+                }
+            }
+        }
         } // NavigationStack
     }
 

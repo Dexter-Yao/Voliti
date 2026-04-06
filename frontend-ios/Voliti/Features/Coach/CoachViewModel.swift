@@ -28,6 +28,7 @@ final class CoachViewModel {
     private var modelContext: ModelContext?
     private var streamTask: Task<Void, Never>?
     private var syncService: StoreSyncService?
+    private var sessionMode: String = "coaching"
 
     private func trace(_ message: String) {
 #if DEBUG
@@ -41,10 +42,19 @@ final class CoachViewModel {
     @ObservationIgnored
     @AppStorage("onboardingComplete") var onboardingComplete = false
 
-    func configure(modelContext: ModelContext) {
+    func configure(modelContext: ModelContext, sessionMode: String = "coaching") {
         self.modelContext = modelContext
+        self.sessionMode = sessionMode
         self.syncService = StoreSyncService(modelContext: modelContext)
         loadMessages()
+    }
+
+    /// 根据 sessionMode 确保正确的 thread
+    private func ensureCorrectThread() async throws -> String {
+        if sessionMode == "onboarding" {
+            return try await api.ensureOnboardingThread()
+        }
+        return try await api.ensureThread()
     }
 
     // MARK: - Daily Check-in
@@ -99,7 +109,7 @@ final class CoachViewModel {
             guard let self else { return }
             var assistantMessage: ChatMessage?
             do {
-                let threadID = try await api.ensureThread()
+                let threadID = try await ensureCorrectThread()
 
                 let msg = ChatMessage(
                     role: .assistant,
@@ -115,7 +125,8 @@ final class CoachViewModel {
                 let stream = try api.streamRun(
                     threadID: threadID,
                     message: tag,
-                    imageData: nil
+                    imageData: nil,
+                    sessionMode: self.sessionMode
                 )
 
                 await processStream(stream, assistantMessage: msg)
@@ -145,8 +156,8 @@ final class CoachViewModel {
         streamTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let threadID = try await api.ensureThread()
-                trace("ensureThread ok, threadID=\(threadID)")
+                let threadID = try await ensureCorrectThread()
+                trace("ensureThread ok, threadID=\(threadID), mode=\(self.sessionMode)")
 
                 let userMessage = ChatMessage(
                     role: .user,
@@ -169,7 +180,8 @@ final class CoachViewModel {
                 let stream = try api.streamRun(
                     threadID: threadID,
                     message: text,
-                    imageData: imageData
+                    imageData: imageData,
+                    sessionMode: self.sessionMode
                 )
                 trace("streamRun created, entering processStream")
 
@@ -207,7 +219,10 @@ final class CoachViewModel {
     }
 
     private func resumeWithAction(_ action: String, data: [String: Any] = [:]) {
-        guard let threadID = APIConfiguration.threadID else { return }
+        let threadID: String? = sessionMode == "onboarding"
+            ? APIConfiguration.onboardingThreadID
+            : APIConfiguration.threadID
+        guard let threadID else { return }
 
         let assistantMessage = ChatMessage(
             role: .assistant,

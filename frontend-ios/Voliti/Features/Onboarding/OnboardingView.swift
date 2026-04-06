@@ -1,29 +1,62 @@
 // ABOUTME: Onboarding 全屏对话界面，Coach 发起对话
 // ABOUTME: 两个视觉阶段：居中模式（Coach 独白）→ 对话模式（正常聊天）
+// ABOUTME: isReEntry=true 时跳过 Step 1-2，直接进入对话模式（设置页"继续了解我"入口）
 
 import SwiftUI
 import SwiftData
 
 struct OnboardingView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel = CoachViewModel()
     @State private var phase: OnboardingPhase = .welcome
     @State private var selectedReply: String?
 
+    /// re-entry 模式跳过 Step 1-2，直接进入对话模式
+    var isReEntry: Bool = false
+
+    /// Onboarding 采集界面的微暖底色
+    private let onboardingBackground = Color(red: 0.957, green: 0.929, blue: 0.890) // #F4EDE3
+
     var body: some View {
         ZStack {
-            StarpathTokens.parchment
+            onboardingBackground
                 .ignoresSafeArea()
 
-            switch phase {
-            case .welcome:
-                welcomePhase
-            case .conversation:
+            // Copper 渐变呼吸线
+            copperBreathingLine
+
+            if isReEntry {
+                // re-entry 直接进入对话模式
                 conversationPhase
+            } else {
+                switch phase {
+                case .welcome:
+                    welcomePhase
+                case .conversation:
+                    conversationPhase
+                }
+            }
+
+            // re-entry 时显示关闭按钮
+            if isReEntry {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14))
+                                .foregroundStyle(StarpathTokens.obsidian40)
+                                .frame(width: 44, height: 44)
+                        }
+                    }
+                    .padding(.horizontal, StarpathTokens.spacingSM)
+                    Spacer()
+                }
             }
         }
         .onAppear {
-            viewModel.configure(modelContext: modelContext)
+            viewModel.configure(modelContext: modelContext, sessionMode: "onboarding")
         }
         .sheet(item: $viewModel.activeInterrupt) { payload in
             FanOutPanel(
@@ -149,6 +182,15 @@ struct OnboardingView: View {
             phase = .conversation
         }
     }
+
+    // MARK: - Copper Breathing Line
+
+    private var copperBreathingLine: some View {
+        CopperBreathingLine()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
 }
 
 // MARK: - Phase
@@ -156,4 +198,28 @@ struct OnboardingView: View {
 private enum OnboardingPhase {
     case welcome
     case conversation
+}
+
+// MARK: - Copper Breathing Line
+
+private struct CopperBreathingLine: View {
+    @State private var opacity: Double = 0.1
+
+    var body: some View {
+        LinearGradient(
+            colors: [.clear, StarpathTokens.copper, .clear],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .frame(width: UIScreen.main.bounds.width * 0.6, height: 1)
+        .opacity(opacity)
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: 5.0)
+                .repeatForever(autoreverses: true)
+            ) {
+                opacity = 0.3
+            }
+        }
+    }
 }

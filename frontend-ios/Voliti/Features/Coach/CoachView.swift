@@ -10,6 +10,7 @@ struct CoachView: View {
     @State private var viewModel = CoachViewModel()
 
     var body: some View {
+        NavigationStack {
         ZStack(alignment: .bottom) {
             StarpathTokens.parchment
                 .ignoresSafeArea()
@@ -32,6 +33,19 @@ struct CoachView: View {
                         viewModel.sendMessage(reply, imageData: nil)
                     }
                 )
+            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 14))
+                        .foregroundStyle(StarpathTokens.obsidian40)
+                }
             }
         }
         .onAppear {
@@ -66,6 +80,7 @@ struct CoachView: View {
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
+        } // NavigationStack
     }
 
     private var showingError: Binding<Bool> {

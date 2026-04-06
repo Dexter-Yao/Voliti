@@ -29,10 +29,17 @@ enum APIConfiguration {
     static let assistantID = "coach"
 
     private static let threadIDKey = "voliti_thread_id"
+    private static let onboardingThreadIDKey = "voliti_onboarding_thread_id"
 
-    /// 持久化 Thread ID
+    /// 持久化 Coaching Thread ID
     static var threadID: String? {
         get { UserDefaults.standard.string(forKey: threadIDKey) }
         set { UserDefaults.standard.set(newValue, forKey: threadIDKey) }
+    }
+
+    /// 持久化 Onboarding Thread ID（独立采集会话）
+    static var onboardingThreadID: String? {
+        get { UserDefaults.standard.string(forKey: onboardingThreadIDKey) }
+        set { UserDefaults.standard.set(newValue, forKey: onboardingThreadIDKey) }
     }
 }

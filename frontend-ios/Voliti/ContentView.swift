@@ -32,7 +32,7 @@ struct ContentView: View {
             get: { !onboardingComplete },
             set: { if !$0 { onboardingComplete = true } }
         )) {
-            OnboardingView()
+            OnboardingView(isReEntry: false)
         }
     }
 }

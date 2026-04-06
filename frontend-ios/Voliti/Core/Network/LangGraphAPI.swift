@@ -15,13 +15,18 @@ struct LangGraphAPI: Sendable {
     // MARK: - Thread Management
 
     /// 创建新的对话线程
-    func createThread() async throws -> String {
+    func createThread(metadata: [String: String] = [:]) async throws -> String {
         let url = APIConfiguration.baseURL.appendingPathComponent("threads")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         Self.applyAuth(&request)
-        request.httpBody = try JSONSerialization.data(withJSONObject: [:])
+
+        var body: [String: Any] = [:]
+        if !metadata.isEmpty {
+            body["metadata"] = metadata
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         try validateResponse(response)
@@ -33,20 +38,30 @@ struct LangGraphAPI: Sendable {
         return threadID
     }
 
-    /// 确保有可用的 Thread ID
+    /// 确保有可用的 Coaching Thread ID
     func ensureThread() async throws -> String {
         if let existing = APIConfiguration.threadID {
             return existing
         }
-        let threadID = try await createThread()
+        let threadID = try await createThread(metadata: ["session_mode": "coaching"])
         APIConfiguration.threadID = threadID
+        return threadID
+    }
+
+    /// 确保有可用的 Onboarding Thread ID
+    func ensureOnboardingThread() async throws -> String {
+        if let existing = APIConfiguration.onboardingThreadID {
+            return existing
+        }
+        let threadID = try await createThread(metadata: ["session_mode": "onboarding"])
+        APIConfiguration.onboardingThreadID = threadID
         return threadID
     }
 
     // MARK: - Streaming
 
     /// 发送消息并获取流式响应
-    func streamRun(threadID: String, message: String, imageData: Data? = nil) throws -> AsyncStream<SSEEvent> {
+    func streamRun(threadID: String, message: String, imageData: Data? = nil, sessionMode: String = "coaching") throws -> AsyncStream<SSEEvent> {
         var content: [[String: Any]] = [
             ["type": "text", "text": message]
         ]
@@ -62,6 +77,12 @@ struct LangGraphAPI: Sendable {
         let timestamp = ISO8601DateFormatter().string(from: Date())
         content.insert(["type": "text", "text": "[\(timestamp)] "], at: 0)
 
+        var configurable: [String: Any] = ["session_mode": sessionMode]
+        let preferredLanguage = UserDefaults.standard.string(forKey: "preferredLanguage") ?? "system"
+        if preferredLanguage != "system" {
+            configurable["preferred_language"] = preferredLanguage
+        }
+
         let body: [String: Any] = [
             "assistant_id": APIConfiguration.assistantID,
             "input": [
@@ -69,6 +90,7 @@ struct LangGraphAPI: Sendable {
                     ["role": "user", "content": content]
                 ]
             ],
+            "config": ["configurable": configurable],
             "stream_mode": ["messages", "values"],
             "stream_subgraphs": true,
         ]
@@ -146,6 +168,51 @@ struct LangGraphAPI: Sendable {
             return []
         }
         return items
+    }
+
+    // MARK: - Store Deletion
+
+    /// 清除指定 namespace 下的所有 Store items
+    func deleteStoreItems(namespace: [String]) async throws {
+        let items = try await searchStoreItems(namespace: namespace)
+        for item in items {
+            guard let key = item["key"] as? String else { continue }
+            try await deleteStoreItem(namespace: namespace, key: key)
+        }
+    }
+
+    /// 删除单个 Store item
+    private func deleteStoreItem(namespace: [String], key: String) async throws {
+        let url = APIConfiguration.baseURL.appendingPathComponent("store/items")
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        Self.applyAuth(&request)
+
+        let body: [String: Any] = [
+            "namespace": namespace,
+            "key": key,
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        // 404 表示 item 已不存在，视为成功
+        if let http = response as? HTTPURLResponse, http.statusCode != 404 {
+            try validateResponse(response)
+        }
+    }
+
+    /// 清除所有用户 Store 数据（profile、chapter、ledger、coping_plans）
+    func clearUserStore() async throws {
+        let namespaces: [[String]] = [
+            ["voliti", "user", "profile"],
+            ["voliti", "user", "chapter"],
+            ["voliti", "user", "ledger"],
+            ["voliti", "user", "coping_plans"],
+        ]
+        for ns in namespaces {
+            try await deleteStoreItems(namespace: ns)
+        }
     }
 
     // MARK: - Request Builder
