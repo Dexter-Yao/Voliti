@@ -320,6 +320,12 @@ final class CoachViewModel {
             self.isStreaming = false
             Task { [weak self] in
                 await self?.syncService?.syncAll()
+                if let self, !self.onboardingComplete {
+                    let complete = await self.syncService?.checkOnboardingComplete() ?? false
+                    if complete {
+                        await MainActor.run { self.onboardingComplete = true }
+                    }
+                }
             }
             self.trace("processStream finalized, cleanedChars=\(cleaned.count), replies=\(replies.count)")
             logger.info("processStream: final text=\(cleaned.count) chars, replies=\(replies.count)")

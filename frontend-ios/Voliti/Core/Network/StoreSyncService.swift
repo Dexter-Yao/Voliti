@@ -27,6 +27,24 @@ final class StoreSyncService {
         _ = await (a, b, c, d)
     }
 
+    /// 检查 profile 中是否包含 onboarding_complete 标记
+    func checkOnboardingComplete() async -> Bool {
+        do {
+            let items = try await api.searchStoreItems(
+                namespace: ["voliti", "user", "profile"]
+            )
+            guard let contextItem = items.first(where: { ($0["key"] as? String) == "context" }),
+                  let value = contextItem["value"] as? [String: Any],
+                  let content = value["content"] as? String else {
+                return false
+            }
+            return content.contains("onboarding_complete: true")
+        } catch {
+            logger.warning("Failed to check onboarding status: \(error.localizedDescription)")
+            return false
+        }
+    }
+
     // MARK: - LifeSign Plans
 
     func syncLifeSignPlans() async {
