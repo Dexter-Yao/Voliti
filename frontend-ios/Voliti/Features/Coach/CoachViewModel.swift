@@ -449,11 +449,11 @@ final class CoachViewModel {
 
         let event = BehaviorEvent(
             timestamp: card.timestamp,
-            type: .moment,
+            kind: "moment",
             evidence: "",
             summary: caption
         )
-        event.cardId = card.id
+        event.setRefs(["card_id": card.id])
         modelContext?.insert(event)
 
         if !onboardingComplete {

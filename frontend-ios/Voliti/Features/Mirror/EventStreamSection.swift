@@ -45,7 +45,7 @@ struct EventStreamSection: View {
 
     private func eventRow(_ event: BehaviorEvent) -> some View {
         Group {
-            if event.type == .moment, let cardId = event.cardId,
+            if event.kind == "moment", let cardId = event.refs["card_id"],
                let card = cardLookup(cardId) {
                 momentRow(event: event, card: card)
             } else {
@@ -74,7 +74,7 @@ struct EventStreamSection: View {
 
                 VStack(alignment: .leading, spacing: StarpathTokens.spacingXS) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(event.type.label)
+                        Text(event.kindLabel)
                             .starpathSans()
                         Spacer()
                         Text(event.timestamp, style: .time)

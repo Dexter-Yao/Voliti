@@ -1,106 +1,103 @@
-// ABOUTME: 行为事件 SwiftData 模型，flat union 设计
-// ABOUTME: 映射 backend/src/voliti/schemas.py 的 7 种事件类型
+// ABOUTME: 行为事件 SwiftData 模型，通用维度设计
+// ABOUTME: kind + metrics + context 替代固定枚举和 flat union
 
 import Foundation
 import SwiftData
 
-enum EventType: String, Codable {
-    case meal
-    case exercise
-    case weighIn = "weigh_in"
-    case waterIntake = "water_intake"
-    case stateCheckin = "state_checkin"
-    case goalUpdate = "goal_update"
-    case appAction = "app_action"
-    case moment = "signature_image"
-    case lifesignCreated = "lifesign_created"
-    case lifesignUpdated = "lifesign_updated"
-    case lifesignDeleted = "lifesign_deleted"
-    case lifesignActivated = "lifesign_activated"
-    case lifesignSucceeded = "lifesign_succeeded"
-    case chapterTransition = "chapter_transition"
+// MARK: - Metric Entry
 
-    var label: String {
-        switch self {
-        case .meal: "饮食"
-        case .exercise: "运动"
-        case .weighIn: "体重"
-        case .waterIntake: "饮水"
-        case .stateCheckin: "状态"
-        case .goalUpdate: "目标"
-        case .appAction: "操作"
-        case .moment: "时刻"
-        case .lifesignCreated: "预案创建"
-        case .lifesignUpdated: "预案更新"
-        case .lifesignDeleted: "预案删除"
-        case .lifesignActivated: "预案激活"
-        case .lifesignSucceeded: "预案成功"
-        case .chapterTransition: "篇章"
-        }
-    }
+struct MetricEntry: Codable, Equatable {
+    let key: String
+    let value: Double?
+    let quality: MetricQuality
 }
+
+enum MetricQuality: String, Codable {
+    case reported
+    case estimated
+    case missing
+}
+
+// MARK: - Behavior Event
 
 @Model
 final class BehaviorEvent {
     var id: String
     var timestamp: Date
-    var type: EventType
+    var recordedAt: Date
+    var kind: String
     var evidence: String
     var summary: String?
+    var metricsJSON: Data?
+    var contextJSON: Data?
     var tags: [String]
+    var refsJSON: Data?
 
-    // Meal
-    var kcal: Double?
-    var proteinG: Double?
-    var carbG: Double?
-    var fatG: Double?
-    var fiberG: Double?
-    var confidence: Double?
+    // MARK: - Decoded Accessors
 
-    // Exercise
-    var exerciseType: String?
-    var durationMin: Double?
-    var kcalBurned: Double?
-    var intensity: String?
+    var metrics: [MetricEntry] {
+        guard let data = metricsJSON else { return [] }
+        return (try? JSONDecoder().decode([MetricEntry].self, from: data)) ?? []
+    }
 
-    // Weight
-    var weightKg: Double?
-    var bodyFatPct: Double?
+    var context: [String: String] {
+        guard let data = contextJSON else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+    }
 
-    // Water
-    var waterMl: Double?
+    var refs: [String: String] {
+        guard let data = refsJSON else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+    }
 
-    // State check-in
-    var energy: Int?
-    var mood: Int?
-    var stress: Int?
-    var sleepHours: Double?
-    var sleepQuality: Int?
-
-    // Goal / App Action
-    var details: String?
-    var action: String?
-
-    // Signature Image
-    var cardId: String?
-
-    // LifeSign
-    var planId: String?
-    var planName: String?
+    // MARK: - Init
 
     init(
         id: String = UUID().uuidString,
         timestamp: Date = .now,
-        type: EventType,
+        recordedAt: Date = .now,
+        kind: String,
         evidence: String,
         summary: String? = nil,
         tags: [String] = []
     ) {
         self.id = id
         self.timestamp = timestamp
-        self.type = type
+        self.recordedAt = recordedAt
+        self.kind = kind
         self.evidence = evidence
         self.summary = summary
         self.tags = tags
+    }
+
+    // MARK: - Kind
+
+    static let kindLabels: [String: String] = [
+        "observation": "行为",
+        "state": "状态",
+        "milestone": "里程碑",
+        "moment": "时刻",
+        "reflection": "复盘",
+        "system": "系统",
+    ]
+
+    var kindLabel: String {
+        Self.kindLabels[kind] ?? kind
+    }
+
+    static let hiddenKinds: Set<String> = ["system"]
+
+    // MARK: - Metric Helpers
+
+    func setMetrics(_ entries: [MetricEntry]) {
+        metricsJSON = try? JSONEncoder().encode(entries)
+    }
+
+    func setContext(_ dict: [String: String]) {
+        contextJSON = try? JSONEncoder().encode(dict)
+    }
+
+    func setRefs(_ dict: [String: String]) {
+        refsJSON = try? JSONEncoder().encode(dict)
     }
 }

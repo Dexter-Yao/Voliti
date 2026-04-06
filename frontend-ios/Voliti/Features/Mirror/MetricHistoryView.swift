@@ -1,20 +1,30 @@
-// ABOUTME: 体重历史记录列表页，从北极星 "查看全部记录" 导航进入
-// ABOUTME: 按日期倒序展示体重记录，含 delta 变化和日期分组
+// ABOUTME: 指定指标的历史记录列表页，从北极星 "查看全部记录" 导航进入
+// ABOUTME: 按日期倒序展示记录，含分页加载（初始 50 条，滚动到底部加载更多）
 
 import SwiftUI
 import SwiftData
 
-struct WeightHistoryView: View {
+struct MetricHistoryView: View {
+    let metricKey: String
+    let metricLabel: String
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var records: [BehaviorEvent] = []
+    @State private var displayCount = 50
 
     var body: some View {
         List {
-            ForEach(records, id: \.id) { event in
-                weightRow(event)
+            ForEach(Array(records.prefix(displayCount).enumerated()), id: \.element.id) { index, event in
+                metricRow(event)
                     .listRowBackground(StarpathTokens.parchment)
                     .listRowSeparatorTint(StarpathTokens.obsidian10)
+                    .onAppear {
+                        // 滚动接近底部时加载更多
+                        if index == displayCount - 5 && displayCount < records.count {
+                            displayCount += 50
+                        }
+                    }
             }
         }
         .listStyle(.plain)
@@ -23,7 +33,7 @@ struct WeightHistoryView: View {
         .navigationTitle("")
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("体重记录")
+                Text(metricLabel)
                     .starpathMono(size: StarpathTokens.fontSizeXS)
             }
             ToolbarItem(placement: .topBarLeading) {
@@ -40,7 +50,7 @@ struct WeightHistoryView: View {
         .onAppear { loadRecords() }
     }
 
-    private func weightRow(_ event: BehaviorEvent) -> some View {
+    private func metricRow(_ event: BehaviorEvent) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: StarpathTokens.spacingXS) {
                 Text(event.timestamp, format: .dateTime.month().day().weekday(.wide))
@@ -53,10 +63,14 @@ struct WeightHistoryView: View {
             Spacer()
 
             HStack(alignment: .firstTextBaseline, spacing: StarpathTokens.spacingXS) {
-                if let kg = event.weightKg {
-                    Text(String(format: "%.1f", kg))
+                if let entry = event.metrics.first(where: { $0.key == metricKey }),
+                   let value = entry.value {
+                    let formatted = value.truncatingRemainder(dividingBy: 1) == 0
+                        ? String(format: "%.0f", value)
+                        : String(format: "%.1f", value)
+                    Text(formatted)
                         .starpathSerif(size: StarpathTokens.fontSizeXL)
-                    Text("KG")
+                    Text(metricKey.uppercased())
                         .starpathMono()
                         .foregroundStyle(StarpathTokens.obsidian40)
                 }
@@ -66,13 +80,14 @@ struct WeightHistoryView: View {
     }
 
     private func loadRecords() {
-        var descriptor = FetchDescriptor<BehaviorEvent>(
+        let descriptor = FetchDescriptor<BehaviorEvent>(
             sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
         )
-        descriptor.fetchLimit = 200
         do {
             let all = try modelContext.fetch(descriptor)
-            records = all.filter { $0.type == .weighIn }
+            records = all.filter { event in
+                event.metrics.contains { $0.key == metricKey }
+            }
         } catch {
             records = []
         }

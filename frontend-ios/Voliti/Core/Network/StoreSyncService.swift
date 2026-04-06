@@ -1,5 +1,5 @@
 // ABOUTME: LangGraph Store → SwiftData 同步服务
-// ABOUTME: 对话结束后拉取 LifeSign、DashboardConfig、Chapter，写入本地
+// ABOUTME: 对话结束后拉取 LifeSign、DashboardConfig、Chapter、LedgerEvents，写入本地
 
 import Foundation
 import SwiftData
@@ -23,7 +23,8 @@ final class StoreSyncService {
         async let a: () = syncLifeSignPlans()
         async let b: () = syncDashboardConfig()
         async let c: () = syncChapter()
-        _ = await (a, b, c)
+        async let d: () = syncLedgerEvents()
+        _ = await (a, b, c, d)
     }
 
     // MARK: - LifeSign Plans
@@ -179,6 +180,90 @@ final class StoreSyncService {
             logger.info("Chapter sync: \(chapterId) — \(identityStatement)")
         } catch {
             logger.error("Chapter sync failed: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Ledger Events
+
+    func syncLedgerEvents() async {
+        do {
+            let items = try await api.searchStoreItems(
+                namespace: ["voliti", "user", "ledger"]
+            )
+
+            for item in items {
+                // Store item 结构：顶层 key 作为事件 id，value 包含事件字段
+                guard let eventId = item["key"] as? String,
+                      let value = item["value"] as? [String: Any] else {
+                    logger.warning("Ledger item missing key or value, skipping")
+                    continue
+                }
+
+                guard let kind = value["kind"] as? String,
+                      let timestampStr = value["timestamp"] as? String,
+                      let evidence = value["evidence"] as? String else {
+                    logger.warning("Ledger event \(eventId) missing required fields (kind/timestamp/evidence), skipping")
+                    continue
+                }
+
+                guard let timestamp = Self.isoFormatter.date(from: timestampStr) else {
+                    logger.warning("Ledger event \(eventId) has unparseable timestamp '\(timestampStr)', skipping")
+                    continue
+                }
+
+                let recordedAt: Date
+                if let recordedAtStr = value["recorded_at"] as? String {
+                    recordedAt = Self.isoFormatter.date(from: recordedAtStr) ?? .now
+                } else {
+                    recordedAt = .now
+                }
+
+                // 去重：已存在则跳过，不覆盖本地数据
+                var descriptor = FetchDescriptor<BehaviorEvent>(
+                    predicate: #Predicate { $0.id == eventId }
+                )
+                descriptor.fetchLimit = 1
+                guard try modelContext.fetch(descriptor).isEmpty else { continue }
+
+                let event = BehaviorEvent(
+                    id: eventId,
+                    timestamp: timestamp,
+                    recordedAt: recordedAt,
+                    kind: kind,
+                    evidence: evidence,
+                    summary: value["summary"] as? String,
+                    tags: value["tags"] as? [String] ?? []
+                )
+
+                // metrics: [[String: Any]] → [MetricEntry] → Data
+                if let metricsRaw = value["metrics"] as? [[String: Any]] {
+                    do {
+                        let metricsData = try JSONSerialization.data(withJSONObject: metricsRaw)
+                        let entries = try JSONDecoder().decode([MetricEntry].self, from: metricsData)
+                        event.setMetrics(entries)
+                    } catch {
+                        logger.warning("Ledger event \(eventId) metrics parse error: \(error.localizedDescription), storing without metrics")
+                    }
+                }
+
+                // context: [String: Any] → flatten to [String: String] → Data
+                if let contextRaw = value["context"] as? [String: Any] {
+                    let contextStrings = contextRaw.compactMapValues { "\($0)" }
+                    event.setContext(contextStrings)
+                }
+
+                // refs: [String: Any] → flatten to [String: String] → Data
+                if let refsRaw = value["refs"] as? [String: Any] {
+                    let refsStrings = refsRaw.compactMapValues { "\($0)" }
+                    event.setRefs(refsStrings)
+                }
+
+                modelContext.insert(event)
+            }
+
+            logger.info("Ledger sync: \(items.count) items processed")
+        } catch {
+            logger.error("Ledger sync failed: \(error.localizedDescription)")
         }
     }
 }

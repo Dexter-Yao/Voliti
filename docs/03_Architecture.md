@@ -154,7 +154,7 @@ agent = create_deep_agent(
 │   └── context.md              # User identity, goals, preferences
 ├── ledger/
 │   └── {YYYY-MM-DD}/           # Daily directory
-│       └── {HHMMSS}_{type}.json  # Event file with timestamp
+│       └── {HHMMSS}_{kind}.json  # Event file (kind + metrics + context)
 ├── derived/
 │   ├── weekly_trend.json       # Aggregated patterns
 │   └── pattern_log.md          # Pattern recognition history
@@ -162,7 +162,7 @@ agent = create_deep_agent(
     └── AGENTS.md               # Coach persistent memory
 ```
 
-**Event Schema:** Coach-defined, not enforced by backend. Schema设计详见`/docs/01_Product_Foundation.md`第五节（数据结构）
+**Event Schema:** Coach-defined, not enforced by backend. 通用维度模型（kind + metrics + context），详见`/docs/event-system-redesign.md`
 
 **Writing Strategy:**
 - Async event recording (user silence ≥5 min or session end)

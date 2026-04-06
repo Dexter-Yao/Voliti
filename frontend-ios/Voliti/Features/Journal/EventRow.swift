@@ -1,5 +1,5 @@
-// ABOUTME: Journal 页单条事件行
-// ABOUTME: 类型标签 Sans + 时间 Mono + 摘要 + 证据引用
+// ABOUTME: 单条事件行，通用维度渲染
+// ABOUTME: kind 标签 + 时间 + 摘要 + metrics 列表 + 证据引用
 
 import SwiftUI
 
@@ -9,8 +9,8 @@ struct EventRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: StarpathTokens.spacingXS) {
             HStack(alignment: .firstTextBaseline) {
-                // 事件类型
-                Text(event.type.label)
+                // 事件类型标签
+                Text(event.kindLabel)
                     .starpathSans()
 
                 Spacer()
@@ -27,10 +27,19 @@ struct EventRow: View {
                     .foregroundStyle(StarpathTokens.obsidian)
             }
 
-            // 数据摘要
-            if let dataSummary = buildDataSummary() {
-                Text(dataSummary)
-                    .starpathMono(uppercase: false)
+            // 通用 metrics 展示
+            if !event.metrics.isEmpty {
+                let parts = event.metrics.compactMap { entry -> String? in
+                    guard let value = entry.value else { return nil }
+                    let formatted = value.truncatingRemainder(dividingBy: 1) == 0
+                        ? String(format: "%.0f", value)
+                        : String(format: "%.1f", value)
+                    return "\(entry.key): \(formatted)"
+                }
+                if !parts.isEmpty {
+                    Text(parts.joined(separator: " · "))
+                        .starpathMono(uppercase: false)
+                }
             }
 
             // 证据引用
@@ -51,31 +60,5 @@ struct EventRow: View {
             }
         }
         .padding(.vertical, StarpathTokens.spacingSM)
-    }
-
-    private func buildDataSummary() -> String? {
-        var parts: [String] = []
-        switch event.type {
-        case .meal:
-            if let kcal = event.kcal { parts.append("\(Int(kcal)) kcal") }
-            if let p = event.proteinG { parts.append("P\(Int(p))g") }
-        case .exercise:
-            if let dur = event.durationMin { parts.append("\(Int(dur))min") }
-            if let burned = event.kcalBurned { parts.append("\(Int(burned)) kcal") }
-        case .weighIn:
-            if let kg = event.weightKg { parts.append("\(String(format: "%.1f", kg)) kg") }
-        case .waterIntake:
-            if let ml = event.waterMl { parts.append("\(Int(ml)) ml") }
-        case .stateCheckin:
-            if let e = event.energy { parts.append("E:\(e)") }
-            if let m = event.mood { parts.append("M:\(m)") }
-            if let s = event.stress { parts.append("S:\(s)") }
-        case .lifesignCreated, .lifesignUpdated, .lifesignDeleted,
-             .lifesignActivated, .lifesignSucceeded:
-            if let name = event.planName { parts.append(name) }
-        case .goalUpdate, .appAction, .moment, .chapterTransition:
-            break
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }

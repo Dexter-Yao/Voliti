@@ -1,5 +1,5 @@
 // ABOUTME: MIRROR 页 ViewModel，统一查询 Chapter + BehaviorEvent + InterventionCard
-// ABOUTME: 指标数据从 DashboardConfig 读取（Coach 写入），不做本地计算
+// ABOUTME: 指标数据由 MetricComputer 从事件流计算，DashboardConfig 仅存配置
 
 import Foundation
 import SwiftData
@@ -14,7 +14,7 @@ final class MirrorViewModel {
     var chapter: Chapter?
     var cards: [InterventionCard] = []
     var groupedEvents: [(date: Date, events: [BehaviorEvent])] = []
-    var selectedFilterType: EventType?
+    var selectedFilterKind: String?
     var expandedDates: Set<Date> = []
     var selectedCard: InterventionCard?
     var lifeSignPlans: [LifeSignPlan] = []
@@ -22,7 +22,10 @@ final class MirrorViewModel {
     var showLifeSignList = false
 
     private var allEvents: [BehaviorEvent] = []
+    private var metricEvents: [BehaviorEvent] = []
     private var modelContext: ModelContext?
+    private var timelinePageSize = 50
+    private var allTimelineLoaded = false
 
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -33,55 +36,42 @@ final class MirrorViewModel {
         loadData()
     }
 
-    // MARK: - North Star (from DashboardConfig)
+    // MARK: - North Star (computed from event stream)
 
     var northStarConfig: NorthStarMetricConfig? {
         dashboardConfig?.northStar
     }
 
     var northStarDisplayValue: String? {
-        northStarConfig?.currentValue?.displayText
+        guard let config = northStarConfig else { return nil }
+        let value = MetricComputer.currentValue(for: config.key, from: metricEvents)
+        guard value != nil else { return nil }
+        return MetricComputer.format(value: value, type: config.type, scaleMax: config.scaleMax, ratioDenominator: config.ratioDenominator)
     }
 
     var northStarDelta: Delta? {
-        // Delta requires historical data — for now return nil
-        // Coach can write trend data in future iterations
-        nil
+        guard let config = northStarConfig else { return nil }
+        return MetricComputer.delta(for: config.key, from: metricEvents, direction: config.deltaDirection)
     }
 
     var northStarTrend: [Double?] {
-        // Trend requires 7-day historical data
-        // For weight, compute from ledger as a convenience
-        guard northStarConfig?.key == "weight" else { return [] }
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        return (0..<7).reversed().map { daysAgo in
-            let dayStart = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
-            let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
-            return allEvents
-                .first {
-                    $0.type == .weighIn
-                        && $0.weightKg != nil
-                        && $0.timestamp >= dayStart
-                        && $0.timestamp < dayEnd
-                }?.weightKg
-        }
+        guard let config = northStarConfig else { return [] }
+        return MetricComputer.trend(for: config.key, from: metricEvents)
     }
 
-    // MARK: - Support Metrics (from DashboardConfig)
+    // MARK: - Support Metrics (computed from event stream)
 
     var supportMetrics: [SupportMetricItem] {
         let configs = dashboardConfig?.supportMetrics ?? []
-        guard !configs.isEmpty else {
-            return defaultSupportMetrics
-        }
+        guard !configs.isEmpty else { return defaultSupportMetrics }
         return configs
             .sorted { $0.order < $1.order }
             .map { config in
-                SupportMetricItem(
+                let value = MetricComputer.currentValue(for: config.key, from: metricEvents)
+                return SupportMetricItem(
                     key: config.key,
                     label: config.label,
-                    value: config.currentValue?.displayText,
+                    value: MetricComputer.format(value: value, type: config.type, scaleMax: config.scaleMax, ratioDenominator: config.ratioDenominator),
                     subLabel: config.unit.isEmpty ? nil : config.unit
                 )
             }
@@ -97,24 +87,42 @@ final class MirrorViewModel {
 
     // MARK: - Dynamic Filter
 
-    var eventTypeCounts: [(type: EventType, count: Int)] {
-        var counts: [EventType: Int] = [:]
-        for event in allEvents {
-            counts[event.type, default: 0] += 1
+    var kindCounts: [(kind: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for event in allEvents where !BehaviorEvent.hiddenKinds.contains(event.kind) {
+            counts[event.kind, default: 0] += 1
         }
         return counts
-            .filter { $0.value > 0 }
-            .sorted { $0.key.label < $1.key.label }
-            .map { (type: $0.key, count: $0.value) }
+            .sorted { $0.key < $1.key }
+            .map { (kind: $0.key, count: $0.value) }
     }
 
     // MARK: - Filtering
 
     var filteredGroupedEvents: [(date: Date, events: [BehaviorEvent])] {
-        guard let filterType = selectedFilterType else { return groupedEvents }
+        guard let filterKind = selectedFilterKind else { return groupedEvents }
         return groupedEvents.compactMap { group in
-            let filtered = group.events.filter { $0.type == filterType }
+            let filtered = group.events.filter { $0.kind == filterKind }
             return filtered.isEmpty ? nil : (date: group.date, events: filtered)
+        }
+    }
+
+    // MARK: - Timeline Pagination
+
+    func loadMoreEvents() {
+        guard let modelContext, !allTimelineLoaded else { return }
+        var descriptor = FetchDescriptor<BehaviorEvent>(
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        descriptor.fetchOffset = allEvents.count
+        descriptor.fetchLimit = timelinePageSize
+        do {
+            let more = try modelContext.fetch(descriptor)
+            if more.count < timelinePageSize { allTimelineLoaded = true }
+            allEvents.append(contentsOf: more)
+            rebuildGroupedEvents()
+        } catch {
+            logger.error("Failed to load more events: \(error.localizedDescription)")
         }
     }
 
@@ -151,8 +159,22 @@ final class MirrorViewModel {
 
     // MARK: - Private
 
+    private func rebuildGroupedEvents() {
+        let calendar = Calendar.current
+        let displayEvents = allEvents.filter { !BehaviorEvent.hiddenKinds.contains($0.kind) }
+        var grouped: [Date: [BehaviorEvent]] = [:]
+        for event in displayEvents {
+            let dayStart = calendar.startOfDay(for: event.timestamp)
+            grouped[dayStart, default: []].append(event)
+        }
+        groupedEvents = grouped
+            .sorted { $0.key > $1.key }
+            .map { (date: $0.key, events: $0.value) }
+    }
+
     private func loadData() {
         guard let modelContext else { return }
+        let calendar = Calendar.current
 
         // Chapter
         let chapterDescriptor = FetchDescriptor<Chapter>(
@@ -195,25 +217,31 @@ final class MirrorViewModel {
             logger.error("Failed to load dashboard config: \(error.localizedDescription)")
         }
 
-        // Events
+        // Timeline events (paginated)
+        allTimelineLoaded = false
         var eventDescriptor = FetchDescriptor<BehaviorEvent>(
             sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
         )
-        eventDescriptor.fetchLimit = 200
+        eventDescriptor.fetchLimit = timelinePageSize
         do {
             allEvents = try modelContext.fetch(eventDescriptor)
+            if allEvents.count < timelinePageSize { allTimelineLoaded = true }
         } catch {
             logger.error("Failed to load events: \(error.localizedDescription)")
         }
 
-        let calendar = Calendar.current
-        var grouped: [Date: [BehaviorEvent]] = [:]
-        for event in allEvents {
-            let dayStart = calendar.startOfDay(for: event.timestamp)
-            grouped[dayStart, default: []].append(event)
+        // Metric events (14 days for trend/delta calculation)
+        let fourteenDaysAgo = calendar.date(byAdding: .day, value: -14, to: calendar.startOfDay(for: .now))!
+        let metricDescriptor = FetchDescriptor<BehaviorEvent>(
+            predicate: #Predicate { $0.timestamp >= fourteenDaysAgo },
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        do {
+            metricEvents = try modelContext.fetch(metricDescriptor)
+        } catch {
+            logger.error("Failed to load metric events: \(error.localizedDescription)")
         }
-        groupedEvents = grouped
-            .sorted { $0.key > $1.key }
-            .map { (date: $0.key, events: $0.value) }
+
+        rebuildGroupedEvents()
     }
 }

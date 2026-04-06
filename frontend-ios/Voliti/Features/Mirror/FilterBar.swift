@@ -4,28 +4,28 @@
 import SwiftUI
 
 struct FilterBar: View {
-    let typeCounts: [(type: EventType, count: Int)]
-    @Binding var selectedType: EventType?
+    let kindCounts: [(kind: String, count: Int)]
+    @Binding var selectedKind: String?
 
     var body: some View {
         HStack(spacing: StarpathTokens.spacingSM) {
             // 全部
             filterPill(
                 label: "全部",
-                count: typeCounts.reduce(0) { $0 + $1.count },
-                isSelected: selectedType == nil
+                count: kindCounts.reduce(0) { $0 + $1.count },
+                isSelected: selectedKind == nil
             ) {
-                selectedType = nil
+                selectedKind = nil
             }
 
             // 各类型
-            ForEach(typeCounts, id: \.type) { item in
+            ForEach(kindCounts, id: \.kind) { item in
                 filterPill(
-                    label: item.type.label,
+                    label: BehaviorEvent.kindLabels[item.kind] ?? item.kind,
                     count: item.count,
-                    isSelected: selectedType == item.type
+                    isSelected: selectedKind == item.kind
                 ) {
-                    selectedType = item.type
+                    selectedKind = item.kind
                 }
             }
 

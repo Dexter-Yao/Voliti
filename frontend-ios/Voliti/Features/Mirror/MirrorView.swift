@@ -62,8 +62,8 @@ struct MirrorView: View {
                 // Event Stream
                 VStack(alignment: .leading, spacing: StarpathTokens.spacingMD) {
                     FilterBar(
-                        typeCounts: viewModel.eventTypeCounts,
-                        selectedType: $viewModel.selectedFilterType
+                        kindCounts: viewModel.kindCounts,
+                        selectedKind: $viewModel.selectedFilterKind
                     )
                     .padding(.horizontal, StarpathTokens.spacingMD)
                     .padding(.top, StarpathTokens.spacingLG)
@@ -102,7 +102,10 @@ struct MirrorView: View {
             }
         }
         .navigationDestination(isPresented: $showWeightHistory) {
-            WeightHistoryView()
+            MetricHistoryView(
+                metricKey: viewModel.northStarConfig?.key ?? "weight",
+                metricLabel: viewModel.northStarConfig?.label ?? "体重记录"
+            )
         }
         .toolbar(.hidden)
         } // NavigationStack
