@@ -44,8 +44,8 @@
 - **Depends on:** Onboarding 场景认领功能完成（P1）+ 更多用户调研数据
 - **Source:** /plan-ceo-review 2026-04-07, cherry-pick ceremony deferred
 
-## P3: 智能签到提醒（已合并至时间感知设计）
-- **What:** ~~Coach 根据用户习惯自动调整签到提醒时间~~ → 已升级为"智能签到进化"，纳入时间感知设计 P1 scope
-- **Why:** 原 P3 项已被 CEO Review 2026-04-07 cherry-pick ceremony 升级为时间感知的自然组成部分
-- **Context:** 不再作为独立 TODO，见 `docs/2026-04-07-temporal-awareness-design.md` 第九章 P1
+## P3: 智能签到提醒（已合并至时间感知实现）
+- **What:** ~~Coach 根据用户习惯自动调整签到提醒时间~~ → 已升级为"智能签到进化"，纳入时间感知 P1 scope 并已实现
+- **Why:** 原 P3 项已被 CEO Review 2026-04-07 升级为时间感知的自然组成部分
+- **Context:** 不再作为独立 TODO。前瞻标记驱动 Check-in 内容调整已在 `coach_system.j2` 中实现
 - **Source:** 原 /plan-ceo-review 2026-04-06 → 升级 /plan-ceo-review 2026-04-07

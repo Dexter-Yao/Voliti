@@ -23,16 +23,16 @@ Voliti is a multi-agent system that maintains coaching continuity across session
 │  │                    Coach Agent (DeepAgent)                      │ │
 │  │  Model: gpt-5.4 (Azure OpenAI)                                │ │
 │  │  Tools: fan_out (A2UI)                                         │ │
-│  │  Subagents: intervention_composer                              │ │
+│  │  Subagents: witness_card_composer                               │ │
 │  │  Memory: /user/coach/AGENTS.md, /user/profile/context.md,     │ │
 │  │          /user/coping_plans_index.md                          │ │
 │  │                                                                │ │
 │  │  ┌──────────────────────────────────────────────────────────┐ │ │
-│  │  │         Intervention Composer (Subagent)                  │ │ │
+│  │  │         Witness Card Composer (Subagent)                   │ │ │
 │  │  │  Model: gpt-5.4-nano (Azure OpenAI)                      │ │ │
 │  │  │  Tool: compose_experiential_intervention                 │ │ │
 │  │  │         └─> gpt-image-1.5 (Azure OpenAI Image API)      │ │ │
-│  │  │         └─> A2UI interrupt (image + caption + feedback)  │ │ │
+│  │  │         └─> A2UI interrupt (card + accept/reject)        │ │ │
 │  │  └──────────────────────────────────────────────────────────┘ │ │
 │  └────────────────┬───────────────────────────────────────────────┘ │
 │                   │                                                  │
@@ -83,7 +83,7 @@ agent = create_deep_agent(
     memory=["/user/coach/AGENTS.md", "/user/profile/context.md", "/user/coping_plans_index.md", "/user/timeline/markers.json"],
     middleware=[SessionModeMiddleware(), JourneyAnalysisMiddleware()],
     tools=[fan_out],
-    subagents=[intervention_composer],
+    subagents=[witness_card_composer],
 )
 ```
 
@@ -91,23 +91,25 @@ agent = create_deep_agent(
 - **Cross-session memory:** MemoryMiddleware auto-loads persistent memory files into system prompt
 - **File system tools:** Built-in tools (ls, read_file, write_file, edit_file, glob, grep) for behavior ledger manipulation
 - **Dynamic UI composition:** `fan_out` tool for A2UI interactions
-- **Subagent delegation:** Delegates experiential intervention creation to specialist subagent
+- **Subagent delegation:** Delegates Witness Card generation to specialist subagent at milestone moments
 
 **Context Management:**
 - `SummarizationMiddleware` compresses conversation at 85% context utilization
 - Full history stored to `/conversation_history/{thread_id}.md`
 - Coach edits `/user/coach/AGENTS.md` to update long-term memory
 
-### 2. Intervention Composer (Subagent)
+### 2. Witness Card Composer (Subagent)
 
-**Role:** Specialist agent for assembling experiential interventions using Azure OpenAI
+**Role:** Specialist agent for generating Witness Card images and text at milestone moments
 
 **Tool:** `compose_experiential_intervention`
-- Constructs image generation prompts following theoretical frameworks
+- Receives Coach delegation (achievement description, user context, emotional tone)
+- Constructs scene-based image prompt within unified visual system
+- Generates personalized narrative text for card
 - Calls Azure OpenAI gpt-image-1.5
-- Returns A2UI payload (image + caption + feedback select component)
+- Returns A2UI payload (brand frame + image + text + accept/reject)
 
-**Intervention Types:** 详见`/docs/01_Product_Foundation.md`附录A.4节（体验式教练干预）
+**Trigger:** Coach 判断里程碑时刻（显性/隐性成就、旅程节点）。详见`/docs/01_Product_Foundation.md` 4.1 节（见证系统）
 
 **Ethical Constraints:** 详见`/docs/01_Product_Foundation.md`第六节（Guardrail）
 
@@ -224,22 +226,22 @@ User message
     → iOS MessageList
 ```
 
-### Experiential Intervention Flow
+### Witness Card Flow
 
 ```
-Coach detects intervention opportunity
-  → Delegate to intervention_composer subagent
-    → Subagent constructs intervention prompt
+Coach detects milestone moment (explicit/implicit achievement)
+  → Delegate to witness_card_composer subagent
+    → Subagent constructs scene prompt + narrative text
       → Call compose_experiential_intervention tool
         → Generate image via Azure OpenAI gpt-image-1.5
-        → Assemble A2UI payload (image + caption + select)
+        → Assemble Witness Card (brand frame + image + text)
         → interrupt() propagates: tool → subagent → coach → client
-          → iOS renders full-screen A2UI panel
-            → User: accept / dismiss / mark unhelpful
-              → resume() with feedback
+          → iOS renders full-screen FanOutPanel
+            → User: accept (save to collection) / dismiss
+              → resume() with decision
         → Tool returns result
       → Subagent completes
-    → Coach continues with intervention outcome
+    → Coach continues conversation
 ```
 
 ## Technology Choices
@@ -368,3 +370,4 @@ cd backend && uv run langgraph dev --port 2025
 | 2026-03-20 | 前端架构更新为 iOS 原生客户端（SwiftUI + SwiftData）；路径引用 doc/ → docs/；A2UI 组件数量 7 → 8 |
 | 2026-04-01 | 模型全面迁移 Gemini 3 → Azure OpenAI GPT-5.4 系列 + gpt-image-1.5 |
 | 2026-04-06 | 新增 SessionModeMiddleware；memory 列表补充 coping_plans_index；Event Schema 引用更新；VolitiTests 测试策略段落；端口 2024→2025 |
+| 2026-04-07 | Intervention Composer 重命名为 Witness Card Composer；角色从"干预图片生成"调整为"里程碑见证卡片生成"；更新数据流示意图；Subagent delegation 描述更新 |
