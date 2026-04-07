@@ -175,28 +175,31 @@ struct SSEClient: Sendable {
 
         var events: [SSEEvent] = []
 
-        // 先提取 AI 文本（确保 processStream 在处理 interrupt 前已有 fullContent）
-        if let messages = json["messages"] as? [[String: Any]] {
-            for msg in messages.reversed() {
-                guard let type = msg["type"] as? String, type == "ai",
-                      let content = extractContent(from: msg["content"]),
-                      !content.isEmpty else { continue }
-                events.append(.message(role: "assistant", content: content))
-                break
-            }
-        }
-
-        // 再检查 interrupt — LangGraph REST API 使用 __interrupt__ key
-        if let interrupts = json["__interrupt__"] as? [[String: Any]],
+        // 检查 interrupt — LangGraph REST API 使用 __interrupt__ key
+        let hasInterrupt = json["__interrupt__"] as? [[String: Any]]
+        if let interrupts = hasInterrupt,
            let first = interrupts.first,
            let value = first["value"] as? [String: Any],
            let type = value["type"] as? String, type == "a2ui",
            let payloadData = try? JSONSerialization.data(withJSONObject: value) {
+
+            // 仅在有 interrupt 时提取 AI 文本（确保中断前 fullContent 已就位）
+            // 正常对话流由 messages/partial 和 messages/complete 事件负责
+            if let messages = json["messages"] as? [[String: Any]] {
+                for msg in messages.reversed() {
+                    guard let msgType = msg["type"] as? String, msgType == "ai",
+                          let content = extractContent(from: msg["content"]),
+                          !content.isEmpty else { continue }
+                    events.append(.message(role: "assistant", content: content))
+                    break
+                }
+            }
+
             events.append(.interrupt(payloadData))
         }
 
         if events.isEmpty {
-            trace("parseValuesEvent: no message/interrupt found; keys=\(json.keys.sorted())")
+            trace("parseValuesEvent: no interrupt found; keys=\(json.keys.sorted())")
         }
         return events
     }
