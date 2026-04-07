@@ -13,6 +13,9 @@ from voliti.middleware.base import PromptInjectionMiddleware
 logger = logging.getLogger(__name__)
 
 _ANALYSIS_INTERVAL_DAYS = 3
+
+_MARKERS_KEY = "/user/timeline/markers.json"
+_AGENTS_KEY = "/user/coach/AGENTS.md"
 _LAST_ANALYSIS_KEY = "/user/derived/last_journey_analysis.json"
 _PATTERN_INDEX_KEY = "/user/derived/pattern_index.md"
 
@@ -29,7 +32,9 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
     def __init__(self) -> None:
         super().__init__()
         self._summary: str | None = None
+        # _analyzed 必须在 _summary 赋值前设为 True，确保分析失败时不会重复触发
         self._analyzed = False
+        self._model: Any = None
 
     def should_inject(self) -> bool:
         return self._summary is not None
@@ -37,42 +42,28 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
     def get_prompt(self) -> str:
         return self._summary or ""
 
-    def _read_file(self, backend: Any, path: str) -> str | None:
-        """从 backend 读取文件，返回内容或 None。"""
-        try:
-            result = backend.read_file(path)
-            return result if result else None
-        except Exception:  # noqa: BLE001
-            return None
-
-    def _write_file(self, backend: Any, path: str, content: str) -> None:
-        """向 backend 写入文件。"""
-        try:
-            backend.write_file(path, content)
-        except Exception:  # noqa: BLE001
-            logger.warning("JourneyAnalysisMW: failed to write %s", path)
-
     def _should_trigger(self, backend: Any) -> bool:
-        """检查是否超过分析间隔。"""
-        raw = self._read_file(backend, _LAST_ANALYSIS_KEY)
-        if not raw:
-            return True
-
+        """检查是否超过分析间隔。首次使用或数据损坏时触发。"""
         try:
+            raw = backend.read_file(_LAST_ANALYSIS_KEY)
+            if not raw:
+                return True
             data = json.loads(raw)
             last_ts = datetime.fromisoformat(data["timestamp"])
             elapsed = datetime.now(timezone.utc) - last_ts
             return elapsed.days >= _ANALYSIS_INTERVAL_DAYS
-        except (json.JSONDecodeError, KeyError, ValueError):
+        except Exception:  # noqa: BLE001
             return True
 
     def _record_analysis_time(self, backend: Any) -> None:
-        """记录本次分析时间。"""
         content = json.dumps(
             {"timestamp": datetime.now(timezone.utc).isoformat()},
             ensure_ascii=False,
         )
-        self._write_file(backend, _LAST_ANALYSIS_KEY, content)
+        try:
+            backend.write_file(_LAST_ANALYSIS_KEY, content)
+        except Exception:  # noqa: BLE001
+            logger.warning("JourneyAnalysisMW: failed to write analysis timestamp")
 
     def _build_analysis_prompt(
         self,
@@ -80,7 +71,6 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         agents_content: str,
         pattern_index: str | None,
     ) -> str:
-        """构建发送给分析 LLM 的 prompt。"""
         sections = [
             "Analyze this user's recent timeline and behavioral patterns.",
             "Produce a concise coaching brief (3-5 bullet points) for the Coach's next session.",
@@ -94,7 +84,6 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         ]
         if pattern_index:
             sections.extend(["", "## Known Patterns", pattern_index])
-
         sections.extend([
             "",
             "## Output Format",
@@ -103,24 +92,31 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         ])
         return "\n".join(sections)
 
-    async def _run_analysis(self, backend: Any, model: Any) -> str | None:
-        """执行 LLM 分析，返回摘要或 None。"""
-        markers = self._read_file(backend, "/user/timeline/markers.json")
-        agents = self._read_file(backend, "/user/coach/AGENTS.md")
-        patterns = self._read_file(backend, _PATTERN_INDEX_KEY)
+    async def _run_analysis(self, backend: Any) -> str | None:
+        """执行 LLM 分析，返回摘要或 None。fail-open。"""
+        try:
+            markers = backend.read_file(_MARKERS_KEY)
+            agents = backend.read_file(_AGENTS_KEY)
+            patterns = backend.read_file(_PATTERN_INDEX_KEY)
+        except Exception:  # noqa: BLE001
+            markers = agents = patterns = None
 
         if not markers and not agents:
             logger.debug("JourneyAnalysisMW: no data to analyze, skipping")
             return None
 
-        prompt = self._build_analysis_prompt(markers, agents, patterns)
+        prompt = self._build_analysis_prompt(
+            markers or "", agents or "", patterns
+        )
 
         try:
-            from voliti.config.models import ModelRegistry
+            if self._model is None:
+                from voliti.config.models import ModelRegistry
 
-            analysis_model = ModelRegistry.get("summarizer")
-            response = await analysis_model.ainvoke(prompt)
-            summary = response.content if hasattr(response, "content") else str(response)
+                self._model = ModelRegistry.get("summarizer")
+
+            response = await self._model.ainvoke(prompt)
+            summary = response.content
 
             if not summary or len(summary.strip()) < 10:
                 logger.warning("JourneyAnalysisMW: empty or too short analysis result")
@@ -131,7 +127,7 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
             logger.warning("JourneyAnalysisMW: LLM analysis failed", exc_info=True)
             return None
 
-    async def prepare(self, backend: Any, model: Any) -> None:
+    async def prepare(self, backend: Any) -> None:
         """在会话开始时调用，检查是否需要分析并执行。
 
         由 agent 运行时在首次 model call 前调用。
@@ -146,7 +142,7 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
             return
 
         logger.info("JourneyAnalysisMW: triggering analysis")
-        summary = await self._run_analysis(backend, model)
+        summary = await self._run_analysis(backend)
 
         if summary:
             self._summary = summary
