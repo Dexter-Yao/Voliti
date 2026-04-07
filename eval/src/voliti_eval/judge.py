@@ -223,6 +223,8 @@ class Judge:
             azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
             api_key=os.environ["AZURE_OPENAI_API_KEY"],
             api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
+            max_retries=3,
+            timeout=120.0,
         )
         self._deployment = model_config.deployment
         self._temperature = model_config.temperature
