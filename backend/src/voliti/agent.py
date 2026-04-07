@@ -13,6 +13,7 @@ from deepagents.middleware.subagents import SubAgent
 
 from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
+from voliti.middleware.journey_analysis import JourneyAnalysisMiddleware
 from voliti.middleware.session_mode import SessionModeMiddleware
 from voliti.tools.experiential import compose_experiential_intervention
 from voliti.tools.fan_out import fan_out
@@ -107,10 +108,15 @@ def create_coach_agent(
         "system_prompt": PromptRegistry.get("coach_system"),
         "backend": _create_backend_factory(),
         "name": "coach",
-        "memory": ["/user/coach/AGENTS.md", "/user/profile/context.md", "/user/coping_plans_index.md"],
+        "memory": [
+            "/user/coach/AGENTS.md",
+            "/user/profile/context.md",
+            "/user/coping_plans_index.md",
+            "/user/timeline/markers.json",
+        ],
         "tools": COACH_TOOLS,
         "subagents": [_create_intervention_composer()],
-        "middleware": [SessionModeMiddleware()],
+        "middleware": [SessionModeMiddleware(), JourneyAnalysisMiddleware()],
     }
     if store is not None:
         kwargs["store"] = store

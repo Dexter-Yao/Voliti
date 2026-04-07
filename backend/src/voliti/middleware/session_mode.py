@@ -3,14 +3,7 @@
 
 from __future__ import annotations
 
-import logging
-from collections.abc import Callable
-from typing import Any
-
-from langchain.agents.middleware.types import AgentMiddleware, ModelRequest, ModelResponse
-from deepagents.middleware._utils import append_to_system_message
-
-logger = logging.getLogger(__name__)
+from voliti.middleware.base import PromptInjectionMiddleware
 
 _ONBOARDING_PROMPT = """
 ## Session Mode: Profile Collection
@@ -34,43 +27,15 @@ def _get_session_mode() -> str:
         return "coaching"
 
 
-class SessionModeMiddleware(AgentMiddleware):
+class SessionModeMiddleware(PromptInjectionMiddleware):
     """按 session_mode 动态追加 prompt 段落到 system message。
 
     coaching 模式：不注入任何内容（默认行为）
     onboarding 模式：追加 profile 采集指令
     """
 
-    tools: list = []
+    def should_inject(self) -> bool:
+        return _get_session_mode() == "onboarding"
 
-    def wrap_model_call(
-        self,
-        request: ModelRequest,
-        handler: Callable[[ModelRequest], ModelResponse],
-    ) -> ModelResponse:
-        session_mode = _get_session_mode()
-
-        if session_mode == "onboarding":
-            new_system = append_to_system_message(
-                request.system_message, _ONBOARDING_PROMPT
-            )
-            request = request.override(system_message=new_system)
-            logger.debug("SessionModeMiddleware: injected onboarding prompt")
-
-        return handler(request)
-
-    async def awrap_model_call(
-        self,
-        request: ModelRequest,
-        handler: Callable[[ModelRequest], Any],
-    ) -> Any:
-        session_mode = _get_session_mode()
-
-        if session_mode == "onboarding":
-            new_system = append_to_system_message(
-                request.system_message, _ONBOARDING_PROMPT
-            )
-            request = request.override(system_message=new_system)
-            logger.debug("SessionModeMiddleware: injected onboarding prompt (async)")
-
-        return await handler(request)
+    def get_prompt(self) -> str:
+        return _ONBOARDING_PROMPT
