@@ -54,6 +54,7 @@ struct OnboardingView: View {
         }
         .onAppear {
             viewModel.configure(modelContext: modelContext, sessionMode: "onboarding")
+            injectGreetingIfNeeded()
         }
         .sheet(item: $viewModel.activeInterrupt) { payload in
             FanOutPanel(
@@ -164,6 +165,30 @@ struct OnboardingView: View {
                 )
             }
         }
+    }
+
+    // MARK: - Greeting
+
+    private static let greetingTextZH = "你好。\n\n我是你的教练，将陪你走接下来这段旅程。\n\n怎么称呼你？"
+    private static let greetingTextEN = "Hi there.\n\nI'm your coach, and I'll be walking this next stretch of the road with you.\n\nWhat should I call you?"
+
+    private static var greetingText: String {
+        let lang = UserDefaults.standard.string(forKey: "preferredLanguage") ?? "system"
+        if lang == "en" { return greetingTextEN }
+        if lang == "zh" { return greetingTextZH }
+        // 默认中文，仅在系统语言明确为英文时切换
+        let systemLang = Locale.current.language.languageCode?.identifier
+        return systemLang == "en" ? greetingTextEN : greetingTextZH
+    }
+
+    private func injectGreetingIfNeeded() {
+        guard viewModel.messages.isEmpty else { return }
+        let greeting = ChatMessage(
+            role: .assistant,
+            textContent: Self.greetingText,
+            threadID: "onboarding"
+        )
+        viewModel.messages.append(greeting)
     }
 
     // MARK: - Actions
