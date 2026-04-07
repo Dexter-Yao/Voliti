@@ -50,6 +50,37 @@ class TestShouldTrigger:
         backend.read_file.return_value = json.dumps({"other": "data"})
         assert mw._should_trigger(backend) is True
 
+    def test_handles_naive_datetime(self) -> None:
+        """naive datetime（无时区）应被正确处理而非抛异常。"""
+        mw = JourneyAnalysisMiddleware()
+        backend = MagicMock()
+        naive_ts = datetime.now().isoformat()  # no timezone
+        backend.read_file.return_value = json.dumps({"timestamp": naive_ts})
+        # 不应抛异常，应正常返回 bool
+        result = mw._should_trigger(backend)
+        assert isinstance(result, bool)
+
+
+class TestHasMeaningfulMarkers:
+
+    def test_empty_string(self) -> None:
+        mw = JourneyAnalysisMiddleware()
+        assert mw._has_meaningful_markers("") is False
+        assert mw._has_meaningful_markers(None) is False
+
+    def test_empty_markers_list(self) -> None:
+        mw = JourneyAnalysisMiddleware()
+        assert mw._has_meaningful_markers('{"markers": []}') is False
+
+    def test_nonempty_markers_list(self) -> None:
+        mw = JourneyAnalysisMiddleware()
+        data = json.dumps({"markers": [{"id": "mk_001"}]})
+        assert mw._has_meaningful_markers(data) is True
+
+    def test_invalid_json(self) -> None:
+        mw = JourneyAnalysisMiddleware()
+        assert mw._has_meaningful_markers("not json") is False
+
 
 class TestAnalyze:
 
@@ -95,7 +126,8 @@ class TestAnalyze:
     async def test_returns_none_on_llm_failure(self) -> None:
         mw = JourneyAnalysisMiddleware()
         backend = MagicMock()
-        backend.read_file.return_value = json.dumps({"markers": []})
+        markers = json.dumps({"markers": [{"id": "mk_001"}]})
+        backend.read_file.return_value = markers
 
         with patch("voliti.config.models.ModelRegistry") as mock_registry:
             mock_registry.get.side_effect = RuntimeError("LLM unavailable")
@@ -107,7 +139,8 @@ class TestAnalyze:
     async def test_returns_none_on_empty_response(self) -> None:
         mw = JourneyAnalysisMiddleware()
         backend = MagicMock()
-        backend.read_file.return_value = json.dumps({"markers": []})
+        markers = json.dumps({"markers": [{"id": "mk_001"}]})
+        backend.read_file.return_value = markers
 
         mock_response = MagicMock()
         mock_response.content = ""
@@ -119,6 +152,21 @@ class TestAnalyze:
             mock_registry.get.return_value = mock_model
             result = await mw._run_analysis(backend)
 
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_skips_on_empty_markers_list(self) -> None:
+        """markers.json 存在但列表为空时应跳过分析。"""
+        mw = JourneyAnalysisMiddleware()
+        backend = MagicMock()
+
+        def read_side_effect(path: str) -> str | None:
+            if "markers" in path:
+                return '{"markers": []}'
+            return None
+
+        backend.read_file.side_effect = read_side_effect
+        result = await mw._run_analysis(backend)
         assert result is None
 
 
@@ -136,7 +184,7 @@ class TestPromptInjection:
         assert "Journey Analysis Brief" in mw.get_prompt()
 
 
-class TestPrepare:
+class TestMaybeAnalyze:
 
     @pytest.mark.asyncio
     async def test_skips_when_within_interval(self) -> None:
@@ -145,15 +193,28 @@ class TestPrepare:
         recent_ts = (datetime.now(timezone.utc) - timedelta(hours=12)).isoformat()
         backend.read_file.return_value = json.dumps({"timestamp": recent_ts})
 
-        await mw.prepare(backend)
+        await mw._maybe_analyze(backend)
         assert mw._summary is None
-        assert mw._analyzed is True
+        assert mw._prepared is True
 
     @pytest.mark.asyncio
     async def test_only_runs_once(self) -> None:
         mw = JourneyAnalysisMiddleware()
-        mw._analyzed = True
+        mw._prepared = True
         backend = MagicMock()
 
-        await mw.prepare(backend)
+        await mw._maybe_analyze(backend)
+        backend.read_file.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_skips_during_onboarding(self) -> None:
+        """onboarding 会话应跳过分析。"""
+        mw = JourneyAnalysisMiddleware()
+        backend = MagicMock()
+
+        with patch("voliti.middleware.journey_analysis._get_session_mode", return_value="onboarding"):
+            await mw._maybe_analyze(backend)
+
+        assert mw._prepared is True
+        assert mw._summary is None
         backend.read_file.assert_not_called()

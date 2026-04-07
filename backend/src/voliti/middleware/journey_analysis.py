@@ -13,6 +13,7 @@ from voliti.middleware.base import PromptInjectionMiddleware
 logger = logging.getLogger(__name__)
 
 _ANALYSIS_INTERVAL_DAYS = 3
+_MAX_CONTENT_LENGTH = 8000
 
 _MARKERS_KEY = "/user/timeline/markers.json"
 _AGENTS_KEY = "/user/coach/AGENTS.md"
@@ -20,20 +21,30 @@ _LAST_ANALYSIS_KEY = "/user/derived/last_journey_analysis.json"
 _PATTERN_INDEX_KEY = "/user/derived/pattern_index.md"
 
 
+def _get_session_mode() -> str:
+    try:
+        from langgraph.config import get_config
+
+        cfg = get_config()
+        return cfg.get("configurable", {}).get("session_mode", "coaching")
+    except Exception:  # noqa: BLE001
+        return "coaching"
+
+
 class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
     """长期旅程视角 Middleware。
 
-    会话开始时检查上次分析时间，超过 3 天则触发 LLM 分析，
+    在 wrap_model_call 中检查上次分析时间，超过 3 天则触发 LLM 分析，
     将结构化摘要注入 Coach system prompt。
 
     fail-open：分析失败时跳过注入，Coach 正常运行。
+    Onboarding 会话跳过分析（新用户无数据可分析）。
     """
 
     def __init__(self) -> None:
         super().__init__()
         self._summary: str | None = None
-        # _analyzed 必须在 _summary 赋值前设为 True，确保分析失败时不会重复触发
-        self._analyzed = False
+        self._prepared = False
         self._model: Any = None
 
     def should_inject(self) -> bool:
@@ -41,6 +52,16 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
 
     def get_prompt(self) -> str:
         return self._summary or ""
+
+    def _get_backend(self) -> Any | None:
+        """从 LangGraph 运行时获取 backend。"""
+        try:
+            from langgraph.config import get_config
+
+            cfg = get_config()
+            return cfg.get("backend")
+        except Exception:  # noqa: BLE001
+            return None
 
     def _should_trigger(self, backend: Any) -> bool:
         """检查是否超过分析间隔。首次使用或数据损坏时触发。"""
@@ -50,6 +71,8 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
                 return True
             data = json.loads(raw)
             last_ts = datetime.fromisoformat(data["timestamp"])
+            if last_ts.tzinfo is None:
+                last_ts = last_ts.replace(tzinfo=timezone.utc)
             elapsed = datetime.now(timezone.utc) - last_ts
             return elapsed.days >= _ANALYSIS_INTERVAL_DAYS
         except Exception:  # noqa: BLE001
@@ -65,6 +88,16 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         except Exception:  # noqa: BLE001
             logger.warning("JourneyAnalysisMW: failed to write analysis timestamp")
 
+    def _has_meaningful_markers(self, markers_str: str | None) -> bool:
+        """检查 markers 是否包含实际内容（非空列表）。"""
+        if not markers_str:
+            return False
+        try:
+            data = json.loads(markers_str)
+            return bool(data.get("markers"))
+        except (json.JSONDecodeError, AttributeError):
+            return False
+
     def _build_analysis_prompt(
         self,
         markers_content: str,
@@ -77,13 +110,13 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
             "Focus on: upcoming high-risk events, repeated behavioral patterns, identity narrative shifts.",
             "",
             "## Forward Markers (upcoming events)",
-            markers_content or "(empty)",
+            markers_content[:_MAX_CONTENT_LENGTH] or "(empty)",
             "",
             "## Coach Memory",
-            agents_content or "(empty)",
+            agents_content[:_MAX_CONTENT_LENGTH] or "(empty)",
         ]
         if pattern_index:
-            sections.extend(["", "## Known Patterns", pattern_index])
+            sections.extend(["", "## Known Patterns", pattern_index[:_MAX_CONTENT_LENGTH]])
         sections.extend([
             "",
             "## Output Format",
@@ -101,7 +134,8 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         except Exception:  # noqa: BLE001
             markers = agents = patterns = None
 
-        if not markers and not agents:
+        has_markers = self._has_meaningful_markers(markers)
+        if not has_markers and not agents:
             logger.debug("JourneyAnalysisMW: no data to analyze, skipping")
             return None
 
@@ -127,15 +161,16 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
             logger.warning("JourneyAnalysisMW: LLM analysis failed", exc_info=True)
             return None
 
-    async def prepare(self, backend: Any) -> None:
-        """在会话开始时调用，检查是否需要分析并执行。
-
-        由 agent 运行时在首次 model call 前调用。
-        """
-        if self._analyzed:
+    async def _maybe_analyze(self, backend: Any) -> None:
+        """检查是否需要分析并执行。在首次 model call 时调用。"""
+        if self._prepared:
             return
 
-        self._analyzed = True
+        self._prepared = True
+
+        if _get_session_mode() == "onboarding":
+            logger.debug("JourneyAnalysisMW: onboarding session, skipping")
+            return
 
         if not self._should_trigger(backend):
             logger.debug("JourneyAnalysisMW: within interval, skipping analysis")
@@ -148,3 +183,16 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
             self._summary = summary
             self._record_analysis_time(backend)
             logger.info("JourneyAnalysisMW: analysis complete, summary ready for injection")
+
+    async def awrap_model_call(self, request, handler):
+        """异步路径：在首次调用时触发分析，然后注入摘要。"""
+        if not self._prepared:
+            backend = self._get_backend()
+            if backend:
+                await self._maybe_analyze(backend)
+
+        return await handler(self._inject(request))
+
+    def wrap_model_call(self, request, handler):
+        """同步路径：跳过分析（需要 async），仅注入已有摘要。"""
+        return handler(self._inject(request))
