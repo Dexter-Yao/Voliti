@@ -88,6 +88,15 @@ async def populate_store(
         await store_client.put_item(ns, key="/chapter/current.json", value=_make_file_value(ch_json))
         logger.info("[%s] Populated /chapter/current.json", user_id)
 
+    # Forward Markers
+    if pre_state.forward_markers:
+        markers_data = {
+            "markers": [m.model_dump(exclude_none=True) for m in pre_state.forward_markers]
+        }
+        markers_json = json.dumps(markers_data, ensure_ascii=False, indent=2)
+        await store_client.put_item(ns, key="/timeline/markers.json", value=_make_file_value(markers_json))
+        logger.info("[%s] Populated /timeline/markers.json (%d markers)", user_id, len(pre_state.forward_markers))
+
     for entry in pre_state.ledger_entries:
         entry_data = json.dumps(entry.data, ensure_ascii=False, indent=2)
         key = f"/ledger/{entry.date}/{entry.time}_{entry.type}.json"

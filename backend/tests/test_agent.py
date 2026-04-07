@@ -198,4 +198,5 @@ class TestCreateCoachAgent:
             "/user/coach/AGENTS.md",
             "/user/profile/context.md",
             "/user/coping_plans_index.md",
+            "/user/timeline/markers.json",
         ]

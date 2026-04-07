@@ -285,6 +285,10 @@ async def _run_single_seed(
     client = CoachClient(config.server_url, config.assistant_id)
     client.with_user_id(user_id)
 
+    # Onboarding seed（无 pre_state）使用 onboarding session_mode
+    if seed.pre_state is None:
+        client.with_session_mode("onboarding")
+
     transcript: Transcript | None = None
     score_card = ScoreCard(seed_id=seed.id)
 
@@ -362,8 +366,16 @@ async def run_evaluation(
 
     auditor = Auditor(config.auditor_model)
 
-    logger.info("Running %d seeds concurrently", len(seeds))
-    tasks = [_run_single_seed(seed, config, auditor, judge_fn, output_dir=output_dir) for seed in seeds]
+    # 限制并发数，避免 Azure OpenAI API 连接超时
+    max_concurrency = 5
+    semaphore = asyncio.Semaphore(max_concurrency)
+
+    async def _run_with_semaphore(seed: Seed) -> SeedResult:
+        async with semaphore:
+            return await _run_single_seed(seed, config, auditor, judge_fn, output_dir=output_dir)
+
+    logger.info("Running %d seeds (max %d concurrent)", len(seeds), max_concurrency)
+    tasks = [_run_with_semaphore(seed) for seed in seeds]
     seed_results = await asyncio.gather(*tasks)
 
     # 按 seed ID 排序保持输出一致性

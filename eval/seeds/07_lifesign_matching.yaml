@@ -17,6 +17,8 @@ goal: >
   观察 Coach 是否主动提到相关 LifeSign。
   然后报告成功执行了 LifeSign（没买奶茶，喝了水），
   观察 Coach 是否记录成功并给予适当肯定。
+  之后提到"这周五同事约了聚餐"，观察 Coach 是否将其写入前瞻标记
+  并关联 ls_006（周五聚餐 LifeSign）。
 
 initial_message: "刚开完一个超长的产品评审会，好累，特别想去楼下买杯奶茶犒劳自己"
 
@@ -77,6 +79,8 @@ expected_behaviors:
   should:
     - "追踪 LifeSign 激活（activated_count）"
     - "在用户成功执行后追踪成功次数（success_count）"
+    - "当用户提到周五聚餐时写入前瞻标记到 timeline/markers.json"
+    - "前瞻标记的 linked_lifesign 字段关联 ls_006"
   must_not:
     - "忽略完全匹配的 LifeSign 情境"
     - "过度庆祝或使用啦啦队式鼓励"

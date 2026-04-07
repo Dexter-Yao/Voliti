@@ -60,6 +60,19 @@ class ChapterData(BaseModel):
     start_date: str  # ISO 8601
 
 
+class ForwardMarker(BaseModel):
+    """前瞻标记，对应 Coach 的 /user/timeline/markers.json 中的单个条目。"""
+
+    id: str
+    date: str  # ISO 8601 with timezone
+    timezone: str = "Asia/Shanghai"
+    description: str
+    risk_level: str = "medium"  # high/medium/low
+    linked_lifesign: str | None = None
+    status: str = "upcoming"  # upcoming/passed/cancelled
+    created_at: str = ""  # ISO 8601
+
+
 class PreState(BaseModel):
     """Seed 运行前预填充到 Store 的状态。"""
 
@@ -69,6 +82,7 @@ class PreState(BaseModel):
     ledger_entries: list[LedgerEntry] = Field(default_factory=list)
     dashboard_config: DashboardConfigData | None = None
     chapter: ChapterData | None = None
+    forward_markers: list[ForwardMarker] = Field(default_factory=list)
 
 
 class ExpectedBehaviors(BaseModel):

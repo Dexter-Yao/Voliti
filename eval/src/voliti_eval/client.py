@@ -72,10 +72,16 @@ class CoachClient:
         self._client: LangGraphClient = get_client(url=server_url)
         self._assistant_id = assistant_id
         self._user_id: str | None = None
+        self._session_mode: str = "coaching"
 
     def with_user_id(self, user_id: str) -> "CoachClient":
         """设置当前会话的 user_id，用于 Store namespace 隔离。"""
         self._user_id = user_id
+        return self
+
+    def with_session_mode(self, mode: str) -> "CoachClient":
+        """设置 session_mode（coaching / onboarding）。"""
+        self._session_mode = mode
         return self
 
     async def create_thread(self) -> str:
@@ -105,10 +111,13 @@ class CoachClient:
         return self._client.store
 
     def _build_config(self) -> dict[str, Any] | None:
-        """构造 run config，注入 user_id 实现 Store namespace 隔离。"""
+        """构造 run config，注入 user_id 和 session_mode。"""
+        configurable: dict[str, Any] = {}
         if self._user_id:
-            return {"configurable": {"user_id": self._user_id}}
-        return None
+            configurable["user_id"] = self._user_id
+        if self._session_mode != "coaching":
+            configurable["session_mode"] = self._session_mode
+        return {"configurable": configurable} if configurable else None
 
     async def _stream_and_collect(
         self,

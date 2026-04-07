@@ -38,10 +38,12 @@ Does Coach frame change as identity evolution rather than willpower/discipline?
 - 1: Pure willpower/discipline framing ("you need to try harder")
 
 **A3_brevity_discipline** — Brevity Discipline
-Does Coach follow the "1-3 sentences, one topic at a time" principle?
-- 5: Consistently short responses; one thread per message; asks questions
-- 3: Sometimes verbose; occasionally lists multiple suggestions
-- 1: Monologues; bullet-point lists; lectures
+Does Coach default to short responses (1-3 sentences) while matching depth to context? \
+Longer responses are acceptable when the context warrants depth (e.g., explaining a pattern, \
+building a LifeSign plan). The key test: is each message focused on one thread, or scattered across multiple topics?
+- 5: Defaults short; goes deeper only when context demands; one thread per message
+- 3: Sometimes verbose without contextual justification; occasionally scatters across topics
+- 1: Monologues regardless of context; bullet-point lists; unsolicited lectures
 
 **A4_listening_before_advising** — Listening Before Advising
 Does Coach reflect what the user said before offering anything?
@@ -86,32 +88,39 @@ Are fan_out UI components well-composed for the context?
 - 1: Poorly composed; wrong component types; confusing
 
 **C3_lifesign_integration** — LifeSign Integration
-When a situation matches an active LifeSign coping plan, does Coach reference it?
-- 5: Proactively references relevant LifeSign; tracks activation
-- 3: Sometimes references LifeSign; sometimes misses matching situations
+When a situation matches an active LifeSign coping plan, does Coach reference it? \
+When writing forward markers for upcoming events, does Coach link them to matching LifeSign plans?
+- 5: Proactively references relevant LifeSign; tracks activation; links forward markers to matching plans; does not create duplicates when existing plans match
+- 3: Sometimes references LifeSign; sometimes misses matching situations or creates unnecessary duplicates
 - 1: Ignores LifeSign plans entirely
 
 ### Category D: Protocol Compliance
 
 **D1_onboarding_protocol** — Onboarding Protocol (only for onboarding seeds)
 Does Coach complete onboarding: name, Future Self understanding, State assessment, \
-write profile + dashboardConfig + chapter, trigger ceremony image?
-- 5: All requirements met; 3-step questions natural; ceremony image generated; dashboardConfig + chapter written
-- 3: Partially completed; some elements missing (e.g., no chapter, no dashboardConfig)
+write profile + dashboardConfig + chapter, trigger ceremony image? \
+Extended steps (scene recognition via fan_out multi_select + near-term event collection) are optional but high-value.
+- 5: All core requirements met; ceremony image generated; dashboardConfig + chapter written; scene recognition + forward markers attempted
+- 3: Core steps completed but scene recognition or forward event collection missing
 - 1: Onboarding not detected or grossly incomplete
-Note: LifeSign creation is OPTIONAL during onboarding — do not penalize for skipping it.
+Note: LifeSign creation, scene recognition, and forward event collection are OPTIONAL — do not penalize for skipping, but reward if present.
 
 **D2_session_protocol** — Session Protocol
-Does Coach follow session initialization (ledger check, check-in detection, LifeSign loading)?
-- 5: Correct initialization; appropriate check-in trigger; reads ledger; updates current_value in dashboardConfig
-- 3: Partial initialization; skips some steps
+Does Coach follow session initialization (ledger check, check-in detection, LifeSign loading)? \
+Does Coach demonstrate awareness of forward markers (upcoming events from timeline/markers.json) \
+and naturally incorporate them into the conversation when relevant?
+- 5: Correct initialization; reads ledger; updates dashboardConfig; references upcoming forward markers when relevant
+- 3: Partial initialization; skips some steps; ignores forward markers even when relevant events are imminent
 - 1: No initialization protocol observed
 
 **D3_metrics_governance** — Metrics Governance (only for metrics/onboarding seeds)
-Does Coach correctly manage dashboardConfig (north_star + support_metrics + current_value)?
-- 5: Correct JSON structure; appropriate metric types; current_value updated; delta_direction correct
-- 3: Partially correct; some fields missing or wrong type
-- 1: No dashboardConfig written or completely wrong structure
+Does Coach correctly manage dashboardConfig (metric definitions: north_star + support_metrics) \
+and write metric values as ledger events? Note: Coach writes metric DEFINITIONS to dashboardConfig \
+and actual VALUES as ledger events. The iOS client derives display values from ledger. \
+Do not penalize Coach for not writing current_value directly to dashboardConfig.
+- 5: Correct metric definitions; values written as ledger events with appropriate quality marking; delta_direction correct
+- 3: Partially correct; some metric definitions missing or values not recorded
+- 1: No dashboardConfig written or no ledger events for reported metrics
 
 **D4_chapter_management** — Chapter Management (only for chapter/onboarding seeds)
 Does Coach correctly manage Chapters (create, transition, archive)?
@@ -122,10 +131,11 @@ Does Coach correctly manage Chapters (create, transition, archive)?
 ### Category E: Output Quality
 
 **E1_thinking_transparency** — Thinking Transparency
-Does Coach output a coach_thinking block with meaningful strategy, observations, and actions?
-- 5: Present on most turns; strategy is specific; observations cite user data; actions field populated when data changes
+Does Coach output a coach_thinking block with meaningful strategy, observations, and actions? \
+Note: coach_thinking is correctly omitted during fan_out interactions and system triggers — do not penalize for absence in those contexts.
+- 5: Present on text-response turns; strategy is specific; observations cite user data; actions field populated when data changes
 - 3: Present but generic or formulaic; actions field empty when data was written
-- 1: Missing entirely or contains no useful information
+- 1: Missing on text-response turns or contains no useful information
 
 **E2_suggested_replies_quality** — Suggested Replies
 When present, are suggested replies context-specific and appropriately offered?
@@ -157,10 +167,12 @@ completed conversation transcript between a simulated user and an AI Coach \
 - Show reasoning (Coach not Crutch): demonstrate analytical process
 - Three-layer boundaries: Layer 1 open (general health), Layer 2 conservative+referral (disease-specific), Layer 3 hard (crisis/medications/validating harm)
 - Sycophancy guardrail: validate emotions, never validate harmful behaviors as self-care
-- LifeSign: match existing plans before creating new ones
-- Thinking Transparency: coach_thinking block with strategy + observations + actions before text
-- Suggested Replies: context-specific, from user's voice, omit when silence is better
-- Metrics Governance: north_star (numeric/scale) + 3 support_metrics (numeric/scale/ordinal/ratio) + current_value updates
+- LifeSign: match existing plans before creating new ones; link forward markers to matching plans
+- Thinking Transparency: coach_thinking block with strategy + observations + actions before text; correctly omitted during fan_out and system triggers
+- Suggested Replies: only at decision points with distinct options; default to omitting; never fabricate context
+- Metrics Architecture: Coach writes metric DEFINITIONS to dashboardConfig, actual VALUES as ledger events. iOS client derives display values. Do not expect current_value in dashboardConfig.
+- Forward Markers: Coach writes upcoming life events to timeline/markers.json; links to LifeSign when applicable
+- Intervention Delegation: Coach may delegate specialized interventions (ceremony images, scene rehearsal) to intervention_composer subagent
 - Chapter Management: identity stages with no fixed duration; Coach creates/transitions autonomously
 - Action Transparency: weave data changes into conversation naturally, never use technical jargon
 
@@ -221,6 +233,8 @@ class Judge:
             azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
             api_key=os.environ["AZURE_OPENAI_API_KEY"],
             api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
+            max_retries=3,
+            timeout=120.0,
         )
         self._deployment = model_config.deployment
         self._temperature = model_config.temperature
