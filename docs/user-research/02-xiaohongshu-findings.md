@@ -25,7 +25,7 @@
 | 平台 | 小红书 |
 | 调研日期 | 2026-04-06 |
 | 调研方法 | 关键词搜索 + 帖子阅读 + 评论区扫描 |
-| 计划文档 | xiaohongshu-research-plan.md |
+| 计划文档 | 已删除（内容已整合至 `01-user-research-synthesis.md`）|
 
 ---
 
