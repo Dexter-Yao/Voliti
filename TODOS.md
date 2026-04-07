@@ -1,5 +1,16 @@
 # TODOS
 
+## P2: Witness Card 图片生成等待体验优化
+- **What:** 两阶段策略——先即时呈送文字卡片（Coach 叙事 + 成就标题 + 品牌框架），后台生成图片完成后异步更新卡片
+- **Why:** 当前 gpt-image-1.5 生成需 ~57 秒，虽然 Coach 文字先流式输出缓解了等待感，但生产化后用户体验仍有优化空间
+- **Pros:** 用户看到文字时就能决定收下/拒绝，图片是 bonus；消除感知等待
+- **Cons:** 工程复杂度高（需要异步更新已呈送的 A2UI 卡片，或第二次 interrupt，或 Store 回写 + 前端监听）
+- **Context:** CEO Review 2026-04-07 评估后 Defer。当前同步流程（subagent 阻塞 ~57s）对里程碑时刻可接受（每 Chapter 仅 3-5 张），因为 Coach 文字在委托前已流式输出，用户阅读时图片同时生成
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Witness Card P1 实现
+- **Source:** /plan-ceo-review 2026-04-07, cherry-pick ceremony deferred
+
 ## P2: Coach 自我反思日志
 - **What:** 每次会话结束后 Coach 写简短内部反思（"今天用户情绪低落，我尝试了 X 策略，效果待观察"）
 - **Why:** 为 JourneyAnalysisMiddleware 提供更丰富的分析材料，让 Coach 的长期记忆更有深度
