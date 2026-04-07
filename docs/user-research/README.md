@@ -4,10 +4,49 @@
 
 ```
 user-research/
-├── interviews/          — 访谈记录（每人一份）
-├── README.md            — 本文件
-└── insights.md          — 跨访谈洞察汇总（访谈积累后创建）
+├── interviews/                       — 访谈记录（每人一份）
+│   └── 2026-04-06-P01.md             — P01 直接访谈（男，30岁，知识工作者）
+├── 01-social-listening-master.md     — ★ Social Listening 主报告（从这里开始）
+├── 02-xiaohongshu-findings.md        — 小红书采集原始记录
+├── 03-xiaohongshu-insights.md        — 小红书综合洞察
+├── 04-reddit-findings.md             — Reddit 采集原始记录
+├── 05-reddit-insights.md             — Reddit 综合洞察
+├── 06-user-research-synthesis.md     — 跨平台综合分析（画像/旅程/竞品/建议）
+├── README.md                         — 本文件
+└── insights.md                       — 跨访谈洞察汇总（访谈 8 人以上后创建）
 ```
+
+## 阅读路径
+
+**快速了解**：读 `01-social-listening-master.md`（主报告，含所有来源的核心洞察）
+
+**深入某平台**：
+- 小红书原始 Profile 分析 → `02-xiaohongshu-findings.md`
+- Reddit 原帖逐条分析 → `04-reddit-findings.md`
+
+**产品决策参考**：读 `06-user-research-synthesis.md`（画像 + 旅程地图 + 竞品 + 建议）
+
+## 置信度说明
+
+所有文件使用统一标注：
+
+| 标注 | 含义 |
+|------|------|
+| `[直接观察]` | 研究者直接浏览页面所得，原始数据，可溯源 |
+| `[分析推断]` | 基于观察数据的作者解读，含主观判断，不等同于用户原话 |
+| `[二手引用，未直接核实]` | 来自其他文章或报告的转引，原始来源未直接核实 |
+| `[估算，非实测]` | 基于现有数据的主观估计，非来自调查或统计 |
+
+## Social Listening 文件体系
+
+| 文件 | 类型 | 内容摘要 |
+|------|------|---------|
+| `01-social-listening-master.md` | **★ 主报告** | 跨平台完整洞察、对比分析、8条核心洞察、产品影响矩阵 |
+| `02-xiaohongshu-findings.md` | 原始记录 | U01/U02/U03用户Profile深度分析、搜索结果概览 |
+| `03-xiaohongshu-insights.md` | 平台洞察 | 5大洞察、S-PDCA痛点、与P01对比、产品影响（小红书视角）|
+| `04-reddit-findings.md` | 原始记录 | R01-R10/C01-C04/F01/P01-P02逐帖分析 |
+| `05-reddit-insights.md` | 平台洞察 | 5类失败模式、8大洞察含Reddit独有维度（维持期/ADHD/重启疲劳）|
+| `06-user-research-synthesis.md` | 综合报告 | 4个用户画像、行为细分、7阶段旅程地图、竞品分析、完整产品建议 |
 
 ## 访谈记录格式
 
