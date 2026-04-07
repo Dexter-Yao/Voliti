@@ -107,7 +107,7 @@ IMPORTANT: Always output valid JSON. No markdown, no extra text.\
 
 LANGUAGE_NAMES = {"zh": "Chinese (中文)", "en": "English"}
 
-MIN_TURNS_BEFORE_END = 6
+MIN_TURNS_BEFORE_END = 10
 
 
 # ---------------------------------------------------------------------------
