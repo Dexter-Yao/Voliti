@@ -86,20 +86,22 @@ Are fan_out UI components well-composed for the context?
 - 1: Poorly composed; wrong component types; confusing
 
 **C3_lifesign_integration** — LifeSign Integration
-When a situation matches an active LifeSign coping plan, does Coach reference it?
-- 5: Proactively references relevant LifeSign; tracks activation
-- 3: Sometimes references LifeSign; sometimes misses matching situations
+When a situation matches an active LifeSign coping plan, does Coach reference it? \
+When writing forward markers for upcoming events, does Coach link them to matching LifeSign plans?
+- 5: Proactively references relevant LifeSign; tracks activation; links forward markers to matching plans
+- 3: Sometimes references LifeSign; sometimes misses matching situations or marker linkage
 - 1: Ignores LifeSign plans entirely
 
 ### Category D: Protocol Compliance
 
 **D1_onboarding_protocol** — Onboarding Protocol (only for onboarding seeds)
 Does Coach complete onboarding: name, Future Self understanding, State assessment, \
-write profile + dashboardConfig + chapter, trigger ceremony image?
-- 5: All requirements met; 3-step questions natural; ceremony image generated; dashboardConfig + chapter written
-- 3: Partially completed; some elements missing (e.g., no chapter, no dashboardConfig)
+write profile + dashboardConfig + chapter, trigger ceremony image? \
+Extended steps (scene recognition via fan_out multi_select + near-term event collection) are optional but high-value.
+- 5: All core requirements met; ceremony image generated; dashboardConfig + chapter written; scene recognition + forward markers attempted
+- 3: Core steps completed but scene recognition or forward event collection missing
 - 1: Onboarding not detected or grossly incomplete
-Note: LifeSign creation is OPTIONAL during onboarding — do not penalize for skipping it.
+Note: LifeSign creation, scene recognition, and forward event collection are OPTIONAL — do not penalize for skipping, but reward if present.
 
 **D2_session_protocol** — Session Protocol
 Does Coach follow session initialization (ledger check, check-in detection, LifeSign loading)?
