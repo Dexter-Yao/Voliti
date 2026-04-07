@@ -51,6 +51,7 @@ Voliti is a multi-agent system that maintains coaching continuity across session
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                       │
 │  SessionModeMiddleware (onboarding mode prompt injection)            │
+│  JourneyAnalysisMiddleware (temporal awareness, 3-day trigger)       │
 │  SummarizationMiddleware (85% context triggers compression)          │
 └───────────────────────────┬───────────────────────────────────────────┘
                             │ SSE stream + interrupt
@@ -79,8 +80,8 @@ agent = create_deep_agent(
     model=ModelRegistry.get("coach"),  # gpt-5.4 (Azure OpenAI)
     system_prompt=PromptRegistry.get("coach_system"),
     backend=composite_backend,
-    memory=["/user/coach/AGENTS.md", "/user/profile/context.md", "/user/coping_plans_index.md"],
-    middleware=[SessionModeMiddleware()],
+    memory=["/user/coach/AGENTS.md", "/user/profile/context.md", "/user/coping_plans_index.md", "/user/timeline/markers.json"],
+    middleware=[SessionModeMiddleware(), JourneyAnalysisMiddleware()],
     tools=[fan_out],
     subagents=[intervention_composer],
 )
