@@ -43,6 +43,14 @@ LangGraph 在 interrupt() 后 resume 时会从 node 起重新执行。
 
 INTERVENTIONS_NAMESPACE = ("voliti", "user", "interventions")
 
+CARD_STATUS_PENDING = "pending"
+CARD_STATUS_ACCEPTED = "accepted"
+CARD_STATUS_REJECTED = "rejected"
+
+ACHIEVEMENT_EXPLICIT = "explicit"
+ACHIEVEMENT_IMPLICIT = "implicit"
+ACHIEVEMENT_JOURNEY = "journey"
+
 # gpt-image-1.5 仅支持三种固定尺寸
 _ASPECT_RATIO_TO_SIZE: dict[str, str] = {
     "3:4": "1024x1536",
@@ -123,7 +131,7 @@ def _pre_store_card(
             "linked_lifesign_id": linked_lifesign_id,
             "user_quote": user_quote,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "status": "pending",
+            "status": CARD_STATUS_PENDING,
         },
     )
 
@@ -142,7 +150,7 @@ def _finalize_card(
         return
     item = store.get(INTERVENTIONS_NAMESPACE, card_id)
     if item is not None:
-        status = "accepted" if accepted else "rejected"
+        status = CARD_STATUS_ACCEPTED if accepted else CARD_STATUS_REJECTED
         store.put(INTERVENTIONS_NAMESPACE, card_id, {**item.value, "status": status})
 
 

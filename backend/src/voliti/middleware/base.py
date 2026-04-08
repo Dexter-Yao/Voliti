@@ -14,6 +14,17 @@ from langchain.agents.middleware.types import AgentMiddleware, ModelRequest, Mod
 logger = logging.getLogger(__name__)
 
 
+def get_session_mode() -> str:
+    """从当前 LangGraph 运行时 config 读取 session_mode。"""
+    try:
+        from langgraph.config import get_config
+
+        cfg = get_config()
+        return cfg.get("configurable", {}).get("session_mode", "coaching")
+    except Exception:  # noqa: BLE001
+        return "coaching"
+
+
 class PromptInjectionMiddleware(AgentMiddleware):
     """按条件向 system message 注入 prompt 段落的基类。
 

@@ -8,6 +8,9 @@ import pytest
 
 from voliti.tools.experiential import (
     _ASPECT_RATIO_TO_SIZE,
+    CARD_STATUS_ACCEPTED,
+    CARD_STATUS_PENDING,
+    CARD_STATUS_REJECTED,
     _card_cache,
     compose_witness_card,
 )
@@ -269,7 +272,7 @@ class TestWitnessCardPersistence:
         assert item.value["chapter_id"] == "ch_001"
         assert item.value["linked_lifesign_id"] == "ls_010"
         assert item.value["user_quote"] == "其实没那么难"
-        assert item.value["status"] == "pending"
+        assert item.value["status"] == CARD_STATUS_PENDING
         assert "timestamp" in item.value
 
     def test_pre_store_card_nullable_fields(self) -> None:
@@ -322,7 +325,7 @@ class TestWitnessCardPersistence:
 
         item = store.get(INTERVENTIONS_NAMESPACE, "card_test01")
         assert item is not None
-        assert item.value["status"] == "accepted"
+        assert item.value["status"] == CARD_STATUS_ACCEPTED
 
     def test_finalize_card_rejected_updates_status(self) -> None:
         """accepted=False 应将 status 更新为 rejected。"""
@@ -350,7 +353,7 @@ class TestWitnessCardPersistence:
 
         item = store.get(INTERVENTIONS_NAMESPACE, "card_test01")
         assert item is not None
-        assert item.value["status"] == "rejected"
+        assert item.value["status"] == CARD_STATUS_REJECTED
 
 
 class TestAspectRatioMapping:

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from voliti.middleware.base import PromptInjectionMiddleware
+from voliti.middleware.base import PromptInjectionMiddleware, get_session_mode
 
 _ONBOARDING_PROMPT = """
 ## Session Mode: Onboarding
@@ -41,17 +41,6 @@ If the user is brief or disengaged, steps 4-5 become follow-up material for late
 """.strip()
 
 
-def _get_session_mode() -> str:
-    """从当前 LangGraph 运行时 config 读取 session_mode。"""
-    try:
-        from langgraph.config import get_config
-
-        cfg = get_config()
-        return cfg.get("configurable", {}).get("session_mode", "coaching")
-    except Exception:  # noqa: BLE001
-        return "coaching"
-
-
 class SessionModeMiddleware(PromptInjectionMiddleware):
     """按 session_mode 动态追加 prompt 段落到 system message。
 
@@ -60,7 +49,7 @@ class SessionModeMiddleware(PromptInjectionMiddleware):
     """
 
     def should_inject(self) -> bool:
-        return _get_session_mode() == "onboarding"
+        return get_session_mode() == "onboarding"
 
     def get_prompt(self) -> str:
         return _ONBOARDING_PROMPT

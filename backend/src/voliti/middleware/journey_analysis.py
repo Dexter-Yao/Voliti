@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from voliti.middleware.base import PromptInjectionMiddleware
+from voliti.middleware.base import PromptInjectionMiddleware, get_session_mode
 
 logger = logging.getLogger(__name__)
 
@@ -19,16 +19,6 @@ _MARKERS_KEY = "/user/timeline/markers.json"
 _AGENTS_KEY = "/user/coach/AGENTS.md"
 _LAST_ANALYSIS_KEY = "/user/derived/last_journey_analysis.json"
 _PATTERN_INDEX_KEY = "/user/derived/pattern_index.md"
-
-
-def _get_session_mode() -> str:
-    try:
-        from langgraph.config import get_config
-
-        cfg = get_config()
-        return cfg.get("configurable", {}).get("session_mode", "coaching")
-    except Exception:  # noqa: BLE001
-        return "coaching"
 
 
 class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
@@ -268,7 +258,7 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
 
         self._prepared = True
 
-        if _get_session_mode() == "onboarding":
+        if get_session_mode() == "onboarding":
             logger.debug("JourneyAnalysisMW: onboarding session, skipping")
             return
 
