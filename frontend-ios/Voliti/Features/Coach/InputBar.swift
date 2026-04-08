@@ -29,12 +29,13 @@ struct InputBar: View {
                             } label: {
                                 Text(reply)
                                     .starpathSans()
+                                    .fixedSize(horizontal: true, vertical: false)
                                     .foregroundStyle(StarpathTokens.obsidian)
                                     .padding(.horizontal, StarpathTokens.spacingSM)
                                     .padding(.vertical, StarpathTokens.spacingXS)
                                     .background(
                                         Capsule()
-                                            .stroke(StarpathTokens.obsidian20, lineWidth: 1)
+                                            .stroke(StarpathTokens.obsidian10, lineWidth: 1)
                                     )
                             }
                         }

@@ -10,7 +10,7 @@ struct TimestampSeparator: View {
     var body: some View {
         if let text = formattedText {
             Text(text)
-                .starpathMono(uppercase: false)
+                .starpathMono(size: 11, uppercase: false)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, StarpathTokens.spacingSM)
         }

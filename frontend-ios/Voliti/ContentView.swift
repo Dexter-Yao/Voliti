@@ -61,7 +61,7 @@ private struct StarpathTabBar: View {
 
                         Rectangle()
                             .fill(index == selectedIndex ? StarpathTokens.obsidian : .clear)
-                            .frame(height: 2)
+                            .frame(width: 24, height: 2)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, StarpathTokens.spacingSM)

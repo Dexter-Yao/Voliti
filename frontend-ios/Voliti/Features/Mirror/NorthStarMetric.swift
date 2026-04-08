@@ -122,7 +122,7 @@ struct NorthStarMetric: View {
                         VStack(spacing: 2) {
                             if isSelected {
                                 Text(String(format: "%.1f", val))
-                                    .font(.custom("JetBrainsMono-Regular", size: 9))
+                                    .starpathMono(size: 9, uppercase: false)
                                     .foregroundStyle(StarpathTokens.copper)
                             }
                             Rectangle()

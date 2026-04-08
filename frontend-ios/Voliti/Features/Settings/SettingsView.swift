@@ -115,7 +115,7 @@ struct SettingsView: View {
                             }
                         } label: {
                             Text("需要开启通知权限")
-                                .font(.custom("DM Sans", size: 12))
+                                .starpathSans(size: 12)
                                 .foregroundStyle(StarpathTokens.riskRed)
                         }
                     }
@@ -227,10 +227,8 @@ struct SettingsView: View {
     // MARK: - Section Header
 
     private func sectionHeader(_ title: String) -> some View {
-        Text(title.uppercased())
-            .font(.custom("JetBrainsMono-Regular", size: StarpathTokens.fontSizeXS))
-            .foregroundStyle(StarpathTokens.obsidian40)
-            .tracking(2)
+        Text(title)
+            .starpathMono(size: 10)
     }
 
     // MARK: - Profile Loading

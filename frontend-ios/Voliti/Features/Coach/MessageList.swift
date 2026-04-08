@@ -6,6 +6,7 @@ import SwiftUI
 struct MessageList: View {
     let messages: [ChatMessage]
     let isStreaming: Bool
+    var hideThinking: Bool = false
 
     @State private var lastScrollDate = Date.distantPast
 
@@ -20,7 +21,7 @@ struct MessageList: View {
                                 previous: index > 0 ? messages[index - 1].timestamp : nil
                             )
 
-                            MessageBubble(message: message)
+                            MessageBubble(message: message, hideThinking: hideThinking)
                         }
                         .id(message.id)
                     }
@@ -64,14 +65,15 @@ struct MessageList: View {
 
 private struct MessageBubble: View {
     let message: ChatMessage
+    var hideThinking: Bool = false
 
     var body: some View {
         HStack {
-            if message.role == .user { Spacer(minLength: 60) }
+            if message.role == .user { Spacer(minLength: 64) }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: StarpathTokens.spacingXS) {
                 // 思路卡片（仅 assistant 消息）
-                if message.role == .assistant, let strategy = message.thinkingStrategy {
+                if !hideThinking, message.role == .assistant, let strategy = message.thinkingStrategy {
                     ThinkingCard(strategy: strategy, observations: message.thinkingObservations ?? [], actions: message.thinkingActions ?? [])
                 }
 
@@ -93,7 +95,7 @@ private struct MessageBubble: View {
                 }
             }
 
-            if message.role == .assistant { Spacer(minLength: 60) }
+            if message.role == .assistant { Spacer(minLength: 48) }
         }
     }
 }
