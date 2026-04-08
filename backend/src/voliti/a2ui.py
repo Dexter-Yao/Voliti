@@ -20,7 +20,7 @@ class TextComponent(BaseModel):
     """文本展示。"""
 
     kind: Literal["text"] = "text"
-    content: str
+    text: str
 
 
 class ImageComponent(BaseModel):
@@ -49,7 +49,7 @@ class SliderComponent(BaseModel):
     """有界整数滑块，适用于 1-10 量表。"""
 
     kind: Literal["slider"] = "slider"
-    name: str
+    key: str
     label: str
     min: int = 1
     max: int = 10
@@ -62,7 +62,7 @@ class TextInputComponent(BaseModel):
     """自由文本输入。"""
 
     kind: Literal["text_input"] = "text_input"
-    name: str
+    key: str
     label: str
     placeholder: str = ""
     value: str = ""
@@ -72,7 +72,7 @@ class NumberInputComponent(BaseModel):
     """数值输入。"""
 
     kind: Literal["number_input"] = "number_input"
-    name: str
+    key: str
     label: str
     unit: str = ""
     value: float | None = None
@@ -82,7 +82,7 @@ class SelectComponent(BaseModel):
     """单选。"""
 
     kind: Literal["select"] = "select"
-    name: str
+    key: str
     label: str
     options: list[SelectOption]
     value: str = ""
@@ -92,7 +92,7 @@ class MultiSelectComponent(BaseModel):
     """多选。"""
 
     kind: Literal["multi_select"] = "multi_select"
-    name: str
+    key: str
     label: str
     options: list[SelectOption]
     value: list[str] = []
@@ -131,4 +131,4 @@ class A2UIResponse(BaseModel):
 
     action: Literal["submit", "reject", "skip"]
     data: dict[str, object] = {}
-    """Input component 的 name → value 映射。"""
+    """Input component 的 key → value 映射。"""

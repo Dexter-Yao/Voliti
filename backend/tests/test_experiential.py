@@ -74,7 +74,7 @@ class TestWitnessCardPayload:
         payload = mock_interrupt.call_args[0][0]
         components = payload["components"]
         text_components = [c for c in components if c["kind"] == "text"]
-        assert any("连续 7 天" in c["content"] for c in text_components)
+        assert any("连续 7 天" in c["text"] for c in text_components)
 
     @patch("voliti.tools.experiential.interrupt")
     def test_payload_layout_is_full(self, mock_interrupt) -> None:  # noqa: ANN001

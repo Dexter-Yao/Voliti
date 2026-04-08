@@ -177,13 +177,21 @@ final class CoachViewModel {
                     self.messages.append(assistantMessage)
                 }
 
+                // Onboarding 首条用户消息：prepend 硬编码问候语，让 LLM 看到完整对话历史
+                let priorGreeting: String? = {
+                    guard self.sessionMode == "onboarding" else { return nil }
+                    let userCount = self.messages.lazy.filter({ $0.role == .user }).prefix(2).count
+                    return userCount == 1 ? OnboardingGreeting.text : nil
+                }()
+
                 let stream = try api.streamRun(
                     threadID: threadID,
                     message: text,
                     imageData: imageData,
-                    sessionMode: self.sessionMode
+                    sessionMode: self.sessionMode,
+                    priorAssistantMessage: priorGreeting
                 )
-                trace("streamRun created, entering processStream")
+                trace("streamRun created, entering processStream, prependedGreeting=\(priorGreeting != nil)")
 
                 await processStream(stream, assistantMessage: assistantMessage)
                 trace("processStream returned")
@@ -336,9 +344,18 @@ final class CoachViewModel {
             Task { [weak self] in
                 await self?.syncService?.syncAll()
                 if let self, !self.onboardingComplete {
-                    let complete = await self.syncService?.checkOnboardingComplete() ?? false
-                    if complete {
+                    let storeComplete = await self.syncService?.checkOnboardingComplete() ?? false
+                    if storeComplete {
                         await MainActor.run { self.onboardingComplete = true }
+                    } else if self.sessionMode == "onboarding" {
+                        // InMemoryStore 重启后丢失数据时的降级判断：
+                        // 统计非空 assistant 消息数，避免用户卡在 Onboarding fullScreenCover
+                        let assistantCount = self.messages.lazy
+                            .filter { $0.role == .assistant && !$0.textContent.isEmpty }
+                            .prefix(3).count
+                        if assistantCount >= 3 {
+                            await MainActor.run { self.onboardingComplete = true }
+                        }
                     }
                 }
             }
@@ -453,7 +470,7 @@ final class CoachViewModel {
                 }
                 purpose = img.alt
             case .text(let txt):
-                caption = txt.content
+                caption = txt.text
             default:
                 break
             }

@@ -267,9 +267,9 @@ def compose_witness_card(
                 src=f"data:{cached_thumb_mime};base64,{cached_thumb_b64}",
                 alt=achievement_title,
             ),
-            TextComponent(content=narrative),
+            TextComponent(text=narrative),
             SelectComponent(
-                name="decision",
+                key="decision",
                 label="",
                 options=[
                     SelectOption(label="收下", value="accept"),

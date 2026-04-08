@@ -31,7 +31,7 @@ struct ThinkingCard: View {
                         .foregroundStyle(StarpathTokens.obsidian40)
 
                     Text(strategy)
-                        .starpathSans()
+                        .starpathSans(size: 13)
                         .foregroundStyle(StarpathTokens.obsidian40)
                         .lineLimit(isExpanded ? nil : 1)
 
