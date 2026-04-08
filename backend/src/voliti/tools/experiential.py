@@ -60,10 +60,10 @@ _ASPECT_RATIO_TO_SIZE: dict[str, str] = {
     "9:16": "1024x1536",
 }
 
-_openai_client = None
+_openai_client: "AzureOpenAI | None" = None
 
 
-def _get_openai_client():
+def _get_openai_client() -> "AzureOpenAI":
     """模块级 lazy init AzureOpenAI client，复用连接池。"""
     global _openai_client  # noqa: PLW0603
     if _openai_client is None:
@@ -229,7 +229,7 @@ def compose_witness_card(
         _card_cache[cache_key]
     )
 
-    card_id = f"card_{uuid.uuid4().hex[:8]}"
+    card_id = f"card_{cache_key[:8]}"
 
     try:
         _pre_store_card(

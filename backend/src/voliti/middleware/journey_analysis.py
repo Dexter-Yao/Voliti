@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 _ANALYSIS_INTERVAL_DAYS = 3
 _MAX_CONTENT_LENGTH = 8000
+_MAX_FILES_PER_DAY = 50
 
 _MARKERS_KEY = "/user/timeline/markers.json"
 _AGENTS_KEY = "/user/coach/AGENTS.md"
@@ -96,8 +97,6 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         - 单个 LifeSign 累计 ≥3 次成功（refs.lifesign_id 匹配 + 无负面 metrics）
         Returns: 结构化的成就信号描述，或 None。
         """
-        _MAX_FILES_PER_DAY = 50
-
         try:
             ledger_entries: list[dict] = []
             now = datetime.now(timezone.utc)
@@ -139,6 +138,7 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
                         max_streak = max(max_streak, streak)
                     else:
                         streak = 1
+                max_streak = max(max_streak, streak)
                 if max_streak >= 7:
                     signals.append(
                         f"IMPLICIT ACHIEVEMENT: User has checked in for {max_streak} consecutive days."
@@ -153,14 +153,14 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
             for e in lifesign_events:
                 ls_id = e["refs"]["lifesign_id"]
                 # metrics 是 array of {"key": ..., "value": ..., "quality": ...}
-                # LifeSign 成功事件的特征：有 refs.lifesign_id 且无失败标记
+                # 只有明确标记 success=true 才计入，避免假阳性
                 metrics = e.get("metrics", [])
-                has_failure = any(
-                    m.get("key") == "success" and not m.get("value")
+                has_explicit_success = any(
+                    m.get("key") == "success" and m.get("value")
                     for m in metrics
                     if isinstance(m, dict)
                 )
-                if not has_failure:
+                if has_explicit_success:
                     lifesign_successes[ls_id] = lifesign_successes.get(ls_id, 0) + 1
             for ls_id, count in lifesign_successes.items():
                 if count >= 3:
