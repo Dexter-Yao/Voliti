@@ -1,43 +1,43 @@
-# ABOUTME: 体验式干预工具测试
-# ABOUTME: 验证 compose_experiential_intervention 使用 A2UI payload 格式并正确处理用户响应
+# ABOUTME: Witness Card 生成工具测试
+# ABOUTME: 验证 compose_witness_card 的 A2UI payload、错误处理、元数据存储和用户响应
 
 import hashlib
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from voliti.tools.experiential import (
     _ASPECT_RATIO_TO_SIZE,
-    _intervention_cache,
-    compose_experiential_intervention,
+    _card_cache,
+    compose_witness_card,
 )
 
 FAKE_B64 = "ZmFrZV9pbWFnZV9kYXRh"
 FAKE_MIME = "image/jpeg"
-TEST_PROMPT = "test prompt for intervention"
+TEST_PROMPT = "test prompt for witness card"
 
 
 @pytest.fixture(autouse=True)
 def _prefill_cache() -> None:
-    """预填充缓存，跳过 Gemini API 调用。"""
+    """预填充缓存，跳过 API 调用。"""
     cache_key = hashlib.sha256(TEST_PROMPT.encode()).hexdigest()
-    _intervention_cache[cache_key] = (FAKE_B64, FAKE_MIME, FAKE_B64, FAKE_MIME)
+    _card_cache[cache_key] = (FAKE_B64, FAKE_MIME, FAKE_B64, FAKE_MIME)
     yield
-    _intervention_cache.pop(cache_key, None)
+    _card_cache.pop(cache_key, None)
 
 
-class TestExperientialInterventionPayload:
+class TestWitnessCardPayload:
     """interrupt payload 应为 A2UI 格式。"""
 
     @patch("voliti.tools.experiential.interrupt")
     def test_interrupt_payload_is_a2ui(self, mock_interrupt) -> None:  # noqa: ANN001
-        """interrupt 应收到 type=a2ui 的 payload。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
 
-        compose_experiential_intervention.invoke({
+        compose_witness_card.invoke({
             "prompt": TEST_PROMPT,
-            "purpose": "future_self",
-            "caption": "A glimpse of your future.",
+            "narrative": "你做到了。",
+            "achievement_title": "首张卡片",
+            "achievement_type": "journey",
         })
 
         payload = mock_interrupt.call_args[0][0]
@@ -45,13 +45,12 @@ class TestExperientialInterventionPayload:
 
     @patch("voliti.tools.experiential.interrupt")
     def test_payload_contains_image_component(self, mock_interrupt) -> None:  # noqa: ANN001
-        """payload 应包含 image 组件。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
 
-        compose_experiential_intervention.invoke({
+        compose_witness_card.invoke({
             "prompt": TEST_PROMPT,
-            "purpose": "future_self",
-            "caption": "Caption text.",
+            "narrative": "Narrative text.",
+            "achievement_title": "Test",
         })
 
         payload = mock_interrupt.call_args[0][0]
@@ -61,40 +60,68 @@ class TestExperientialInterventionPayload:
         assert image_components[0]["src"].startswith("data:")
 
     @patch("voliti.tools.experiential.interrupt")
-    def test_payload_contains_caption_text(self, mock_interrupt) -> None:  # noqa: ANN001
-        """payload 应包含 caption 文本组件。"""
+    def test_payload_contains_narrative_text(self, mock_interrupt) -> None:  # noqa: ANN001
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
 
-        compose_experiential_intervention.invoke({
+        compose_witness_card.invoke({
             "prompt": TEST_PROMPT,
-            "caption": "This is the caption.",
+            "narrative": "连续 7 天，你每天都选择了先喝水。",
         })
 
         payload = mock_interrupt.call_args[0][0]
         components = payload["components"]
         text_components = [c for c in components if c["kind"] == "text"]
-        assert any("This is the caption." in c["content"] for c in text_components)
+        assert any("连续 7 天" in c["content"] for c in text_components)
 
     @patch("voliti.tools.experiential.interrupt")
     def test_payload_layout_is_full(self, mock_interrupt) -> None:  # noqa: ANN001
-        """体验式干预应使用 full layout。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
 
-        compose_experiential_intervention.invoke({
-            "prompt": TEST_PROMPT,
-        })
+        compose_witness_card.invoke({"prompt": TEST_PROMPT})
 
         payload = mock_interrupt.call_args[0][0]
         assert payload["layout"] == "full"
 
     @patch("voliti.tools.experiential.interrupt")
-    def test_payload_contains_decision_select(self, mock_interrupt) -> None:  # noqa: ANN001
-        """payload 应包含 accept/dismiss 选择组件。"""
+    def test_payload_metadata_includes_achievement_fields(self, mock_interrupt) -> None:  # noqa: ANN001
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
 
-        compose_experiential_intervention.invoke({
+        compose_witness_card.invoke({
             "prompt": TEST_PROMPT,
+            "achievement_type": "implicit",
+            "linked_lifesign_id": "ls_010",
+            "chapter_id": "ch_001",
+            "user_quote": "其实没那么难",
         })
+
+        payload = mock_interrupt.call_args[0][0]
+        metadata = payload["metadata"]
+        assert metadata["achievement_type"] == "implicit"
+        assert metadata["linked_lifesign_id"] == "ls_010"
+        assert metadata["chapter_id"] == "ch_001"
+        assert metadata["user_quote"] == "其实没那么难"
+
+    @patch("voliti.tools.experiential.interrupt")
+    def test_payload_metadata_omits_none_fields(self, mock_interrupt) -> None:  # noqa: ANN001
+        """nullable 字段为空时不应出现在 metadata 中。"""
+        mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
+
+        compose_witness_card.invoke({
+            "prompt": TEST_PROMPT,
+            "achievement_type": "implicit",
+        })
+
+        payload = mock_interrupt.call_args[0][0]
+        metadata = payload["metadata"]
+        assert "linked_lifesign_id" not in metadata
+        assert "chapter_id" not in metadata
+        assert "user_quote" not in metadata
+
+    @patch("voliti.tools.experiential.interrupt")
+    def test_payload_contains_accept_skip_select(self, mock_interrupt) -> None:  # noqa: ANN001
+        mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
+
+        compose_witness_card.invoke({"prompt": TEST_PROMPT})
 
         payload = mock_interrupt.call_args[0][0]
         components = payload["components"]
@@ -105,18 +132,16 @@ class TestExperientialInterventionPayload:
         assert "dismiss" in option_values
 
 
-class TestExperientialInterventionResponse:
+class TestWitnessCardResponse:
     """用户响应处理测试。"""
 
     @patch("voliti.tools.experiential.interrupt")
     def test_accept_returns_success_message(self, mock_interrupt) -> None:  # noqa: ANN001
-        """用户接受应返回成功信息。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
 
-        result = compose_experiential_intervention.invoke({
+        result = compose_witness_card.invoke({
             "prompt": TEST_PROMPT,
-            "purpose": "future_self",
-            "caption": "A glimpse.",
+            "achievement_title": "连续 Check-in",
         })
 
         assert "accepted" in result.lower()
@@ -124,35 +149,99 @@ class TestExperientialInterventionResponse:
 
     @patch("voliti.tools.experiential.interrupt")
     def test_dismiss_returns_dismiss_message(self, mock_interrupt) -> None:  # noqa: ANN001
-        """用户取消应返回取消信息。"""
         mock_interrupt.return_value = {"action": "submit", "data": {"decision": "dismiss"}}
 
-        result = compose_experiential_intervention.invoke({
+        result = compose_witness_card.invoke({
             "prompt": TEST_PROMPT,
-            "purpose": "future_self",
+            "achievement_title": "Test",
         })
 
         assert "reviewed and dismissed" in result.lower()
 
     @patch("voliti.tools.experiential.interrupt")
     def test_reject_returns_cancel_message(self, mock_interrupt) -> None:  # noqa: ANN001
-        """用户 reject 整个交互应返回关闭信息。"""
         mock_interrupt.return_value = {"action": "reject"}
 
-        result = compose_experiential_intervention.invoke({
+        result = compose_witness_card.invoke({
             "prompt": TEST_PROMPT,
-            "purpose": "future_self",
+            "achievement_title": "Test",
         })
 
         assert "closed" in result.lower()
-        assert "without reviewing" in result.lower()
 
 
-class TestExperientialCardPersistence:
-    """两阶段持久化：_pre_store_card 预写 pending，_finalize_card 确认或删除。"""
+class TestWitnessCardErrorHandling:
+    """API 错误处理测试。"""
 
-    def test_pre_store_card_writes_pending(self) -> None:
-        """_pre_store_card 应写入 status=pending 的卡片数据。"""
+    def test_api_timeout_returns_graceful_error(self) -> None:
+        """API 超时应返回结构化错误文本，不抛异常。"""
+        import httpx
+
+        cache_key = hashlib.sha256(b"unique_timeout_prompt").hexdigest()
+        _card_cache.pop(cache_key, None)
+
+        with patch(
+            "voliti.tools.experiential._generate_image",
+            side_effect=httpx.TimeoutException("Connection timed out"),
+        ):
+            result = compose_witness_card.invoke({
+                "prompt": "unique_timeout_prompt",
+                "achievement_title": "Test",
+            })
+
+        assert "Image generation failed" in result
+        assert "TimeoutException" in result
+        assert "Continue the conversation" in result
+
+    def test_api_rate_limit_returns_graceful_error(self) -> None:
+        """API 429 应返回结构化错误文本。"""
+        cache_key = hashlib.sha256(b"unique_ratelimit_prompt").hexdigest()
+        _card_cache.pop(cache_key, None)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 429
+
+        from openai import RateLimitError
+
+        with patch(
+            "voliti.tools.experiential._generate_image",
+            side_effect=RateLimitError(
+                message="Rate limit exceeded",
+                response=mock_response,
+                body=None,
+            ),
+        ):
+            result = compose_witness_card.invoke({
+                "prompt": "unique_ratelimit_prompt",
+                "achievement_title": "Test",
+            })
+
+        assert "Image generation failed" in result
+        assert "Continue the conversation" in result
+
+    def test_empty_image_returns_graceful_error(self) -> None:
+        """空图片响应应返回结构化错误文本。"""
+        cache_key = hashlib.sha256(b"unique_empty_prompt").hexdigest()
+        _card_cache.pop(cache_key, None)
+
+        with patch(
+            "voliti.tools.experiential._generate_image",
+            side_effect=ValueError("gpt-image-1.5 未返回图片数据"),
+        ):
+            result = compose_witness_card.invoke({
+                "prompt": "unique_empty_prompt",
+                "achievement_title": "Test",
+            })
+
+        assert "Image generation failed" in result
+        assert "ValueError" in result
+
+
+class TestWitnessCardPersistence:
+    """元数据存储测试。"""
+
+    def test_pre_store_card_writes_metadata(self) -> None:
+        """_pre_store_card 应写入完整元数据。"""
         from langgraph.store.memory import InMemoryStore
 
         from voliti.tools.experiential import INTERVENTIONS_NAMESPACE, _pre_store_card
@@ -162,33 +251,52 @@ class TestExperientialCardPersistence:
             store=store,
             card_id="card_test01",
             image_data_url="data:image/jpeg;base64,abc123",
-            caption="Test caption",
-            purpose="future_self",
+            narrative="你做到了连续 7 天。",
+            achievement_type="implicit",
+            achievement_title="连续 Check-in",
+            chapter_id="ch_001",
+            linked_lifesign_id="ls_010",
+            user_quote="其实没那么难",
         )
 
         items = store.search(INTERVENTIONS_NAMESPACE)
         assert len(items) == 1
         item = items[0]
         assert item.key == "card_test01"
-        assert item.value["imageData"] == "data:image/jpeg;base64,abc123"
-        assert item.value["caption"] == "Test caption"
-        assert item.value["purpose"] == "future_self"
+        assert item.value["narrative"] == "你做到了连续 7 天。"
+        assert item.value["achievement_type"] == "implicit"
+        assert item.value["achievement_title"] == "连续 Check-in"
+        assert item.value["chapter_id"] == "ch_001"
+        assert item.value["linked_lifesign_id"] == "ls_010"
+        assert item.value["user_quote"] == "其实没那么难"
         assert item.value["status"] == "pending"
         assert "timestamp" in item.value
 
-    def test_pre_store_card_noop_when_store_is_none(self) -> None:
-        """store 为 None 时 _pre_store_card 应静默跳过。"""
-        from voliti.tools.experiential import _pre_store_card
+    def test_pre_store_card_nullable_fields(self) -> None:
+        """隐性成就场景下 nullable 字段可以为 None。"""
+        from langgraph.store.memory import InMemoryStore
 
+        from voliti.tools.experiential import INTERVENTIONS_NAMESPACE, _pre_store_card
+
+        store = InMemoryStore()
         _pre_store_card(
-            store=None,
-            card_id="card_test01",
+            store=store,
+            card_id="card_test02",
             image_data_url="data:image/jpeg;base64,abc123",
-            caption="Test",
-            purpose="future_self",
+            narrative="连续 10 天 check-in。",
+            achievement_type="implicit",
+            achievement_title="连续 Check-in",
+            chapter_id=None,
+            linked_lifesign_id=None,
+            user_quote=None,
         )
 
-    def test_finalize_card_accepted(self) -> None:
+        items = store.search(INTERVENTIONS_NAMESPACE)
+        assert len(items) == 1
+        assert items[0].value["chapter_id"] is None
+        assert items[0].value["user_quote"] is None
+
+    def test_finalize_card_accepted_updates_status(self) -> None:
         """accepted=True 应将 status 更新为 accepted。"""
         from langgraph.store.memory import InMemoryStore
 
@@ -203,8 +311,12 @@ class TestExperientialCardPersistence:
             store=store,
             card_id="card_test01",
             image_data_url="data:image/jpeg;base64,abc123",
-            caption="Test",
-            purpose="future_self",
+            narrative="Test",
+            achievement_type="explicit",
+            achievement_title="Test",
+            chapter_id=None,
+            linked_lifesign_id=None,
+            user_quote=None,
         )
         _finalize_card(store=store, card_id="card_test01", accepted=True)
 
@@ -212,8 +324,8 @@ class TestExperientialCardPersistence:
         assert item is not None
         assert item.value["status"] == "accepted"
 
-    def test_finalize_card_rejected(self) -> None:
-        """accepted=False 应删除预写入的 card。"""
+    def test_finalize_card_rejected_updates_status(self) -> None:
+        """accepted=False 应将 status 更新为 rejected。"""
         from langgraph.store.memory import InMemoryStore
 
         from voliti.tools.experiential import (
@@ -227,62 +339,18 @@ class TestExperientialCardPersistence:
             store=store,
             card_id="card_test01",
             image_data_url="data:image/jpeg;base64,abc123",
-            caption="Test",
-            purpose="future_self",
+            narrative="Test",
+            achievement_type="explicit",
+            achievement_title="Test",
+            chapter_id=None,
+            linked_lifesign_id=None,
+            user_quote=None,
         )
         _finalize_card(store=store, card_id="card_test01", accepted=False)
 
         item = store.get(INTERVENTIONS_NAMESPACE, "card_test01")
-        assert item is None
-
-    @patch("voliti.tools.experiential.interrupt")
-    @patch("voliti.tools.experiential._finalize_card")
-    @patch("voliti.tools.experiential._pre_store_card")
-    def test_accept_triggers_finalize_accepted(self, mock_pre_store, mock_finalize, mock_interrupt) -> None:  # noqa: ANN001
-        """用户接受时应调用 _finalize_card(accepted=True)。"""
-        mock_interrupt.return_value = {"action": "submit", "data": {"decision": "accept"}}
-
-        compose_experiential_intervention.invoke({
-            "prompt": TEST_PROMPT,
-            "purpose": "future_self",
-            "caption": "A glimpse.",
-        })
-
-        mock_pre_store.assert_called_once()
-        mock_finalize.assert_called_once()
-        assert mock_finalize.call_args[1]["accepted"] is True
-
-    @patch("voliti.tools.experiential.interrupt")
-    @patch("voliti.tools.experiential._finalize_card")
-    @patch("voliti.tools.experiential._pre_store_card")
-    def test_reject_triggers_finalize_not_accepted(self, mock_pre_store, mock_finalize, mock_interrupt) -> None:  # noqa: ANN001
-        """用户拒绝时应调用 _finalize_card(accepted=False)。"""
-        mock_interrupt.return_value = {"action": "reject"}
-
-        compose_experiential_intervention.invoke({
-            "prompt": TEST_PROMPT,
-            "purpose": "future_self",
-        })
-
-        mock_pre_store.assert_called_once()
-        mock_finalize.assert_called_once()
-        assert mock_finalize.call_args[1]["accepted"] is False
-
-    @patch("voliti.tools.experiential.interrupt")
-    @patch("voliti.tools.experiential._finalize_card")
-    @patch("voliti.tools.experiential._pre_store_card")
-    def test_dismiss_triggers_finalize_not_accepted(self, mock_pre_store, mock_finalize, mock_interrupt) -> None:  # noqa: ANN001
-        """用户选择 dismiss 时应调用 _finalize_card(accepted=False)。"""
-        mock_interrupt.return_value = {"action": "submit", "data": {"decision": "dismiss"}}
-
-        compose_experiential_intervention.invoke({
-            "prompt": TEST_PROMPT,
-            "purpose": "future_self",
-        })
-
-        mock_pre_store.assert_called_once()
-        mock_finalize.assert_called_once()
-        assert mock_finalize.call_args[1]["accepted"] is False
+        assert item is not None
+        assert item.value["status"] == "rejected"
 
 
 class TestAspectRatioMapping:
@@ -298,9 +366,7 @@ class TestAspectRatioMapping:
         assert _ASPECT_RATIO_TO_SIZE["1:1"] == "1024x1024"
 
     def test_wide_fallback(self) -> None:
-        """16:9 应 fallback 到横版。"""
         assert _ASPECT_RATIO_TO_SIZE["16:9"] == "1536x1024"
 
     def test_tall_fallback(self) -> None:
-        """9:16 应 fallback 到竖版。"""
         assert _ASPECT_RATIO_TO_SIZE["9:16"] == "1024x1536"

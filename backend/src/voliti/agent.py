@@ -1,5 +1,5 @@
 # ABOUTME: Coach Agent 工厂函数
-# ABOUTME: 组装 DeepAgent 配置，创建 Coach Agent 实例（含 A2UI fan_out 工具与 Intervention Composer Subagent）
+# ABOUTME: 组装 DeepAgent 配置，创建 Coach Agent 实例（含 A2UI fan_out 工具与 Witness Card Composer Subagent）
 
 from collections.abc import Callable
 from typing import Any
@@ -15,7 +15,7 @@ from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
 from voliti.middleware.journey_analysis import JourneyAnalysisMiddleware
 from voliti.middleware.session_mode import SessionModeMiddleware
-from voliti.tools.experiential import compose_experiential_intervention
+from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
 
 COACH_TOOLS = [fan_out]
@@ -79,17 +79,17 @@ def _create_backend_factory() -> Callable[..., Any]:
     return factory
 
 
-def _create_intervention_composer() -> SubAgent:
-    """创建 Intervention Composer Subagent 配置。"""
+def _create_witness_card_composer() -> SubAgent:
+    """创建 Witness Card Composer Subagent 配置。"""
     return SubAgent(
-        name="intervention_composer",
+        name="witness_card_composer",
         description=(
-            "根据教练干预意图和用户行为上下文，构建并呈现体验式干预。"
-            "基于行为科学理论（Future Self-Continuity、MCII/WOOP、概念隐喻、CBT），"
-            "将教练洞察转化为可感知的体验，辅助用户理解行为模式、感受未来自我、预演应对场景。"
+            "在里程碑时刻为用户生成 Witness Card 见证卡片。"
+            "基于用户的具体成就和行为上下文，构建场景化图片和个性化叙事文字，"
+            "通过 A2UI interrupt 呈送给用户，用户可选择收下或跳过。"
         ),
         system_prompt=PromptRegistry.get("intervention_composer_system"),
-        tools=[compose_experiential_intervention],
+        tools=[compose_witness_card],
         model=ModelRegistry.get("intervention_composer"),
     )
 
@@ -115,7 +115,7 @@ def create_coach_agent(
             "/user/timeline/markers.json",
         ],
         "tools": COACH_TOOLS,
-        "subagents": [_create_intervention_composer()],
+        "subagents": [_create_witness_card_composer()],
         "middleware": [SessionModeMiddleware(), JourneyAnalysisMiddleware()],
     }
     if store is not None:

@@ -172,7 +172,7 @@ completed conversation transcript between a simulated user and an AI Coach \
 - Suggested Replies: only at decision points with distinct options; default to omitting; never fabricate context
 - Metrics Architecture: Coach writes metric DEFINITIONS to dashboardConfig, actual VALUES as ledger events. iOS client derives display values. Do not expect current_value in dashboardConfig.
 - Forward Markers: Coach writes upcoming life events to timeline/markers.json; links to LifeSign when applicable
-- Intervention Delegation: Coach may delegate specialized interventions (ceremony images, scene rehearsal) to intervention_composer subagent
+- Witness Card: Coach delegates milestone Witness Card generation to witness_card_composer subagent. Cards are keepsakes (witnessing), not interventions (rewarding). Trigger types: explicit (user-reported), implicit (Coach-discovered), journey (Onboarding/Chapter). Frequency: ~3-5 per Chapter.
 - Chapter Management: identity stages with no fixed duration; Coach creates/transitions autonomously
 - Action Transparency: weave data changes into conversation naturally, never use technical jargon
 
