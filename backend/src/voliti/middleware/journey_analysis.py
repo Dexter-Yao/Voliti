@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from voliti.middleware.base import PromptInjectionMiddleware
@@ -101,16 +101,15 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
     def _scan_ledger_for_achievements(self, backend: Any) -> str | None:
         """扫描近 30 天 ledger 数据，检测隐性成就信号。
 
-        三类信号：
-        - 连续 ≥7 天 check-in
-        - 单个 LifeSign ≥3 次连续成功
-        - 行为频率 ≥50% 变化
+        两类信号：
+        - 连续 ≥7 天 check-in（任何 observation/state 事件算一天）
+        - 单个 LifeSign 累计 ≥3 次成功（refs.lifesign_id 匹配 + 无负面 metrics）
         Returns: 结构化的成就信号描述，或 None。
         """
-        try:
-            ledger_entries = []
-            from datetime import timedelta
+        _MAX_FILES_PER_DAY = 50
 
+        try:
+            ledger_entries: list[dict] = []
             now = datetime.now(timezone.utc)
             for days_ago in range(30):
                 date = now - timedelta(days=days_ago)
@@ -119,7 +118,7 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
                     listing = backend.list_files(date_dir)
                 except Exception:  # noqa: BLE001
                     continue
-                for fname in listing:
+                for fname in listing[:_MAX_FILES_PER_DAY]:
                     try:
                         content = backend.read_file(f"{date_dir}/{fname}")
                         if content:
@@ -134,7 +133,6 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
 
             signals = []
 
-            # 检测连续 check-in 天数
             checkin_dates = sorted({
                 e["_date"]
                 for e in ledger_entries
@@ -156,7 +154,6 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
                         f"IMPLICIT ACHIEVEMENT: User has checked in for {max_streak} consecutive days."
                     )
 
-            # 检测 LifeSign 连续成功
             lifesign_events = [
                 e for e in ledger_entries
                 if e.get("kind") == "observation"
@@ -165,12 +162,20 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
             lifesign_successes: dict[str, int] = {}
             for e in lifesign_events:
                 ls_id = e["refs"]["lifesign_id"]
-                if e.get("metrics", {}).get("success"):
+                # metrics 是 array of {"key": ..., "value": ..., "quality": ...}
+                # LifeSign 成功事件的特征：有 refs.lifesign_id 且无失败标记
+                metrics = e.get("metrics", [])
+                has_failure = any(
+                    m.get("key") == "success" and not m.get("value")
+                    for m in metrics
+                    if isinstance(m, dict)
+                )
+                if not has_failure:
                     lifesign_successes[ls_id] = lifesign_successes.get(ls_id, 0) + 1
             for ls_id, count in lifesign_successes.items():
                 if count >= 3:
                     signals.append(
-                        f"IMPLICIT ACHIEVEMENT: LifeSign {ls_id} has {count} consecutive successes."
+                        f"IMPLICIT ACHIEVEMENT: LifeSign {ls_id} has {count} successes in the past 30 days."
                     )
 
             if not signals:

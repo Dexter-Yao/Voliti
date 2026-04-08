@@ -140,16 +140,10 @@ def _finalize_card(
     """
     if store is None:
         return
-    if accepted:
-        item = store.get(INTERVENTIONS_NAMESPACE, card_id)
-        if item is not None:
-            value = {**item.value, "status": "accepted"}
-            store.put(INTERVENTIONS_NAMESPACE, card_id, value)
-    else:
-        item = store.get(INTERVENTIONS_NAMESPACE, card_id)
-        if item is not None:
-            value = {**item.value, "status": "rejected"}
-            store.put(INTERVENTIONS_NAMESPACE, card_id, value)
+    item = store.get(INTERVENTIONS_NAMESPACE, card_id)
+    if item is not None:
+        status = "accepted" if accepted else "rejected"
+        store.put(INTERVENTIONS_NAMESPACE, card_id, {**item.value, "status": status})
 
 
 def _generate_image(prompt: str, size: str) -> tuple[str, str]:
