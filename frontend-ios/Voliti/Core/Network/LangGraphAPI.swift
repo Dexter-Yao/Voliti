@@ -70,7 +70,7 @@ struct LangGraphAPI: Sendable {
     // MARK: - Streaming
 
     /// 发送消息并获取流式响应
-    func streamRun(threadID: String, message: String, imageData: Data? = nil, sessionMode: String = "coaching") throws -> AsyncStream<SSEEvent> {
+    func streamRun(threadID: String, message: String, imageData: Data? = nil, sessionMode: String = "coaching", priorAssistantMessage: String? = nil) throws -> AsyncStream<SSEEvent> {
         var content: [[String: Any]] = [
             ["type": "text", "text": message]
         ]
@@ -92,12 +92,16 @@ struct LangGraphAPI: Sendable {
             configurable["preferred_language"] = preferredLanguage
         }
 
+        var inputMessages: [[String: Any]] = []
+        if let prior = priorAssistantMessage {
+            inputMessages.append(["role": "assistant", "content": prior])
+        }
+        inputMessages.append(["role": "user", "content": content])
+
         let body: [String: Any] = [
             "assistant_id": APIConfiguration.assistantID,
             "input": [
-                "messages": [
-                    ["role": "user", "content": content]
-                ]
+                "messages": inputMessages
             ],
             "config": ["configurable": configurable],
             "stream_mode": ["messages", "values"],

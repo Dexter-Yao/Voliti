@@ -177,13 +177,19 @@ final class CoachViewModel {
                     self.messages.append(assistantMessage)
                 }
 
+                // Onboarding 首条消息：prepend 硬编码问候语，让 LLM 看到完整对话历史
+                let isFirstOnboardingMessage = self.sessionMode == "onboarding"
+                    && self.messages.filter({ $0.role == .user }).count == 1
+                let priorGreeting = isFirstOnboardingMessage ? OnboardingGreeting.text : nil
+
                 let stream = try api.streamRun(
                     threadID: threadID,
                     message: text,
                     imageData: imageData,
-                    sessionMode: self.sessionMode
+                    sessionMode: self.sessionMode,
+                    priorAssistantMessage: priorGreeting
                 )
-                trace("streamRun created, entering processStream")
+                trace("streamRun created, entering processStream, prependedGreeting=\(priorGreeting != nil)")
 
                 await processStream(stream, assistantMessage: assistantMessage)
                 trace("processStream returned")
@@ -336,8 +342,12 @@ final class CoachViewModel {
             Task { [weak self] in
                 await self?.syncService?.syncAll()
                 if let self, !self.onboardingComplete {
-                    let complete = await self.syncService?.checkOnboardingComplete() ?? false
-                    if complete {
+                    // 后端 Store 检查
+                    let storeComplete = await self.syncService?.checkOnboardingComplete() ?? false
+                    // 本地 fallback：onboarding 对话中 Coach 已回复 3+ 次
+                    let localComplete = self.sessionMode == "onboarding"
+                        && self.messages.filter({ $0.role == .assistant && !$0.textContent.isEmpty }).count >= 3
+                    if storeComplete || localComplete {
                         await MainActor.run { self.onboardingComplete = true }
                     }
                 }
@@ -453,7 +463,7 @@ final class CoachViewModel {
                 }
                 purpose = img.alt
             case .text(let txt):
-                caption = txt.content
+                caption = txt.text
             default:
                 break
             }
