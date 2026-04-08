@@ -30,7 +30,7 @@ Voliti is a multi-agent system that maintains coaching continuity across session
 │  │  ┌──────────────────────────────────────────────────────────┐ │ │
 │  │  │         Witness Card Composer (Subagent)                   │ │ │
 │  │  │  Model: gpt-5.4-nano (Azure OpenAI)                      │ │ │
-│  │  │  Tool: compose_experiential_intervention                 │ │ │
+│  │  │  Tool: compose_witness_card                 │ │ │
 │  │  │         └─> gpt-image-1.5 (Azure OpenAI Image API)      │ │ │
 │  │  │         └─> A2UI interrupt (card + accept/reject)        │ │ │
 │  │  └──────────────────────────────────────────────────────────┘ │ │
@@ -102,7 +102,7 @@ agent = create_deep_agent(
 
 **Role:** Specialist agent for generating Witness Card images and text at milestone moments
 
-**Tool:** `compose_experiential_intervention`
+**Tool:** `compose_witness_card`
 - Receives Coach delegation (achievement description, user context, emotional tone)
 - Constructs scene-based image prompt within unified visual system
 - Generates personalized narrative text for card
@@ -232,7 +232,7 @@ User message
 Coach detects milestone moment (explicit/implicit achievement)
   → Delegate to witness_card_composer subagent
     → Subagent constructs scene prompt + narrative text
-      → Call compose_experiential_intervention tool
+      → Call compose_witness_card tool
         → Generate image via Azure OpenAI gpt-image-1.5
         → Assemble Witness Card (brand frame + image + text)
         → interrupt() propagates: tool → subagent → coach → client
@@ -371,3 +371,4 @@ cd backend && uv run langgraph dev --port 2025
 | 2026-04-01 | 模型全面迁移 Gemini 3 → Azure OpenAI GPT-5.4 系列 + gpt-image-1.5 |
 | 2026-04-06 | 新增 SessionModeMiddleware；memory 列表补充 coping_plans_index；Event Schema 引用更新；VolitiTests 测试策略段落；端口 2024→2025 |
 | 2026-04-07 | Intervention Composer 重命名为 Witness Card Composer；角色从"干预图片生成"调整为"里程碑见证卡片生成"；更新数据流示意图；Subagent delegation 描述更新 |
+| 2026-04-08 | Tool 函数名 compose_experiential_intervention → compose_witness_card；JourneyAnalysisMiddleware 增加隐性成就扫描；get_session_mode 提取到 base.py |

@@ -37,12 +37,12 @@ cd backend && uv run langgraph dev --port 2025
 
 # 运行评估
 cd eval
-uv run python -m voliti_eval              # 全部 13 seed
+uv run python -m voliti_eval              # 全部 16 seed
 uv run python -m voliti_eval --seeds 01   # 单 seed
 uv run python -m voliti_eval --dry-run    # 仅验证配置
 ```
 
-## Seed 场景（13 个）
+## Seed 场景（16 个）
 
 | ID | 名称 | 测试维度 |
 |----|------|---------|
@@ -59,6 +59,9 @@ uv run python -m voliti_eval --dry-run    # 仅验证配置
 | 11 | 指标治理 | D3 + E3 Metrics Governance + Action Transparency |
 | 12 | Chapter 过渡 | D4 + E3 Chapter Management + Action Transparency |
 | 13 | 行动透明度 | E3 + E1 Action Transparency + Thinking |
+| 14 | 前向标记 | D2 Forward Markers |
+| 15 | Witness Card 适当性 | C1 Intervention Dosage + Witness Card Triggering |
+| 16 | 隐性成就发现 | C1 + C3 Implicit Achievement + LifeSign Integration |
 
 ## 评分维度（15 个）
 
@@ -127,3 +130,5 @@ Signature Experience 图片由 intervention_composer subagent 通过 Azure OpenA
 |------|----------|
 | 2026-04-04 | 初始创建：完整模块架构、8 个 seed 场景、12 维度评分体系 |
 | 2026-04-06 | Phase C 对齐：修复 3 个 seed（06/09/10），新增 3 个 seed（11/12/13），新增 3 个维度（D3/D4/E3），PreState 支持 dashboardConfig + chapter |
+| 2026-04-07 | 新增 seed 14（Forward Markers） |
+| 2026-04-08 | Witness Card 实现：新增 seed 15（触发适当性）+ seed 16（隐性成就发现）；更新 seed 06 引用 + judge 评分描述 |

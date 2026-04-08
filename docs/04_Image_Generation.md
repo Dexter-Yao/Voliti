@@ -41,7 +41,7 @@ Witness Card 图片区域为固定比例，由卡片框架模板决定：
 
 ## 三、Subagent 架构
 
-图片生成由 Intervention Composer Subagent 执行（名称保留，角色调整为 Witness Card 图片生成）。
+图片生成由 Witness Card Composer Subagent 执行。
 
 ```
 Coach Agent (Supervisor)
@@ -49,14 +49,14 @@ Coach Agent (Supervisor)
 │  1. Coach 判断里程碑时刻 → 决定生成 Witness Card
 │  2. Coach 构造 delegation：成就描述、用户上下文、情感基调
 │
-├── Intervention Composer Subagent
+├── Witness Card Composer Subagent
 │   ├── 解析 Coach delegation
 │   ├── 选择色温方向（暖色 / 冷色）
 │   ├── 组装图片 prompt（场景 + 风格 + 技术 + 约束）
 │   ├── 撰写卡片文字（Coach 语气的个性化叙事）
-│   └── 调用 compose_experiential_intervention tool
+│   └── 调用 compose_witness_card tool
 │       ├── Azure OpenAI gpt-image-1.5 生成图片
-│       ├── 组装 Witness Card（框架 + 图片 + 文字）
+│       ├── 组装 Witness Card（框架 + 图片 + 文字 + 元数据）
 │       └── interrupt() → FanOutPanel → 用户收下/拒绝
 ```
 
