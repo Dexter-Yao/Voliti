@@ -173,7 +173,7 @@ struct SettingsView: View {
 
             if let resetWarning {
                 Text(resetWarning)
-                    .font(.custom("DM Sans", size: 12))
+                    .starpathSans(size: 12)
                     .foregroundStyle(StarpathTokens.riskRed)
             }
 

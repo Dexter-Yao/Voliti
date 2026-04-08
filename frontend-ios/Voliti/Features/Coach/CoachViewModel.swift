@@ -177,10 +177,12 @@ final class CoachViewModel {
                     self.messages.append(assistantMessage)
                 }
 
-                // Onboarding 首条消息：prepend 硬编码问候语，让 LLM 看到完整对话历史
-                let isFirstOnboardingMessage = self.sessionMode == "onboarding"
-                    && self.messages.filter({ $0.role == .user }).count == 1
-                let priorGreeting = isFirstOnboardingMessage ? OnboardingGreeting.text : nil
+                // Onboarding 首条用户消息：prepend 硬编码问候语，让 LLM 看到完整对话历史
+                let priorGreeting: String? = {
+                    guard self.sessionMode == "onboarding" else { return nil }
+                    let userCount = self.messages.lazy.filter({ $0.role == .user }).prefix(2).count
+                    return userCount == 1 ? OnboardingGreeting.text : nil
+                }()
 
                 let stream = try api.streamRun(
                     threadID: threadID,
@@ -342,13 +344,18 @@ final class CoachViewModel {
             Task { [weak self] in
                 await self?.syncService?.syncAll()
                 if let self, !self.onboardingComplete {
-                    // 后端 Store 检查
                     let storeComplete = await self.syncService?.checkOnboardingComplete() ?? false
-                    // 本地 fallback：onboarding 对话中 Coach 已回复 3+ 次
-                    let localComplete = self.sessionMode == "onboarding"
-                        && self.messages.filter({ $0.role == .assistant && !$0.textContent.isEmpty }).count >= 3
-                    if storeComplete || localComplete {
+                    if storeComplete {
                         await MainActor.run { self.onboardingComplete = true }
+                    } else if self.sessionMode == "onboarding" {
+                        // InMemoryStore 重启后丢失数据时的降级判断：
+                        // 统计非空 assistant 消息数，避免用户卡在 Onboarding fullScreenCover
+                        let assistantCount = self.messages.lazy
+                            .filter { $0.role == .assistant && !$0.textContent.isEmpty }
+                            .prefix(3).count
+                        if assistantCount >= 3 {
+                            await MainActor.run { self.onboardingComplete = true }
+                        }
                     }
                 }
             }

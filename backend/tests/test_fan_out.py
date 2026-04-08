@@ -21,7 +21,7 @@ class TestFanOutSubmit:
         }
         result = fan_out.invoke({
             "components": [
-                {"kind": "slider", "name": "energy", "label": "Energy"},
+                {"kind": "slider", "key": "energy", "label": "Energy"},
             ],
         })
         assert "energy=7" in result
@@ -33,7 +33,7 @@ class TestFanOutSubmit:
         """submit 但无输入组件时应正常返回。"""
         mock_interrupt.return_value = {"action": "submit", "data": {}}
         result = fan_out.invoke({
-            "components": [{"kind": "text", "content": "hello"}],
+            "components": [{"kind": "text", "text": "hello"}],
         })
         assert "acknowledged the observation" in result
 
@@ -46,7 +46,7 @@ class TestFanOutReject:
         """reject 应返回取消信息。"""
         mock_interrupt.return_value = {"action": "reject"}
         result = fan_out.invoke({
-            "components": [{"kind": "text", "content": "hello"}],
+            "components": [{"kind": "text", "text": "hello"}],
         })
         assert result == "User closed the panel without responding."
 
@@ -59,7 +59,7 @@ class TestFanOutSkip:
         """skip 应返回跳过信息。"""
         mock_interrupt.return_value = {"action": "skip"}
         result = fan_out.invoke({
-            "components": [{"kind": "text", "content": "hello"}],
+            "components": [{"kind": "text", "text": "hello"}],
         })
         assert result == "User acknowledged but chose to skip."
 
@@ -72,7 +72,7 @@ class TestFanOutPayload:
         """interrupt 应收到完整的 A2UI payload dict。"""
         mock_interrupt.return_value = {"action": "submit", "data": {}}
         fan_out.invoke({
-            "components": [{"kind": "text", "content": "hello"}],
+            "components": [{"kind": "text", "text": "hello"}],
         })
         payload = mock_interrupt.call_args[0][0]
         assert payload["type"] == "a2ui"
@@ -84,7 +84,7 @@ class TestFanOutPayload:
         """默认 layout 应为 three-quarter。"""
         mock_interrupt.return_value = {"action": "submit", "data": {}}
         fan_out.invoke({
-            "components": [{"kind": "text", "content": "hi"}],
+            "components": [{"kind": "text", "text": "hi"}],
         })
         payload = mock_interrupt.call_args[0][0]
         assert payload["layout"] == "three-quarter"
@@ -94,7 +94,7 @@ class TestFanOutPayload:
         """layout=full 应透传到 payload。"""
         mock_interrupt.return_value = {"action": "submit", "data": {}}
         fan_out.invoke({
-            "components": [{"kind": "text", "content": "hi"}],
+            "components": [{"kind": "text", "text": "hi"}],
             "layout": "full",
         })
         payload = mock_interrupt.call_args[0][0]
@@ -115,8 +115,8 @@ class TestFanOutValidation:
         mock_interrupt.return_value = {"action": "submit", "data": {"x": 5}}
         fan_out.invoke({
             "components": [
-                {"kind": "text", "content": "Rate your energy:"},
-                {"kind": "slider", "name": "x", "label": "Energy"},
+                {"kind": "text", "text": "Rate your energy:"},
+                {"kind": "slider", "key": "x", "label": "Energy"},
             ],
         })
         payload = mock_interrupt.call_args[0][0]

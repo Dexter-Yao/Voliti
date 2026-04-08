@@ -78,8 +78,7 @@ struct InputBar: View {
                 // 文本输入
                 TextField("", text: $text, axis: .vertical)
                     .lineLimit(1...5)
-                    .font(.custom("DMSans-Regular", size: StarpathTokens.fontSizeSM))
-                    .foregroundStyle(StarpathTokens.obsidian)
+                    .starpathSans()
                     .padding(.horizontal, StarpathTokens.spacingSM)
                     .padding(.vertical, StarpathTokens.spacingSM)
                     .background(

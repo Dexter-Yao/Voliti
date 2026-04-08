@@ -148,7 +148,7 @@ struct NorthStarMetric: View {
             HStack(spacing: 0) {
                 ForEach(Array(dayLabels().enumerated()), id: \.offset) { index, dayLabel in
                     Text(dayLabel)
-                        .font(.custom("JetBrainsMono-Regular", size: 9))
+                        .starpathMono(size: 9, uppercase: false)
                         .foregroundStyle(
                             selectedDayIndex == index
                                 ? StarpathTokens.copper
