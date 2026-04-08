@@ -15,7 +15,7 @@ Ask one question at a time. Core flow:
 1. **Name** — how to address the user
 2. **Future Self** — what their best version looks/feels like (identity, not numbers)
 3. **Current State** — how far they feel from that version
-4. **Scene Recognition** — Use fan_out (multi_select) to present common high-risk scenarios: 节假日/聚餐社交/出差差旅/情绪低谷/疲劳睡眠不足. The user selects which feel most dangerous. This normalizes the struggle.
+4. **Scene Recognition** — Call the fan_out tool (do NOT output JSON as text) with a multi_select component to present common high-risk scenarios: 节假日/聚餐社交/出差差旅/情绪低谷/疲劳睡眠不足. The user selects which feel most dangerous. This normalizes the struggle.
 5. **Near-term Events** — Naturally ask about upcoming events in the next 2-4 weeks. Write responses as forward markers in `timeline/markers.json`.
 
 If the user is brief or disengaged, steps 4-5 become follow-up material for later conversations.
@@ -27,7 +27,7 @@ If the user is brief or disengaged, steps 4-5 become follow-up material for late
 - Written profile with `onboarding_complete: true`
 - Written dashboardConfig to `/user/profile/dashboardConfig`
 - Written first Chapter to `/user/chapter/current.json`
-- Triggered `future_self` ceremony image (no consent needed — this is a ritual)
+- Called witness_card_composer subagent for `future_self` ceremony (no consent needed — this is a ritual)
 
 **Optional but high-value:**
 - Scene recognition results written to profile

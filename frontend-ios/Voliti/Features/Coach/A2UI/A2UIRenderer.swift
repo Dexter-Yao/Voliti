@@ -46,7 +46,7 @@ struct A2UIRenderer: View {
     private func componentView(for component: A2UIComponent, at index: Int) -> some View {
         switch component {
         case .text(let data):
-            Text(data.content)
+            Text(data.text)
                 .starpathSerif()
 
         case .image:
@@ -71,31 +71,31 @@ struct A2UIRenderer: View {
         case .slider(let data):
             SliderInput(
                 config: data,
-                value: binding(for: data.name, in: $sliderValues, default: Double(data.value ?? data.min ?? 1))
+                value: binding(for: data.key, in: $sliderValues, default: Double(data.value ?? data.min ?? 1))
             )
 
         case .textInput(let data):
             A2UITextInput(
                 config: data,
-                value: binding(for: data.name, in: $textValues, default: data.value)
+                value: binding(for: data.key, in: $textValues, default: data.value)
             )
 
         case .numberInput(let data):
             NumberInput(
                 config: data,
-                value: binding(for: data.name, in: $numberValues, default: data.value.map { String($0) } ?? "")
+                value: binding(for: data.key, in: $numberValues, default: data.value.map { String($0) } ?? "")
             )
 
         case .select(let data):
             SelectInput(
                 config: data,
-                value: binding(for: data.name, in: $selectValues, default: data.value)
+                value: binding(for: data.key, in: $selectValues, default: data.value)
             )
 
         case .multiSelect(let data):
             MultiSelectInput(
                 config: data,
-                values: multiSelectBinding(for: data.name, default: data.value)
+                values: multiSelectBinding(for: data.key, default: data.value)
             )
         }
     }
@@ -124,15 +124,15 @@ struct A2UIRenderer: View {
         for component in components {
             switch component {
             case .slider(let d):
-                sliderValues[d.name] = Double(d.value ?? d.min ?? 1)
+                sliderValues[d.key] = Double(d.value ?? d.min ?? 1)
             case .textInput(let d):
-                textValues[d.name] = d.value
+                textValues[d.key] = d.value
             case .numberInput(let d):
-                numberValues[d.name] = d.value.map { String($0) } ?? ""
+                numberValues[d.key] = d.value.map { String($0) } ?? ""
             case .select(let d):
-                selectValues[d.name] = d.value
+                selectValues[d.key] = d.value
             case .multiSelect(let d):
-                multiSelectValues[d.name] = d.value
+                multiSelectValues[d.key] = d.value
             default:
                 break
             }

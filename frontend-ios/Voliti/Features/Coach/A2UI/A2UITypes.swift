@@ -58,20 +58,20 @@ enum A2UIComponent: Decodable, Sendable {
         }
     }
 
-    /// 输入组件的 name（用于收集响应数据）
-    var inputName: String? {
+    /// 输入组件的 key（用于收集响应数据）
+    var inputKey: String? {
         switch self {
-        case .slider(let d): d.name
-        case .textInput(let d): d.name
-        case .numberInput(let d): d.name
-        case .select(let d): d.name
-        case .multiSelect(let d): d.name
+        case .slider(let d): d.key
+        case .textInput(let d): d.key
+        case .numberInput(let d): d.key
+        case .select(let d): d.key
+        case .multiSelect(let d): d.key
         case .text, .image, .protocolPrompt: nil
         }
     }
 
     /// 是否为输入组件
-    var isInput: Bool { inputName != nil }
+    var isInput: Bool { inputKey != nil }
 
     /// 是否为 protocol_prompt
     var isProtocolPrompt: Bool {
@@ -84,7 +84,7 @@ enum A2UIComponent: Decodable, Sendable {
 
 struct TextComponentData: Codable, Sendable {
     let kind: String
-    let content: String
+    let text: String
 }
 
 struct ImageComponentData: Codable, Sendable {
@@ -103,7 +103,7 @@ struct ProtocolPromptData: Codable, Sendable {
 
 struct SliderData: Codable, Sendable {
     let kind: String
-    let name: String
+    let key: String
     let label: String
     let min: Int?
     let max: Int?
@@ -113,7 +113,7 @@ struct SliderData: Codable, Sendable {
 
 struct TextInputData: Codable, Sendable {
     let kind: String
-    let name: String
+    let key: String
     let label: String
     let placeholder: String?
     let value: String
@@ -121,7 +121,7 @@ struct TextInputData: Codable, Sendable {
 
 struct NumberInputData: Codable, Sendable {
     let kind: String
-    let name: String
+    let key: String
     let label: String
     let unit: String?
     let value: Double?
@@ -129,7 +129,7 @@ struct NumberInputData: Codable, Sendable {
 
 struct SelectData: Codable, Sendable {
     let kind: String
-    let name: String
+    let key: String
     let label: String
     let options: [SelectOption]
     let value: String
@@ -137,7 +137,7 @@ struct SelectData: Codable, Sendable {
 
 struct MultiSelectData: Codable, Sendable {
     let kind: String
-    let name: String
+    let key: String
     let label: String
     let options: [SelectOption]
     let value: [String]

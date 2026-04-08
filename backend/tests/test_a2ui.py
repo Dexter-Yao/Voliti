@@ -29,10 +29,10 @@ class TestTextComponent:
     """TextComponent 测试。"""
 
     def test_kind_is_text(self) -> None:
-        c = TextComponent(content="hello")
+        c = TextComponent(text="hello")
         assert c.kind == "text"
 
-    def test_content_required(self) -> None:
+    def test_text_required(self) -> None:
         with pytest.raises(ValidationError):
             TextComponent()  # type: ignore[call-arg]
 
@@ -60,11 +60,11 @@ class TestSliderComponent:
     """SliderComponent 测试。"""
 
     def test_kind_is_slider(self) -> None:
-        c = SliderComponent(name="energy", label="Energy")
+        c = SliderComponent(key="energy", label="Energy")
         assert c.kind == "slider"
 
     def test_defaults(self) -> None:
-        c = SliderComponent(name="energy", label="Energy")
+        c = SliderComponent(key="energy", label="Energy")
         assert c.min == 1
         assert c.max == 10
         assert c.step == 1
@@ -79,11 +79,11 @@ class TestTextInputComponent:
     """TextInputComponent 测试。"""
 
     def test_kind_is_text_input(self) -> None:
-        c = TextInputComponent(name="note", label="Note")
+        c = TextInputComponent(key="note", label="Note")
         assert c.kind == "text_input"
 
     def test_defaults(self) -> None:
-        c = TextInputComponent(name="note", label="Note")
+        c = TextInputComponent(key="note", label="Note")
         assert c.placeholder == ""
         assert c.value == ""
 
@@ -92,11 +92,11 @@ class TestNumberInputComponent:
     """NumberInputComponent 测试。"""
 
     def test_kind_is_number_input(self) -> None:
-        c = NumberInputComponent(name="kcal", label="Calories")
+        c = NumberInputComponent(key="kcal", label="Calories")
         assert c.kind == "number_input"
 
     def test_defaults(self) -> None:
-        c = NumberInputComponent(name="kcal", label="Calories")
+        c = NumberInputComponent(key="kcal", label="Calories")
         assert c.unit == ""
         assert c.value is None
 
@@ -106,17 +106,17 @@ class TestSelectComponent:
 
     def test_kind_is_select(self) -> None:
         opts = [SelectOption(label="High", value="high")]
-        c = SelectComponent(name="confidence", label="Confidence", options=opts)
+        c = SelectComponent(key="confidence", label="Confidence", options=opts)
         assert c.kind == "select"
 
     def test_value_defaults_empty(self) -> None:
         opts = [SelectOption(label="A", value="a")]
-        c = SelectComponent(name="x", label="X", options=opts)
+        c = SelectComponent(key="x", label="X", options=opts)
         assert c.value == ""
 
     def test_options_required(self) -> None:
         with pytest.raises(ValidationError):
-            SelectComponent(name="x", label="X")  # type: ignore[call-arg]
+            SelectComponent(key="x", label="X")  # type: ignore[call-arg]
 
 
 class TestMultiSelectComponent:
@@ -124,12 +124,12 @@ class TestMultiSelectComponent:
 
     def test_kind_is_multi_select(self) -> None:
         opts = [SelectOption(label="Tag", value="tag")]
-        c = MultiSelectComponent(name="tags", label="Tags", options=opts)
+        c = MultiSelectComponent(key="tags", label="Tags", options=opts)
         assert c.kind == "multi_select"
 
     def test_value_defaults_empty_list(self) -> None:
         opts = [SelectOption(label="A", value="a")]
-        c = MultiSelectComponent(name="tags", label="Tags", options=opts)
+        c = MultiSelectComponent(key="tags", label="Tags", options=opts)
         assert c.value == []
 
 
@@ -143,14 +143,14 @@ class TestComponent:
         from pydantic import TypeAdapter
 
         adapter = TypeAdapter(Component)
-        c = adapter.validate_python({"kind": "text", "content": "hello"})
+        c = adapter.validate_python({"kind": "text", "text": "hello"})
         assert isinstance(c, TextComponent)
 
     def test_resolves_slider(self) -> None:
         from pydantic import TypeAdapter
 
         adapter = TypeAdapter(Component)
-        c = adapter.validate_python({"kind": "slider", "name": "x", "label": "X"})
+        c = adapter.validate_python({"kind": "slider", "key": "x", "label": "X"})
         assert isinstance(c, SliderComponent)
 
     def test_resolves_image(self) -> None:
@@ -164,14 +164,14 @@ class TestComponent:
         from pydantic import TypeAdapter
 
         adapter = TypeAdapter(Component)
-        c = adapter.validate_python({"kind": "text_input", "name": "n", "label": "N"})
+        c = adapter.validate_python({"kind": "text_input", "key": "n", "label": "N"})
         assert isinstance(c, TextInputComponent)
 
     def test_resolves_number_input(self) -> None:
         from pydantic import TypeAdapter
 
         adapter = TypeAdapter(Component)
-        c = adapter.validate_python({"kind": "number_input", "name": "n", "label": "N"})
+        c = adapter.validate_python({"kind": "number_input", "key": "n", "label": "N"})
         assert isinstance(c, NumberInputComponent)
 
     def test_resolves_select(self) -> None:
@@ -180,7 +180,7 @@ class TestComponent:
         adapter = TypeAdapter(Component)
         c = adapter.validate_python({
             "kind": "select",
-            "name": "x",
+            "key": "x",
             "label": "X",
             "options": [{"label": "A", "value": "a"}],
         })
@@ -192,7 +192,7 @@ class TestComponent:
         adapter = TypeAdapter(Component)
         c = adapter.validate_python({
             "kind": "multi_select",
-            "name": "x",
+            "key": "x",
             "label": "X",
             "options": [{"label": "A", "value": "a"}],
         })
@@ -231,7 +231,7 @@ class TestA2UIPayload:
     """A2UIPayload 测试。"""
 
     def test_type_is_a2ui(self) -> None:
-        p = A2UIPayload(components=[TextComponent(content="hi")])
+        p = A2UIPayload(components=[TextComponent(text="hi")])
         assert p.type == "a2ui"
 
     def test_layout_defaults_three_quarter(self) -> None:
@@ -244,7 +244,7 @@ class TestA2UIPayload:
 
     def test_components_validated(self) -> None:
         """组件通过 dict 传入时应自动解析为正确类型。"""
-        p = A2UIPayload(components=[{"kind": "text", "content": "hello"}])
+        p = A2UIPayload(components=[{"kind": "text", "text": "hello"}])
         assert isinstance(p.components[0], TextComponent)
 
     def test_invalid_component_raises(self) -> None:
@@ -254,8 +254,8 @@ class TestA2UIPayload:
     def test_serialization_roundtrip(self) -> None:
         original = A2UIPayload(
             components=[
-                TextComponent(content="hi"),
-                SliderComponent(name="x", label="X", value=5),
+                TextComponent(text="hi"),
+                SliderComponent(key="x", label="X", value=5),
             ],
             layout="half",
         )
