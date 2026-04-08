@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voliti — AI 减脂领导力教练 · 产品展示</title>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=LXGW+WenKai:wght@300;400;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --obsidian: #1A1816;
+  --parchment: #F4F0E8;
+  --copper: #B87333;
+  --aligned: #8A9A8A;
+  --risk-red: #8B3A3A;
+  --obsidian-05: rgba(26, 24, 22, 0.05);
+  --obsidian-10: rgba(26, 24, 22, 0.10);
+  --obsidian-15: rgba(26, 24, 22, 0.15);
+  --obsidian-20: rgba(26, 24, 22, 0.20);
+  --obsidian-40: rgba(26, 24, 22, 0.40);
+  --copper-40: rgba(184, 115, 51, 0.40);
+  --font-serif: 'LXGW WenKai', serif;
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --page-bg: #FAFAF8;
+  --page-max: 960px;
+  --section-gap: 80px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans); color: var(--obsidian); background: var(--page-bg); line-height: 1.6; }
+
+@media print {
+  body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  .page-section { page-break-before: always; padding: 36px 0; }
+  .page-section:first-child, .cover { page-break-before: auto; }
+  .cover { min-height: auto; padding: 60px 0 40px; }
+  .section-title { font-size: 24px; margin-bottom: 10px; }
+  .section-desc { font-size: 13px; line-height: 1.6; }
+  .section-label { margin-bottom: 8px; }
+
+  /* Phone: scale down the entire frame to 55% */
+  .phone-frame {
+    box-shadow: none !important;
+    border: 1px solid #ccc;
+    transform: scale(0.55);
+    transform-origin: top left;
+    margin-bottom: -280px; /* compensate for scaled-down empty space */
+  }
+
+  .flex-row { gap: 24px; align-items: flex-start; }
+
+  /* Witness card */
+  .witness-card-frame {
+    transform: scale(0.7);
+    transform-origin: top left;
+    margin-bottom: -60px;
+  }
+
+  /* Grids */
+  .feature-grid { gap: 16px; margin: 20px 0; }
+  .feature-card { padding: 14px; }
+  .feature-card-title { font-size: 16px; }
+  .feature-card-desc { font-size: 12px; }
+  .stat-grid { gap: 12px; margin: 20px 0; }
+  .stat-number { font-size: 28px; }
+  .stat-label { font-size: 12px; }
+
+  /* Quote */
+  .quote-block { padding: 10px 16px; margin: 16px 0; }
+  .quote-text { font-size: 15px; }
+
+  /* Scenario notes */
+  .scenario-note { padding: 8px 12px; margin: 10px 0; font-size: 12px; }
+
+  /* Positioning chart */
+  .positioning-chart { width: 480px !important; height: 380px !important; margin: 24px auto; }
+
+  /* Architecture */
+  .arch-diagram { margin: 20px 0; gap: 16px; }
+  .arch-box { padding: 10px; }
+  .arch-box-title { font-size: 13px; }
+  .arch-box-desc { font-size: 11px; }
+  .arch-label { font-size: 10px; width: 90px; }
+  .arch-arrow { font-size: 14px; padding-left: 90px; }
+
+  /* Thank you */
+  .thankyou { padding: 80px 0; }
+}
+
+.page-wrapper { max-width: var(--page-max); margin: 0 auto; padding: 0 32px; }
+.page-section { padding: var(--section-gap) 0; border-bottom: 1px solid var(--obsidian-10); }
+.page-section:last-child { border-bottom: none; }
+
+.section-label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); margin-bottom: 12px; }
+.section-title { font-family: var(--font-serif); font-size: 32px; font-weight: 400; line-height: 1.3; margin-bottom: 16px; }
+.section-desc { font-family: var(--font-sans); font-size: 16px; line-height: 1.7; color: var(--obsidian); opacity: 0.75; max-width: 640px; }
+.section-desc + .section-desc { margin-top: 12px; }
+
+/* Cover */
+.cover { min-height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 120px 0 80px; border-bottom: 1px solid var(--obsidian-10); }
+.cover-brand { font-family: var(--font-mono); font-size: 13px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: var(--copper); margin-bottom: 32px; }
+.cover-title { font-family: var(--font-serif); font-size: 48px; font-weight: 400; line-height: 1.25; margin-bottom: 24px; max-width: 780px; }
+.cover-subtitle { font-family: var(--font-sans); font-size: 18px; line-height: 1.8; color: var(--obsidian); opacity: 0.65; max-width: 620px; margin-bottom: 48px; }
+.cover-meta { font-family: var(--font-mono); font-size: 12px; color: var(--obsidian-40); letter-spacing: 1px; }
+.cover-tagline { font-family: var(--font-serif); font-size: 22px; line-height: 1.5; color: var(--copper); margin-bottom: 32px; max-width: 600px; }
+
+/* Phone Frame */
+.phone-frame { width: 375px; min-height: 680px; background: var(--parchment); border-radius: 40px; box-shadow: 0 24px 80px rgba(26,24,22,0.12), 0 2px 8px rgba(26,24,22,0.06); overflow: hidden; position: relative; flex-shrink: 0; }
+.phone-notch { width: 120px; height: 28px; background: var(--obsidian); border-radius: 0 0 16px 16px; margin: 0 auto; }
+.phone-content { padding: 8px 0 0; height: 100%; }
+
+/* Tab Bar */
+.app-tabbar { display: flex; justify-content: center; gap: 48px; padding: 12px 0 14px; border-top: 1px solid var(--obsidian-10); background: var(--parchment); position: absolute; bottom: 0; left: 0; right: 0; }
+.app-tab { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--obsidian-40); position: relative; padding-bottom: 4px; }
+.app-tab--active { color: var(--obsidian); }
+.app-tab--active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 2px; background: var(--obsidian); }
+
+/* Chat */
+.chat-area { padding: 16px 16px 70px; display: flex; flex-direction: column; gap: 12px; }
+.chat-timestamp { font-family: var(--font-mono); font-size: 11px; color: var(--obsidian-40); text-align: center; margin: 4px 0; }
+.msg-coach { font-family: var(--font-serif); font-size: 16px; line-height: 1.6; padding-right: 48px; color: var(--obsidian); }
+.msg-user { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; align-self: flex-end; background: var(--obsidian-05); padding: 10px 14px; border-radius: 12px; max-width: 260px; color: var(--obsidian); }
+.msg-coach-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--copper); margin-bottom: 4px; }
+.suggested-replies { display: flex; gap: 8px; flex-wrap: wrap; padding-right: 48px; }
+.reply-pill { font-family: var(--font-sans); font-size: 13px; padding: 6px 14px; border: 1px solid var(--obsidian-10); border-radius: 999px; color: var(--obsidian); white-space: nowrap; }
+.input-bar { position: absolute; bottom: 44px; left: 0; right: 0; padding: 8px 16px; background: var(--parchment); border-top: 1px solid var(--obsidian-10); display: flex; align-items: center; gap: 8px; }
+.input-field { flex: 1; font-family: var(--font-sans); font-size: 14px; padding: 8px 12px; border: 1px solid var(--obsidian-10); border-radius: 4px; background: transparent; color: var(--obsidian-40); }
+.input-mic { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--obsidian-40); }
+
+/* LifeSign */
+.lifesign-card { background: white; border-left: 3px solid var(--copper); padding: 14px 16px; margin: 8px 0; }
+.lifesign-if, .lifesign-then { font-family: var(--font-mono); font-size: 13px; color: var(--copper); margin-bottom: 4px; }
+.lifesign-text { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; color: var(--obsidian); margin-bottom: 8px; }
+
+/* Thinking card */
+.thinking-card { border-left: 2px solid var(--obsidian-10); padding: 8px 12px; margin: 4px 0; }
+.thinking-label { font-family: var(--font-sans); font-size: 12px; color: var(--obsidian-40); margin-bottom: 2px; }
+.thinking-text { font-family: var(--font-sans); font-size: 13px; color: var(--obsidian-40); line-height: 1.5; }
+
+/* Fan-out */
+.fanout-panel { background: white; border-top: 2px solid var(--obsidian-20); padding: 20px 16px; margin: 8px 0; }
+.fanout-title { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); margin-bottom: 12px; }
+
+/* Mirror */
+.mirror-content { padding: 20px 16px 70px; }
+.mirror-chapter { margin-bottom: 24px; }
+.mirror-chapter-num { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; color: var(--obsidian-40); margin-bottom: 4px; }
+.mirror-identity { font-family: var(--font-serif); font-size: 22px; line-height: 1.3; color: var(--obsidian); margin-bottom: 4px; }
+.mirror-goal { font-family: var(--font-sans); font-size: 13px; color: var(--obsidian-40); }
+.mirror-divider { height: 1px; background: var(--obsidian-10); margin: 16px 0; }
+.mirror-northstar-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); margin-bottom: 8px; }
+.mirror-northstar-value { font-family: var(--font-serif); font-size: 36px; line-height: 1; color: var(--obsidian); display: inline; }
+.mirror-northstar-unit { font-family: var(--font-mono); font-size: 12px; color: var(--obsidian-40); margin-left: 4px; }
+.mirror-northstar-delta { font-family: var(--font-mono); font-size: 12px; color: var(--aligned); margin-left: 8px; }
+.trend-bars { display: flex; align-items: flex-end; gap: 6px; height: 40px; margin: 12px 0 4px; }
+.trend-bar { flex: 1; background: var(--obsidian-10); min-height: 4px; }
+.trend-bar--today { background: var(--copper); }
+.trend-labels { display: flex; gap: 6px; }
+.trend-label { flex: 1; font-family: var(--font-mono); font-size: 9px; color: var(--obsidian-40); text-align: center; }
+.support-metrics { display: flex; margin: 16px 0; }
+.support-metric { flex: 1; padding: 0 12px; border-left: 1px solid var(--obsidian-10); }
+.support-metric:first-child { border-left: none; padding-left: 0; }
+.support-metric-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--obsidian-40); margin-bottom: 4px; }
+.support-metric-value { font-family: var(--font-serif); font-size: 20px; line-height: 1; color: var(--obsidian); }
+.support-metric-sub { font-family: var(--font-mono); font-size: 10px; color: var(--obsidian-40); margin-top: 2px; }
+.lifesign-summary { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; }
+.lifesign-summary-title { font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); }
+.lifesign-summary-stats { font-family: var(--font-sans); font-size: 14px; color: var(--obsidian); }
+.event-filters { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.event-filter { font-family: var(--font-sans); font-size: 13px; padding: 4px 12px; border: 1px solid var(--obsidian-10); border-radius: 999px; color: var(--obsidian-40); }
+.event-filter--active { background: var(--obsidian); color: var(--parchment); border-color: var(--obsidian); }
+.event-filter-count { font-family: var(--font-mono); font-size: 10px; margin-left: 4px; }
+.event-row { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--obsidian-05); }
+.event-time { font-family: var(--font-mono); font-size: 11px; color: var(--obsidian-40); width: 44px; flex-shrink: 0; }
+.event-type { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--copper); width: 36px; flex-shrink: 0; }
+.event-summary { font-family: var(--font-sans); font-size: 14px; color: var(--obsidian); flex: 1; }
+
+/* Witness Card */
+.witness-card-frame { width: 320px; background: var(--parchment); border: 1px solid var(--obsidian-20); overflow: hidden; flex-shrink: 0; }
+.witness-card-image { width: 100%; height: 200px; background: linear-gradient(135deg, #2a2520 0%, #3d342a 40%, #4a3f33 100%); position: relative; display: flex; align-items: center; justify-content: center; }
+.witness-card-image-text { font-family: var(--font-serif); font-size: 14px; color: rgba(244, 240, 232, 0.3); text-align: center; line-height: 1.6; }
+.witness-card-body { padding: 24px 20px; }
+.witness-card-date { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--obsidian-40); margin-bottom: 12px; }
+.witness-card-text { font-family: var(--font-serif); font-size: 15px; line-height: 1.7; color: var(--obsidian); }
+.witness-card-brand { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--obsidian-10); }
+
+/* Layout helpers */
+.flex-row { display: flex; gap: 48px; align-items: flex-start; }
+.flex-col-text { flex: 1; min-width: 280px; }
+.quote-block { border-left: 3px solid var(--copper); padding: 16px 20px; margin: 24px 0; background: rgba(184, 115, 51, 0.04); }
+.quote-text { font-family: var(--font-serif); font-size: 18px; line-height: 1.6; color: var(--obsidian); font-style: italic; }
+.quote-attr { font-family: var(--font-mono); font-size: 11px; color: var(--obsidian-40); margin-top: 8px; letter-spacing: 1px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin: 32px 0; }
+.stat-card { padding: 20px; border-left: 2px solid var(--obsidian-10); }
+.stat-number { font-family: var(--font-serif); font-size: 36px; line-height: 1; color: var(--obsidian); margin-bottom: 8px; }
+.stat-label { font-family: var(--font-sans); font-size: 14px; color: var(--obsidian-40); }
+.feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin: 32px 0; }
+.feature-card { padding: 24px; border: 1px solid var(--obsidian-10); }
+.feature-card-num { font-family: var(--font-mono); font-size: 11px; color: var(--copper); letter-spacing: 2px; margin-bottom: 8px; }
+.feature-card-title { font-family: var(--font-serif); font-size: 20px; margin-bottom: 8px; }
+.feature-card-desc { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; color: var(--obsidian); opacity: 0.7; }
+.scenario-note { background: rgba(184, 115, 51, 0.06); border-left: 3px solid var(--copper); padding: 12px 16px; margin: 16px 0; font-family: var(--font-sans); font-size: 13px; line-height: 1.6; color: var(--obsidian); opacity: 0.8; }
+.scenario-note strong { color: var(--copper); font-weight: 600; }
+
+/* Architecture diagram */
+.arch-diagram { display: flex; flex-direction: column; gap: 24px; margin: 32px 0; max-width: 720px; }
+.arch-layer { display: flex; align-items: stretch; gap: 0; }
+.arch-label { width: 120px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--obsidian-40); padding: 16px 16px 16px 0; display: flex; align-items: center; flex-shrink: 0; }
+.arch-boxes { display: flex; gap: 12px; flex: 1; }
+.arch-box { flex: 1; padding: 16px; border: 1px solid var(--obsidian-10); }
+.arch-box--highlight { border-color: var(--copper); background: rgba(184, 115, 51, 0.04); }
+.arch-box-title { font-family: var(--font-sans); font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.arch-box-desc { font-family: var(--font-sans); font-size: 12px; color: var(--obsidian-40); line-height: 1.5; }
+.arch-arrow { text-align: center; font-family: var(--font-mono); font-size: 18px; color: var(--obsidian-20); padding-left: 120px; }
+
+/* 2D Positioning chart */
+.positioning-chart { position: relative; width: 600px; height: 500px; margin: 40px auto; padding-bottom: 30px; }
+.chart-axis-x { position: absolute; bottom: 40px; left: 60px; right: 0; height: 1px; background: var(--obsidian-15); }
+.chart-axis-y { position: absolute; top: 0; bottom: 40px; left: 60px; width: 1px; background: var(--obsidian-15); }
+.chart-label-x { position: absolute; bottom: 10px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--obsidian-40); }
+.chart-label-y { position: absolute; left: 0; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--obsidian-40); writing-mode: vertical-rl; transform: rotate(180deg); }
+.chart-label-y-h { position: absolute; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--obsidian-40); }
+.chart-dot { position: absolute; width: 10px; height: 10px; border-radius: 50%; transform: translate(-50%, -50%); }
+.chart-dot--competitor { background: var(--obsidian-20); }
+.chart-dot--voliti { background: var(--copper); width: 16px; height: 16px; box-shadow: 0 0 0 4px rgba(184, 115, 51, 0.2); }
+.chart-dot-label { position: absolute; font-family: var(--font-sans); font-size: 12px; white-space: nowrap; }
+.chart-dot-label--competitor { color: var(--obsidian-40); }
+.chart-dot-label--voliti { color: var(--copper); font-weight: 600; }
+.chart-quadrant-label { position: absolute; font-family: var(--font-sans); font-size: 11px; color: rgba(26, 24, 22, 0.12); }
+
+/* Thank you */
+.thankyou { text-align: center; padding: 120px 0; }
+.thankyou-brand { font-family: var(--font-mono); font-size: 16px; letter-spacing: 4px; text-transform: uppercase; color: var(--copper); margin-bottom: 24px; }
+.thankyou-text { font-family: var(--font-serif); font-size: 40px; color: var(--obsidian); }
+
+@media (max-width: 860px) {
+  .flex-row { flex-direction: column; align-items: center; }
+  .flex-col-text { min-width: auto; }
+  .stat-grid { grid-template-columns: 1fr; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .cover-title { font-size: 36px; }
+  .positioning-chart { width: 100%; }
+}
+</style>
+</head>
+
+<body>
+<div class="page-wrapper">
+
+  <!-- ==========================================
+       COVER
+       ========================================== -->
+  <section class="cover page-section">
+    <div class="cover-brand">Voliti</div>
+    <h1 class="cover-title">AI 减脂领导力教练</h1>
+    <div class="cover-tagline">
+      通过恰当的干预，帮助用户提高自我管理能力，<br>实现长期减脂目标。
+    </div>
+    <p class="cover-subtitle">
+      减脂的核心困难不是"不知道该怎么做"，而是在压力、疲劳、社交等真实场景中，无法持续做出一致的选择。Voliti 是一位 AI 教练，在关键时刻介入，训练用户的自我管理能力，让行为改变成为持续运行的过程。
+    </p>
+    <div class="cover-meta">Dexter Yao · CEIBS &nbsp;|&nbsp; 2026 年 4 月</div>
+  </section>
+
+  <!-- ==========================================
+       01 THE PROBLEM
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">01 · 问题</div>
+    <h2 class="section-title">减脂失败不是因为不懂，<br>而是在关键时刻做不到</h2>
+
+    <p class="section-desc">
+      我们调研了中国和海外约 35 位真实用户，覆盖小红书、Reddit、深度访谈。发现了一个跨越文化和年龄的共同困境：
+    </p>
+
+    <div class="quote-block">
+      <div class="quote-text">「知道都知道，只是管不住，只是没人陪我一起。」</div>
+      <div class="quote-attr">— 小红书用户</div>
+    </div>
+
+    <div class="quote-block">
+      <div class="quote-text">"I already know this. Being consistent is the problem for me."</div>
+      <div class="quote-attr">— Reddit r/loseit, "tried 40 times in 7 years"</div>
+    </div>
+
+    <p class="section-desc">
+      现有的减脂工具（卡路里计算器、健身打卡、饮食 App）都在解决"不知道怎么做"的问题。但用户真正缺的不是知识，而是<strong>在压力、疲劳、情绪波动的时刻，有人帮他做出正确选择</strong>。
+    </p>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-number">6~8 周</div>
+        <div class="stat-label">用户典型崩溃节点。蜜月期结束后，大多数人放弃。</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">5~10 次</div>
+        <div class="stat-label">连环节食者的平均尝试次数。每次都说"这次不一样"。</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">将 AI 与系统性行为改变方法论深度结合的现有产品数量。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       02 THE SOLUTION
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">02 · 解决方案</div>
+    <h2 class="section-title">一位懂你模式的 AI 教练，<br>在关键时刻出现</h2>
+
+    <p class="section-desc">
+      Voliti 像一位沉稳的策略顾问。它不会用打卡和奖励激励你，而是帮你看清自己的行为模式，提前为高风险时刻做准备，在你快要偏离时温和地介入。
+    </p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-num">01</div>
+        <div class="feature-card-title">每日教练节奏</div>
+        <div class="feature-card-desc">
+          晨间感知今天的状态，日间在关键时刻微干预，晚间回顾当天选择。三个触点构成持续运转的行为改变过程。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num">02</div>
+        <div class="feature-card-title">预案系统（LifeSign）</div>
+        <div class="feature-card-desc">
+          在清醒时为脆弱时刻预设应对方案。"如果下午 3 点疲劳想吃零食，那么先喝水走 5 分钟再决定。" 用计划替代意志力。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num">03</div>
+        <div class="feature-card-title">时间感知</div>
+        <div class="feature-card-desc">
+          教练记住你的生活时间线：上周的出差、这周五的聚餐、反复出现的周末失控模式。它能提前预判风险，而不是事后分析。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num">04</div>
+        <div class="feature-card-title">见证系统</div>
+        <div class="feature-card-desc">
+          当你达成里程碑时，教练生成一张个性化纪念卡片。不是奖励，而是记录："我看见了你做到的这件事。" 在低潮期回看，重新找到力量。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       03 COACH TAB — Daily Conversation
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">03 · 日常对话</div>
+    <h2 class="section-title">你的一天，<br>教练都在</h2>
+
+    <p class="section-desc" style="margin-bottom: 40px;">
+      以下是一位用户"张明"的典型一天。他是产品经理，正在第三周的教练旅程中。教练根据他的状态和生活节奏，在不同时刻提供不同层次的支持。
+    </p>
+
+    <div class="flex-row">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="chat-area">
+            <div class="chat-timestamp">上午 7:45</div>
+            <div>
+              <div class="msg-coach-label">Coach</div>
+              <div class="msg-coach">
+                早上好，张明。<br><br>
+                今天周三，你提过今晚有客户晚宴。<br>
+                先感受一下现在的状态 — 精力怎么样？
+              </div>
+            </div>
+            <div class="suggested-replies">
+              <div class="reply-pill">还不错，睡得挺好</div>
+              <div class="reply-pill">一般，有点累</div>
+              <div class="reply-pill">不太好</div>
+            </div>
+            <div class="msg-user">还不错，昨晚睡了 7 个小时</div>
+            <div>
+              <div class="msg-coach">
+                7 小时，比上周的平均好。今晚有晚宴，我们提前想一下 — 你上次应酬场景用的那个预案："先点清淡菜"，这次还适用吗？
+              </div>
+            </div>
+            <div class="msg-user">适用，不过今晚可能要喝酒</div>
+            <div>
+              <div class="msg-coach">
+                明白。那我们加一条：如果被劝酒，用气泡水交替。不需要完美，守住一个选择就够。
+              </div>
+            </div>
+          </div>
+          <div class="app-tabbar">
+            <div class="app-tab app-tab--active">Coach</div>
+            <div class="app-tab">Mirror</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-col-text">
+        <div class="scenario-note">
+          <strong>场景：晨间 Check-in</strong><br>
+          教练知道今晚有客户晚宴（时间感知），主动提起并关联已有的预案。不是等用户失控后再分析，而是提前帮他准备。
+        </div>
+        <div class="scenario-note">
+          <strong>关键设计点：</strong><br>
+          • 教练的语气是"策略顾问"，不是健身教练<br>
+          • 引用用户自己过去成功的预案，而不是给出新建议<br>
+          • "不需要完美，守住一个选择就够" — 降低心理负担
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       04 COACH TAB — Micro-intervention
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">04 · 关键时刻干预</div>
+    <h2 class="section-title">下午 3 点，<br>疲劳袭来的那一刻</h2>
+
+    <div class="flex-row" style="margin-top: 40px;">
+      <div class="flex-col-text">
+        <p class="section-desc">
+          下午 3 点是张明反复出现的脆弱时刻。连续开了三个会，脑子转不动了，自动想到楼下咖啡厅的蛋糕。
+        </p>
+        <p class="section-desc">
+          这个时刻，教练不会等他吃完蛋糕再说"你今天超标了"。而是在他想到蛋糕的那一刻，温和地把预案推到面前。
+        </p>
+        <div class="scenario-note">
+          <strong>为什么这个时刻重要：</strong>用户失控不是因为不知道该怎么做，而是在疲劳/压力时刻，大脑自动选择了阻力最小的路径。教练的工作是在这个"自动驾驶"被触发的瞬间，提供一个替代选项。
+        </div>
+      </div>
+
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="chat-area">
+            <div class="chat-timestamp">下午 3:12</div>
+            <div class="msg-user">开完会好累，想去买杯奶茶</div>
+            <div>
+              <div class="msg-coach-label">Coach</div>
+              <div class="msg-coach">连续三个会，累了很正常。</div>
+            </div>
+            <div class="thinking-card">
+              <div class="thinking-label">教练正在思考…</div>
+              <div class="thinking-text">识别到疲劳信号 + 下午零食场景，匹配预案 #2</div>
+            </div>
+            <div>
+              <div class="msg-coach">你之前设定过一个预案，还记得吗 —</div>
+            </div>
+            <div class="lifesign-card">
+              <div class="lifesign-if">IF 下午感到疲劳想吃零食</div>
+              <div class="lifesign-then">THEN</div>
+              <div class="lifesign-text">先喝一杯水，站起来走 5 分钟。如果 5 分钟后还想吃，选一个蛋白质零食。</div>
+            </div>
+            <div>
+              <div class="msg-coach">不是不能吃。先给自己 5 分钟，再决定。</div>
+            </div>
+            <div class="msg-user">好，我先去接杯水走走</div>
+            <div>
+              <div class="msg-coach">好。回来告诉我感觉怎么样。</div>
+            </div>
+          </div>
+          <div class="input-bar">
+            <div class="input-field">说点什么…</div>
+            <div class="input-mic">🎤</div>
+          </div>
+          <div class="app-tabbar">
+            <div class="app-tab app-tab--active">Coach</div>
+            <div class="app-tab">Mirror</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       05 MIRROR TAB
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">05 · 回看自己</div>
+    <h2 class="section-title">MIRROR：<br>用户的自我觉察面板</h2>
+
+    <p class="section-desc" style="margin-bottom: 40px;">
+      MIRROR 不是传统的"数据仪表盘"。从上到下按重要性排列：你是谁 → 你的核心数据 → 你的行动力 → 今天发生了什么。第一眼看到的是自己的身份宣言，而不是体重数字。
+    </p>
+
+    <div class="flex-row">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="mirror-content">
+            <div class="mirror-chapter">
+              <div class="mirror-chapter-num">篇章 2 · Day 18</div>
+              <div class="mirror-identity">"在压力下保持清晰选择的人"</div>
+              <div class="mirror-goal">目标：12 周 78kg → 72kg</div>
+            </div>
+            <div class="mirror-divider"></div>
+            <div class="mirror-northstar-label">★ 北极星</div>
+            <div>
+              <span class="mirror-northstar-value">74.8</span>
+              <span class="mirror-northstar-unit">KG</span>
+              <span class="mirror-northstar-delta">↓ 0.6 本周</span>
+            </div>
+            <div class="trend-bars">
+              <div class="trend-bar" style="height: 32px;"></div>
+              <div class="trend-bar" style="height: 30px;"></div>
+              <div class="trend-bar" style="height: 28px;"></div>
+              <div class="trend-bar" style="height: 26px;"></div>
+              <div class="trend-bar" style="height: 28px;"></div>
+              <div class="trend-bar" style="height: 24px;"></div>
+              <div class="trend-bar trend-bar--today" style="height: 22px;"></div>
+            </div>
+            <div class="trend-labels">
+              <div class="trend-label">一</div>
+              <div class="trend-label">二</div>
+              <div class="trend-label">三</div>
+              <div class="trend-label">四</div>
+              <div class="trend-label">五</div>
+              <div class="trend-label">六</div>
+              <div class="trend-label">今</div>
+            </div>
+            <div class="mirror-divider"></div>
+            <div class="support-metrics">
+              <div class="support-metric">
+                <div class="support-metric-label">今日摄入</div>
+                <div class="support-metric-value">1,620</div>
+                <div class="support-metric-sub">KCAL</div>
+              </div>
+              <div class="support-metric">
+                <div class="support-metric-label">今日状态</div>
+                <div class="support-metric-value">7/10</div>
+                <div class="support-metric-sub">精力</div>
+              </div>
+              <div class="support-metric">
+                <div class="support-metric-label">本周一致性</div>
+                <div class="support-metric-value">5/7</div>
+                <div class="support-metric-sub">天</div>
+              </div>
+            </div>
+            <div class="mirror-divider"></div>
+            <div class="lifesign-summary">
+              <div>
+                <div class="lifesign-summary-title">预案</div>
+                <div class="lifesign-summary-stats">3 个预案 · 激活 8 · 成功 6</div>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 12px; color: var(--obsidian-40);">›</div>
+            </div>
+            <div class="mirror-divider"></div>
+            <div class="event-filters">
+              <div class="event-filter event-filter--active">全部 <span class="event-filter-count">8</span></div>
+              <div class="event-filter">饮食 <span class="event-filter-count">4</span></div>
+              <div class="event-filter">体重 <span class="event-filter-count">1</span></div>
+              <div class="event-filter">状态 <span class="event-filter-count">3</span></div>
+            </div>
+            <div class="event-row">
+              <div class="event-time">10:15</div>
+              <div class="event-type">状态</div>
+              <div class="event-summary">晚间复盘 · 今日守住晚宴预案</div>
+            </div>
+            <div class="event-row">
+              <div class="event-time">07:45</div>
+              <div class="event-type">状态</div>
+              <div class="event-summary">晨间签到 · 精力 7/10 · 睡眠 7h</div>
+            </div>
+            <div class="event-row">
+              <div class="event-time">12:30</div>
+              <div class="event-type">饮食</div>
+              <div class="event-summary">午餐 · 鸡胸沙拉 + 糙米 · ~550 kcal</div>
+            </div>
+          </div>
+          <div class="app-tabbar">
+            <div class="app-tab">Coach</div>
+            <div class="app-tab app-tab--active">Mirror</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-col-text">
+        <div class="scenario-note">
+          <strong>信息层级从上到下：</strong><br>
+          1. 身份宣言 — "我是谁"<br>
+          2. 北极星指标 — 一个最重要的数字 + 7天趋势<br>
+          3. 支持性指标 — 今日快照<br>
+          4. 预案系统 — 应对计划执行情况<br>
+          5. 事件流 — 今天发生了什么
+        </div>
+        <div class="scenario-note">
+          <strong>"一致性"而非"完美"：</strong>本周 7 天中有 5 天在目标区间。教练不会说"你有两天没做到"，而是说"5/7，这就是进步"。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       06 WITNESS CARD
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">06 · 见证时刻</div>
+    <h2 class="section-title">被看见，<br>而不是被奖励</h2>
+
+    <div class="flex-row" style="margin-top: 40px;">
+      <div class="flex-col-text">
+        <p class="section-desc">
+          当用户达成一个里程碑时，教练会生成一张 Witness Card — 个性化的纪念卡片。
+        </p>
+        <p class="section-desc">
+          这不是"恭喜你获得金牌"式的游戏化奖励。而是教练说："我记录了你做到的这件事。" 心理学研究表明，信息性的反馈支持内在动机，而控制性的奖励会侵蚀它。
+        </p>
+        <div class="scenario-note">
+          <strong>特别有价值的场景：</strong>教练发现用户自己没意识到的进步（比如连续三周工作日早餐结构一致），主动生成 Witness Card。这种"被看见"的体验是教练关系的核心价值。
+        </div>
+      </div>
+
+      <div class="witness-card-frame">
+        <div class="witness-card-image">
+          <div class="witness-card-image-text">
+            AI 生成的场景图片<br>
+            暖色调 · 城市夜景<br>
+            一杯气泡水
+          </div>
+        </div>
+        <div class="witness-card-body">
+          <div class="witness-card-date">2026 年 4 月 2 日 · 篇章 2</div>
+          <div class="witness-card-text">
+            张明，今晚的晚宴上你选了气泡水。<br><br>
+            这不是一个容易的选择 — 你说过应酬场合是你最难守住的时刻。但你守住了。不是靠意志力硬撑，而是提前想好了方案，然后在现场执行了它。<br><br>
+            这就是你一直在练习的东西：在复杂环境中做出清晰的选择。
+          </div>
+          <div class="witness-card-brand">Voliti · Witness</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       07 LIFESIGN SCENARIO
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">07 · 预案系统</div>
+    <h2 class="section-title">不靠意志力，<br>靠提前计划</h2>
+
+    <div class="flex-row" style="margin-top: 40px;">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="chat-area">
+            <div class="chat-timestamp">周日 下午 8:30</div>
+            <div>
+              <div class="msg-coach-label">Coach</div>
+              <div class="msg-coach">
+                张明，我注意到一个模式：最近三周的周五晚上，你的摄入都明显偏高，都在应酬场景之后。<br><br>
+                这不是批评 — 这是一个信号。想一起看看能不能做点准备？
+              </div>
+            </div>
+            <div class="msg-user">确实，周五晚基本都有应酬…很难避免</div>
+            <div>
+              <div class="msg-coach">
+                不用避免应酬。我们可以为这个场景准备一个预案 —<br><br>
+                应酬不可控的部分是环境，可控的部分是你的几个选择点。
+              </div>
+            </div>
+            <div class="fanout-panel">
+              <div class="fanout-title">创建预案</div>
+              <div class="lifesign-card" style="border-left-color: var(--copper); margin: 0;">
+                <div class="lifesign-if">IF 周五有商务应酬</div>
+                <div class="lifesign-then">THEN</div>
+                <div class="lifesign-text">
+                  1. 当天午餐选清淡<br>
+                  2. 到场后先点一份蔬菜/蛋白质<br>
+                  3. 酒用气泡水交替
+                </div>
+              </div>
+              <div class="suggested-replies" style="margin-top: 12px;">
+                <div class="reply-pill" style="background: var(--obsidian); color: var(--parchment); border-color: var(--obsidian);">确认保存</div>
+                <div class="reply-pill">我想修改</div>
+              </div>
+            </div>
+          </div>
+          <div class="app-tabbar">
+            <div class="app-tab app-tab--active">Coach</div>
+            <div class="app-tab">Mirror</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-col-text">
+        <div class="scenario-note">
+          <strong>场景：模式识别 → 预案创建</strong><br>
+          教练发现了连续三周的周五模式后，不是说"你周五吃太多了"，而是说"这是一个信号，我们来准备一下"。
+        </div>
+        <div class="scenario-note">
+          <strong>预案生命周期：</strong><br>
+          1. 教练发现模式 → 提议创建预案<br>
+          2. 用户和教练共同制定（用户有修改权）<br>
+          3. 下次触发时，教练主动提醒<br>
+          4. 执行后追踪效果<br>
+          5. 无效的预案会被迭代修改
+        </div>
+        <p class="section-desc" style="margin-top: 16px;">
+          心理学研究表明，"if-then 预案"对长期行为维持的效果远超单纯的行动计划。关键在于：在清醒时为脆弱时刻做好准备，用计划替代现场的意志力消耗。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       08 USER PERSONAS
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">08 · 用户验证</div>
+    <h2 class="section-title">谁需要这个产品</h2>
+
+    <p class="section-desc" style="margin-bottom: 32px;">
+      我们识别了四类核心用户。他们的共同特征是：不缺知识，缺的是在关键时刻的执行支持。
+    </p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-num" style="color: var(--copper);">~40%</div>
+        <div class="feature-card-title">执行困难者</div>
+        <div class="feature-card-desc">
+          "我知道该怎么做，就是做不到。" 知识工作者，出差、加班、应酬打断习惯链。需要最低限度的一致性维持。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num" style="color: var(--copper);">~30%</div>
+        <div class="feature-card-title">情绪进食者</div>
+        <div class="feature-card-desc">
+          "我知道什么触发了我，但停不下来。" 用食物处理焦虑和无聊。需要被理解而不是被评判。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num" style="color: var(--copper);">~20%</div>
+        <div class="feature-card-title">连环节食者</div>
+        <div class="feature-card-desc">
+          "这次和以前不一样…直到它又一样了。" 平均尝试 5-10 次减肥。需要有人帮他看到重复的失败模式。
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num" style="color: var(--copper);">~10%</div>
+        <div class="feature-card-title">维持挑战者</div>
+        <div class="feature-card-desc">
+          "我做到了，但不知道能不能守住。" 已成功减重，但维持比减重更难。需要从节食思维转向生活方式思维。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       09 MARKET POSITIONING (2D Chart)
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">09 · 市场定位</div>
+    <h2 class="section-title">竞品都在解决错误的问题</h2>
+
+    <p class="section-desc" style="margin-bottom: 16px;">
+      现有减脂产品集中在左下象限 — 被动工具、低个性化。没有产品真正在做"在关键时刻提供个性化教练干预"这件事。
+    </p>
+
+    <div class="positioning-chart">
+      <!-- Axes -->
+      <div class="chart-axis-x"></div>
+      <div class="chart-axis-y"></div>
+
+      <!-- Axis labels -->
+      <div class="chart-label-x" style="left: 80px; bottom: 18px;">被动记录</div>
+      <div class="chart-label-x" style="right: 0; bottom: 18px;">主动干预</div>
+      <div class="chart-label-y-h" style="top: 8px; left: 0;">高个性化</div>
+      <div class="chart-label-y-h" style="bottom: 50px; left: 0;">低个性化</div>
+
+      <!-- Quadrant labels -->
+      <div class="chart-quadrant-label" style="left: 100px; bottom: 60px;">记录工具</div>
+      <div class="chart-quadrant-label" style="right: 60px; bottom: 60px;">课程推送</div>
+      <div class="chart-quadrant-label" style="right: 40px; top: 20px;">教练关系</div>
+
+      <!-- Competitor dots -->
+      <!-- MyFitnessPal: passive, low personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 140px; bottom: 100px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 155px; bottom: 95px;">MyFitnessPal</div>
+
+      <!-- 薄荷健康: passive, low personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 160px; bottom: 140px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 175px; bottom: 135px;">薄荷健康</div>
+
+      <!-- Keep: slightly active, low personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 280px; bottom: 120px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 295px; bottom: 115px;">Keep</div>
+
+      <!-- Noom: active (courses), medium personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 380px; bottom: 220px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 395px; bottom: 215px;">Noom</div>
+
+      <!-- Gentler Streak: passive-medium, medium personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 220px; bottom: 240px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 235px; bottom: 235px;">Gentler Streak</div>
+
+      <!-- 真人教练: very active, very personalized, but expensive -->
+      <div class="chart-dot chart-dot--competitor" style="left: 480px; bottom: 380px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 495px; bottom: 375px;">真人教练<br><span style="font-size: 10px; color: var(--obsidian-20);">（高价、不可规模化）</span></div>
+
+      <!-- Voliti: active intervention, high personalization -->
+      <div class="chart-dot chart-dot--voliti" style="left: 460px; bottom: 400px;"></div>
+      <div class="chart-dot-label chart-dot-label--voliti" style="left: 400px; bottom: 420px;">Voliti<br><span style="font-weight: 400; font-size: 11px;">AI 教练 · 可规模化</span></div>
+    </div>
+
+    <p class="section-desc">
+      Voliti 的定位是<strong>真人教练级别的个性化干预</strong>，但通过 AI 实现规模化。用户得到的不是一个记录工具或课程推送，而是一个真正了解他行为模式、在关键时刻主动出现的教练。
+    </p>
+  </section>
+
+  <!-- ==========================================
+       10 ARCHITECTURE (Simple)
+       ========================================== -->
+  <section class="page-section">
+    <div class="section-label">10 · 系统架构</div>
+    <h2 class="section-title">怎么做到的</h2>
+
+    <p class="section-desc" style="margin-bottom: 32px;">
+      Voliti 由三层构成：用户面对的是手机上的教练对话，背后是一个持续运转的 AI 系统。
+    </p>
+
+    <div class="arch-diagram">
+      <!-- Layer 1: User -->
+      <div class="arch-layer">
+        <div class="arch-label">用户层</div>
+        <div class="arch-boxes">
+          <div class="arch-box">
+            <div class="arch-box-title">iOS App</div>
+            <div class="arch-box-desc">用户唯一的交互界面。两个页面：COACH（对话）和 MIRROR（数据回看）。本地存储保证离线可用。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↕</div>
+
+      <!-- Layer 2: Coach -->
+      <div class="arch-layer">
+        <div class="arch-label">教练层</div>
+        <div class="arch-boxes">
+          <div class="arch-box arch-box--highlight">
+            <div class="arch-box-title">AI Coach Agent</div>
+            <div class="arch-box-desc">核心引擎。理解对话上下文，识别行为模式，管理预案系统，在恰当时机做出恰当干预。内置行为改变方法论。</div>
+          </div>
+          <div class="arch-box">
+            <div class="arch-box-title">分析系统</div>
+            <div class="arch-box-desc">后台定期扫描用户时间轴，识别跨周的行为趋势和高风险模式，生成摘要供 Coach 参考。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↕</div>
+
+      <!-- Layer 3: Data -->
+      <div class="arch-layer">
+        <div class="arch-label">数据层</div>
+        <div class="arch-boxes">
+          <div class="arch-box">
+            <div class="arch-box-title">行为记录</div>
+            <div class="arch-box-desc">每次饮食、状态签到、体重记录都以事件文件形式存储，包含时间戳、情境和原始证据。</div>
+          </div>
+          <div class="arch-box">
+            <div class="arch-box-title">时间轴</div>
+            <div class="arch-box-desc">双向时间轴：回顾已发生的行为模式 + 前瞻即将到来的生活事件。教练的时间感知基于此。</div>
+          </div>
+          <div class="arch-box">
+            <div class="arch-box-title">预案库</div>
+            <div class="arch-box-desc">用户的 LifeSign 预案，包含触发条件、应对行为和执行成功率。会随使用不断迭代优化。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scenario-note">
+      <strong>关键设计原则：</strong>用户只面对一位教练。所有分析、模式识别、数据处理都在后台完成，用户感受到的是一个冷静、稳定、了解自己的对话伙伴。
+    </div>
+  </section>
+
+  <!-- ==========================================
+       CLOSING
+       ========================================== -->
+  <section class="page-section" style="border-bottom: none;">
+    <div class="section-label">Summary</div>
+    <h2 class="section-title" style="max-width: 700px;">让改变成为持续运行的过程，<br>而不是靠意志力硬撑的冲刺</h2>
+
+    <div style="margin: 40px 0; display: flex; gap: 40px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px; padding: 24px 0; border-top: 2px solid var(--copper);">
+        <div style="font-family: var(--font-serif); font-size: 20px; margin-bottom: 8px;">聚焦</div>
+        <div style="font-family: var(--font-sans); font-size: 14px; color: var(--obsidian-40); line-height: 1.6;">不做信息百科，只做一件事：在关键时刻帮用户守住选择。</div>
+      </div>
+      <div style="flex: 1; min-width: 200px; padding: 24px 0; border-top: 2px solid var(--copper);">
+        <div style="font-family: var(--font-serif); font-size: 20px; margin-bottom: 8px;">陪伴</div>
+        <div style="font-family: var(--font-sans); font-size: 14px; color: var(--obsidian-40); line-height: 1.6;">不是冷冰冰的工具，而是一位懂你模式、在你身边的教练。</div>
+      </div>
+      <div style="flex: 1; min-width: 200px; padding: 24px 0; border-top: 2px solid var(--copper);">
+        <div style="font-family: var(--font-serif); font-size: 20px; margin-bottom: 8px;">长期</div>
+        <div style="font-family: var(--font-sans); font-size: 14px; color: var(--obsidian-40); line-height: 1.6;">不追求 21 天速效，而是帮用户建立可以运行一辈子的自我管理能力。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Thank You -->
+  <section class="thankyou page-section">
+    <div class="thankyou-brand">Voliti</div>
+    <div class="thankyou-text">谢谢</div>
+  </section>
+
+</div>
+</body>
+</html>

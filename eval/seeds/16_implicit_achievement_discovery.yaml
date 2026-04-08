@@ -1,0 +1,75 @@
+# ABOUTME: 隐性成就发现 — 测试 Coach 在 JourneyAnalysis 提示下发现用户未察觉的进步
+
+id: "16_implicit_achievement_discovery"
+name: "隐性成就发现"
+description: >
+  模拟一个已使用 2 周的用户，ledger 中有连续 check-in 和 LifeSign 成功记录。
+  JourneyAnalysisMiddleware 注入了隐性成就信号。
+  测试 Coach 是否主动向用户指出他们没意识到的进步，并在合适时触发 Witness Card。
+
+persona:
+  name: "大明"
+  background: "35 岁工程师，加入计划 3 周，稳定 check-in 但不太关注自己的进步"
+  personality: "务实低调，不善于自我肯定，觉得这些都是小事"
+  language: "zh"
+
+goal: >
+  以普通日常对话开始。不主动提及任何成就。
+  观察 Coach 是否基于 JourneyAnalysis brief 中的隐性成就信号，
+  主动向用户指出"你知道吗，你已经连续 10 天每天都..."。
+  如果 Coach 指出了，回应"啊？真的吗？我都没注意到"。
+
+initial_message: "早上好，今天天气不错"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 大明
+    identity_vision: 能稳定自律管理饮食的工程师
+    pain_points: [late_night_coding_snacks]
+    high_risk_time: late_night
+    checkin_dimensions: [weight, sleep]
+    notification_pref: minimal
+  coping_plans:
+    - id: "ls_020"
+      trigger:
+        situation: "深夜加班想吃零食"
+        time_pattern: "22:00-02:00"
+        day_pattern: ["weekday"]
+        state_condition: "fatigue >= 4"
+      action: "泡一杯茶，离开工位走动 3 分钟"
+      status: "active"
+      activated_count: 8
+      success_count: 6
+  coach_memory: |
+    ## 大明 — Key Observations
+    - Quiet, consistent user. Checks in daily but rarely elaborates.
+    - Week 3: remarkably stable. 10-day check-in streak.
+    - LifeSign ls_020 has 6/8 success rate, trending up.
+    - Does not self-recognize progress.
+  journey_analysis_brief: |
+    ## Journey Analysis Brief
+    - 大明已连续 10 天 check-in，这是他加入以来最长的连续记录
+    - LifeSign ls_020（深夜零食应对）成功率从第一周的 50% 上升到本周的 75%
+    - IMPLICIT ACHIEVEMENT: User has checked in for 10 consecutive days.
+    - IMPLICIT ACHIEVEMENT: LifeSign ls_020 has 6 consecutive successes.
+    - 建议 Coach 主动指出这些进步并考虑触发 Witness Card
+
+max_turns: 15
+
+expected_behaviors:
+  must:
+    - "基于 JourneyAnalysis brief 中的隐性成就信号，主动向用户指出他的进步"
+    - "用温暖而具体的方式表达——不是'你做得很好'而是'你连续 10 天每天都...'"
+  should:
+    - "在用户确认（'真的吗？我都没注意到'）后，触发 Witness Card"
+    - "Card 的 achievement_type 应为 implicit"
+    - "叙事文字应具体提及连续天数或成功次数"
+  must_not:
+    - "忽视 JourneyAnalysis brief 中的隐性成就信号"
+    - "在用户还没反应时就直接触发 Card（先用文字告知成就，再触发 Card）"
+    - "用夸张或居高临下的语气表达（'太厉害了！'）"
+
+scoring_focus:
+  primary: ["C1_intervention_dosage", "A4_listening_before_advising"]
+  secondary: ["C3_lifesign_integration", "D3_metrics_governance"]

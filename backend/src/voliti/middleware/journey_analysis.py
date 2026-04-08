@@ -5,30 +5,21 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from voliti.middleware.base import PromptInjectionMiddleware
+from voliti.middleware.base import PromptInjectionMiddleware, get_session_mode
 
 logger = logging.getLogger(__name__)
 
 _ANALYSIS_INTERVAL_DAYS = 3
 _MAX_CONTENT_LENGTH = 8000
+_MAX_FILES_PER_DAY = 50
 
 _MARKERS_KEY = "/user/timeline/markers.json"
 _AGENTS_KEY = "/user/coach/AGENTS.md"
 _LAST_ANALYSIS_KEY = "/user/derived/last_journey_analysis.json"
 _PATTERN_INDEX_KEY = "/user/derived/pattern_index.md"
-
-
-def _get_session_mode() -> str:
-    try:
-        from langgraph.config import get_config
-
-        cfg = get_config()
-        return cfg.get("configurable", {}).get("session_mode", "coaching")
-    except Exception:  # noqa: BLE001
-        return "coaching"
 
 
 class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
@@ -98,16 +89,105 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         except (json.JSONDecodeError, AttributeError):
             return False
 
+    def _scan_ledger_for_achievements(self, backend: Any) -> str | None:
+        """扫描近 30 天 ledger 数据，检测隐性成就信号。
+
+        两类信号：
+        - 连续 ≥7 天 check-in（任何 observation/state 事件算一天）
+        - 单个 LifeSign 累计 ≥3 次成功（refs.lifesign_id 匹配 + 无负面 metrics）
+        Returns: 结构化的成就信号描述，或 None。
+        """
+        try:
+            ledger_entries: list[dict] = []
+            now = datetime.now(timezone.utc)
+            for days_ago in range(30):
+                date = now - timedelta(days=days_ago)
+                date_dir = f"/user/ledger/{date.strftime('%Y-%m-%d')}"
+                try:
+                    listing = backend.list_files(date_dir)
+                except Exception:  # noqa: BLE001
+                    continue
+                for fname in listing[:_MAX_FILES_PER_DAY]:
+                    try:
+                        content = backend.read_file(f"{date_dir}/{fname}")
+                        if content:
+                            entry = json.loads(content)
+                            entry["_date"] = date.strftime("%Y-%m-%d")
+                            ledger_entries.append(entry)
+                    except Exception:  # noqa: BLE001
+                        continue
+
+            if not ledger_entries:
+                return None
+
+            signals = []
+
+            checkin_dates = sorted({
+                e["_date"]
+                for e in ledger_entries
+                if e.get("kind") in ("observation", "state")
+            })
+            if len(checkin_dates) >= 7:
+                streak = 1
+                max_streak = 1
+                for i in range(1, len(checkin_dates)):
+                    prev = datetime.strptime(checkin_dates[i - 1], "%Y-%m-%d")
+                    curr = datetime.strptime(checkin_dates[i], "%Y-%m-%d")
+                    if (curr - prev).days == 1:
+                        streak += 1
+                        max_streak = max(max_streak, streak)
+                    else:
+                        streak = 1
+                max_streak = max(max_streak, streak)
+                if max_streak >= 7:
+                    signals.append(
+                        f"IMPLICIT ACHIEVEMENT: User has checked in for {max_streak} consecutive days."
+                    )
+
+            lifesign_events = [
+                e for e in ledger_entries
+                if e.get("kind") == "observation"
+                and e.get("refs", {}).get("lifesign_id")
+            ]
+            lifesign_successes: dict[str, int] = {}
+            for e in lifesign_events:
+                ls_id = e["refs"]["lifesign_id"]
+                # metrics 是 array of {"key": ..., "value": ..., "quality": ...}
+                # 只有明确标记 success=true 才计入，避免假阳性
+                metrics = e.get("metrics", [])
+                has_explicit_success = any(
+                    m.get("key") == "success" and m.get("value")
+                    for m in metrics
+                    if isinstance(m, dict)
+                )
+                if has_explicit_success:
+                    lifesign_successes[ls_id] = lifesign_successes.get(ls_id, 0) + 1
+            for ls_id, count in lifesign_successes.items():
+                if count >= 3:
+                    signals.append(
+                        f"IMPLICIT ACHIEVEMENT: LifeSign {ls_id} has {count} successes in the past 30 days."
+                    )
+
+            if not signals:
+                return None
+
+            return "\n".join(signals)
+
+        except Exception:  # noqa: BLE001
+            logger.debug("JourneyAnalysisMW: ledger achievement scan failed", exc_info=True)
+            return None
+
     def _build_analysis_prompt(
         self,
         markers_content: str,
         agents_content: str,
         pattern_index: str | None,
+        implicit_achievements: str | None = None,
     ) -> str:
         sections = [
             "Analyze this user's recent timeline and behavioral patterns.",
             "Produce a concise coaching brief (3-5 bullet points) for the Coach's next session.",
-            "Focus on: upcoming high-risk events, repeated behavioral patterns, identity narrative shifts.",
+            "Focus on: upcoming high-risk events, repeated behavioral patterns, identity narrative shifts, and implicit achievements worth witnessing.",
             "",
             "## Forward Markers (upcoming events)",
             markers_content[:_MAX_CONTENT_LENGTH] or "(empty)",
@@ -117,11 +197,19 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         ]
         if pattern_index:
             sections.extend(["", "## Known Patterns", pattern_index[:_MAX_CONTENT_LENGTH]])
+        if implicit_achievements:
+            sections.extend([
+                "",
+                "## Implicit Achievements Detected",
+                "The following achievements were detected from ledger data. The user may not be aware of these. Consider whether they warrant a Witness Card.",
+                implicit_achievements,
+            ])
         sections.extend([
             "",
             "## Output Format",
             "Return ONLY a markdown section starting with `## Journey Analysis Brief`.",
             "Keep it under 300 words. Use bullet points. Be specific and actionable.",
+            "If implicit achievements are detected, include a bullet recommending whether Coach should generate a Witness Card for them.",
         ])
         return "\n".join(sections)
 
@@ -134,13 +222,15 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
         except Exception:  # noqa: BLE001
             markers = agents = patterns = None
 
+        implicit_achievements = self._scan_ledger_for_achievements(backend)
+
         has_markers = self._has_meaningful_markers(markers)
-        if not has_markers and not agents:
+        if not has_markers and not agents and not implicit_achievements:
             logger.debug("JourneyAnalysisMW: no data to analyze, skipping")
             return None
 
         prompt = self._build_analysis_prompt(
-            markers or "", agents or "", patterns
+            markers or "", agents or "", patterns, implicit_achievements
         )
 
         try:
@@ -168,7 +258,7 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
 
         self._prepared = True
 
-        if _get_session_mode() == "onboarding":
+        if get_session_mode() == "onboarding":
             logger.debug("JourneyAnalysisMW: onboarding session, skipping")
             return
 
