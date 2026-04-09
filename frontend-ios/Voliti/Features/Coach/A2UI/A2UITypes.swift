@@ -167,6 +167,11 @@ struct A2UIPayload: Decodable, Sendable, Identifiable {
     var cardID: String? {
         metadata?["card_id"]
     }
+
+    /// LangGraph interrupt 权威标识，用于 resume 一次性校验
+    var interruptID: String? {
+        metadata?["interrupt_id"]
+    }
 }
 
 enum A2UILayout: String, Codable, Sendable {
@@ -174,4 +179,3 @@ enum A2UILayout: String, Codable, Sendable {
     case threeQuarter = "three-quarter"
     case full
 }
-

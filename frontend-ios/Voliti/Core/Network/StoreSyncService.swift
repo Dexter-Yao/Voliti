@@ -7,9 +7,28 @@ import os
 
 private let logger = Logger(subsystem: "com.voliti", category: "StoreSyncService")
 
+enum ProjectionFreshness: String, Sendable {
+    static let userDefaultsKey = "storeProjectionIsStale"
+    static let bannerText = "缓存 / 非最新状态"
+
+    case fresh
+    case stale
+}
+
+enum ProjectionFreshnessStore {
+    static var current: ProjectionFreshness {
+        get {
+            UserDefaults.standard.bool(forKey: ProjectionFreshness.userDefaultsKey) ? .stale : .fresh
+        }
+        set {
+            UserDefaults.standard.set(newValue == .stale, forKey: ProjectionFreshness.userDefaultsKey)
+        }
+    }
+}
+
 @MainActor
 protocol StoreSyncing: AnyObject {
-    func syncAll() async
+    func syncAll() async -> ProjectionFreshness
     func checkOnboardingComplete() async -> Bool
 }
 
@@ -36,12 +55,13 @@ final class StoreSyncService: StoreSyncing {
 
     // MARK: - Full Sync
 
-    func syncAll() async {
-        async let a: () = syncLifeSignPlans()
-        async let b: () = syncDashboardConfig()
-        async let c: () = syncChapter()
-        async let d: () = syncLedgerEvents()
-        _ = await (a, b, c, d)
+    func syncAll() async -> ProjectionFreshness {
+        async let lifeSignFresh = syncLifeSignPlans()
+        async let dashboardFresh = syncDashboardConfig()
+        async let chapterFresh = syncChapter()
+        async let ledgerFresh = syncLedgerEvents()
+        let statuses = await [lifeSignFresh, dashboardFresh, chapterFresh, ledgerFresh]
+        return statuses.allSatisfy { $0 } ? .fresh : .stale
     }
 
     /// 检查 profile 中是否包含 onboarding_complete 标记
@@ -74,7 +94,7 @@ final class StoreSyncService: StoreSyncing {
 
     // MARK: - LifeSign Plans
 
-    func syncLifeSignPlans() async {
+    func syncLifeSignPlans() async -> Bool {
         do {
             let userItems = try await fetchUserItems()
             let items = userItems.filter { item in
@@ -135,14 +155,16 @@ final class StoreSyncService: StoreSyncing {
             }
 
             logger.info("LifeSign sync: \(items.count) plans from Store")
+            return true
         } catch {
             logger.error("LifeSign sync failed: \(error.localizedDescription)")
+            return false
         }
     }
 
     // MARK: - Dashboard Config
 
-    func syncDashboardConfig() async {
+    func syncDashboardConfig() async -> Bool {
         do {
             guard let value = try await fetchStoreItem(
                 StoreContract.userNamespace,
@@ -150,7 +172,7 @@ final class StoreSyncService: StoreSyncing {
             )
             else {
                 logger.info("No dashboardConfig in Store")
-                return
+                return true
             }
             let json = try StoreContract.unwrapJSONDictionary(from: value)
 
@@ -180,21 +202,23 @@ final class StoreSyncService: StoreSyncing {
             config.lastUpdated = .now
 
             logger.info("Dashboard config sync: north_star=\(config.northStar?.key ?? "nil"), support=\(config.supportMetrics.count)")
+            return true
         } catch {
             logger.error("Dashboard config sync failed: \(error.localizedDescription)")
+            return false
         }
     }
 
     // MARK: - Chapter
 
-    func syncChapter() async {
+    func syncChapter() async -> Bool {
         do {
             guard let value = try await fetchStoreItem(
                 StoreContract.userNamespace,
                 StoreContract.chapterCurrentKey
             ) else {
                 logger.info("No current chapter in Store")
-                return
+                return true
             }
             let json = try StoreContract.unwrapJSONDictionary(from: value)
 
@@ -202,7 +226,7 @@ final class StoreSyncService: StoreSyncing {
                   let identityStatement = json["identity_statement"] as? String,
                   let goal = json["goal"] as? String else {
                 logger.error("Chapter data missing required fields")
-                return
+                return false
             }
 
             let startDate: Date
@@ -232,14 +256,16 @@ final class StoreSyncService: StoreSyncing {
             }
 
             logger.info("Chapter sync: \(chapterId) — \(identityStatement)")
+            return true
         } catch {
             logger.error("Chapter sync failed: \(error.localizedDescription)")
+            return false
         }
     }
 
     // MARK: - Ledger Events
 
-    func syncLedgerEvents() async {
+    func syncLedgerEvents() async -> Bool {
         do {
             let userItems = try await fetchUserItems()
             let items = userItems.filter { item in
@@ -318,8 +344,10 @@ final class StoreSyncService: StoreSyncing {
             }
 
             logger.info("Ledger sync: \(items.count) items processed")
+            return true
         } catch {
             logger.error("Ledger sync failed: \(error.localizedDescription)")
+            return false
         }
     }
 }

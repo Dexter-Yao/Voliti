@@ -220,23 +220,30 @@ final class CoachViewModel {
     func submitA2UIResponse(_ data: [String: Any]) {
         guard let payload = activeInterrupt else { return }
         persistInterventionCardIfAccepted(payload: payload, data: data)
+        let interruptID = payload.interruptID
         activeInterrupt = nil
-        resumeWithAction("submit", data: data)
+        resumeWithAction("submit", data: data, interruptID: interruptID)
     }
 
     func rejectA2UI() {
-        guard activeInterrupt != nil else { return }
+        guard let payload = activeInterrupt else { return }
+        let interruptID = payload.interruptID
         activeInterrupt = nil
-        resumeWithAction("reject")
+        resumeWithAction("reject", interruptID: interruptID)
     }
 
     func skipA2UI() {
-        guard activeInterrupt != nil else { return }
+        guard let payload = activeInterrupt else { return }
+        let interruptID = payload.interruptID
         activeInterrupt = nil
-        resumeWithAction("skip")
+        resumeWithAction("skip", interruptID: interruptID)
     }
 
-    private func resumeWithAction(_ action: String, data: [String: Any] = [:]) {
+    private func resumeWithAction(
+        _ action: String,
+        data: [String: Any] = [:],
+        interruptID: String? = nil
+    ) {
         let threadID: String? = sessionMode == "onboarding"
             ? APIConfiguration.onboardingThreadID
             : APIConfiguration.threadID
@@ -260,6 +267,7 @@ final class CoachViewModel {
                     threadID: threadID,
                     action: action,
                     data: data,
+                    interruptID: interruptID,
                     sessionMode: self.sessionMode
                 )
                 await processStream(stream, assistantMessage: assistantMessage)
@@ -375,7 +383,8 @@ final class CoachViewModel {
 
     /// 对话结束后触发 Store 同步和 Onboarding 完成检测
     func postStreamSync() async {
-        await syncService?.syncAll()
+        let freshness = await syncService?.syncAll() ?? .stale
+        ProjectionFreshnessStore.current = freshness
         guard !onboardingComplete else { return }
         let storeComplete = await syncService?.checkOnboardingComplete() ?? false
         if Self.shouldMarkOnboardingComplete(storeComplete: storeComplete) {

@@ -22,6 +22,7 @@ class TestFanOutSubmit:
         result = fan_out.invoke({
             "components": [
                 {"kind": "slider", "key": "energy", "label": "Energy"},
+                {"kind": "slider", "key": "mood", "label": "Mood"},
             ],
         })
         assert "energy=7" in result

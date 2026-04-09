@@ -37,6 +37,18 @@ class A2UIInterruptEvent:
 CoachEvent = TextEvent | A2UIInterruptEvent
 
 
+def decorate_interrupt_payload(payload: dict[str, Any], interrupt: dict[str, Any]) -> dict[str, Any]:
+    """将 LangGraph interrupt 元信息合并进 A2UI payload。"""
+    decorated = dict(payload)
+    metadata = dict(payload.get("metadata", {}))
+    interrupt_id = interrupt.get("id")
+    if isinstance(interrupt_id, str) and interrupt_id:
+        metadata["interrupt_id"] = interrupt_id
+    if metadata:
+        decorated["metadata"] = metadata
+    return decorated
+
+
 def build_client_timeout(turn_timeout_seconds: int) -> httpx.Timeout:
     """构造 LangGraph 客户端超时配置。
 
@@ -181,9 +193,10 @@ class CoachClient:
                     for interrupt in interrupts:
                         value = interrupt.get("value", interrupt)
                         if isinstance(value, dict) and value.get("type") == "a2ui":
-                            images = _extract_images(value)
-                            events.append(A2UIInterruptEvent(payload=value, images=images))
-                            logger.info("A2UI interrupt detected: %d components", len(value.get("components", [])))
+                            payload = decorate_interrupt_payload(value, interrupt)
+                            images = _extract_images(payload)
+                            events.append(A2UIInterruptEvent(payload=payload, images=images))
+                            logger.info("A2UI interrupt detected: %d components", len(payload.get("components", [])))
                         else:
                             logger.warning("Non-A2UI interrupt: %s", type(value))
                     continue

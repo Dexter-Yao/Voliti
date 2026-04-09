@@ -8,6 +8,7 @@ struct CoachView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(NotificationService.self) private var notificationService
     @State private var viewModel = CoachViewModel()
+    @AppStorage(ProjectionFreshness.userDefaultsKey) private var storeProjectionIsStale = false
 
     var body: some View {
         NavigationStack {
@@ -15,10 +16,16 @@ struct CoachView: View {
             StarpathTokens.parchment
                 .ignoresSafeArea()
 
-            MessageList(
-                messages: viewModel.messages,
-                isStreaming: viewModel.isStreaming
-            )
+            VStack(spacing: 0) {
+                if storeProjectionIsStale {
+                    staleProjectionBanner
+                }
+
+                MessageList(
+                    messages: viewModel.messages,
+                    isStreaming: viewModel.isStreaming
+                )
+            }
 
             VStack(spacing: 0) {
                 StarpathDivider()
@@ -78,5 +85,19 @@ struct CoachView: View {
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
         )
+    }
+
+    private var staleProjectionBanner: some View {
+        HStack(spacing: StarpathTokens.spacingSM) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: StarpathTokens.fontSizeXS))
+            Text(ProjectionFreshness.bannerText)
+                .starpathSans(size: StarpathTokens.fontSizeSM)
+        }
+        .foregroundStyle(StarpathTokens.copper)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, StarpathTokens.spacingMD)
+        .padding(.vertical, StarpathTokens.spacingSM)
+        .background(StarpathTokens.obsidian05)
     }
 }

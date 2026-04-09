@@ -19,6 +19,7 @@ from voliti.a2ui import (
     SliderComponent,
     TextComponent,
     TextInputComponent,
+    validate_a2ui_response,
 )
 
 
@@ -283,3 +284,119 @@ class TestA2UIResponse:
     def test_invalid_action_raises(self) -> None:
         with pytest.raises(ValidationError):
             A2UIResponse(action="invalid")  # type: ignore[arg-type]
+
+
+class TestA2UIResponseValidation:
+    """A2UIResponse 契约验证测试。"""
+
+    def make_payload(self) -> A2UIPayload:
+        return A2UIPayload(components=[
+            SliderComponent(key="energy", label="Energy", min=1, max=10, step=1),
+            SelectComponent(
+                key="decision",
+                label="Decision",
+                options=[
+                    SelectOption(label="Accept", value="accept"),
+                    SelectOption(label="Skip", value="skip"),
+                ],
+            ),
+            MultiSelectComponent(
+                key="tags",
+                label="Tags",
+                options=[
+                    SelectOption(label="A", value="a"),
+                    SelectOption(label="B", value="b"),
+                ],
+            ),
+            TextInputComponent(key="note", label="Note"),
+            NumberInputComponent(key="weight", label="Weight"),
+        ])
+
+    def test_accepts_matching_interrupt_id_and_valid_data(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="submit",
+            interrupt_id="int_123",
+            data={
+                "energy": 7,
+                "decision": "accept",
+                "tags": ["a", "b"],
+                "note": "ready",
+                "weight": 72.5,
+            },
+        )
+
+        validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_rejects_missing_interrupt_id(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(action="submit", data={"energy": 7})
+
+        with pytest.raises(ValueError, match="interrupt_id"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_rejects_mismatched_interrupt_id(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="submit",
+            interrupt_id="int_old",
+            data={"energy": 7},
+        )
+
+        with pytest.raises(ValueError, match="interrupt_id"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_rejects_unknown_input_key(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="submit",
+            interrupt_id="int_123",
+            data={"unexpected": "value"},
+        )
+
+        with pytest.raises(ValueError, match="unexpected"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_rejects_slider_value_out_of_range(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="submit",
+            interrupt_id="int_123",
+            data={"energy": 11},
+        )
+
+        with pytest.raises(ValueError, match="energy"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_rejects_invalid_select_option(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="submit",
+            interrupt_id="int_123",
+            data={"decision": "dismiss"},
+        )
+
+        with pytest.raises(ValueError, match="decision"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_rejects_invalid_multi_select_option(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="submit",
+            interrupt_id="int_123",
+            data={"tags": ["a", "c"]},
+        )
+
+        with pytest.raises(ValueError, match="tags"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_rejects_non_submit_data_payload(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="reject",
+            interrupt_id="int_123",
+            data={"energy": 7},
+        )
+
+        with pytest.raises(ValueError, match="data"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")

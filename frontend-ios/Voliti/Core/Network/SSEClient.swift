@@ -188,9 +188,7 @@ struct SSEClient: Sendable {
         let hasInterrupt = json["__interrupt__"] as? [[String: Any]]
         if let interrupts = hasInterrupt,
            let first = interrupts.first,
-           let value = first["value"] as? [String: Any],
-           let type = value["type"] as? String, type == "a2ui",
-           let payloadData = try? JSONSerialization.data(withJSONObject: value) {
+           let payloadData = makeA2UIPayloadData(from: first) {
 
             // 仅在有 interrupt 时提取 AI 文本（确保中断前 fullContent 已就位）
             // 正常对话流由 messages/partial 和 messages/complete 事件负责
@@ -211,6 +209,24 @@ struct SSEClient: Sendable {
             trace("parseValuesEvent: no interrupt found; keys=\(json.keys.sorted())")
         }
         return events
+    }
+
+    nonisolated static func makeA2UIPayloadData(from interrupt: [String: Any]) -> Data? {
+        guard var value = interrupt["value"] as? [String: Any],
+              let type = value["type"] as? String,
+              type == "a2ui" else {
+            return nil
+        }
+
+        var metadata = value["metadata"] as? [String: String] ?? [:]
+        if let interruptID = interrupt["id"] as? String {
+            metadata["interrupt_id"] = interruptID
+        }
+        if !metadata.isEmpty {
+            value["metadata"] = metadata
+        }
+
+        return try? JSONSerialization.data(withJSONObject: value)
     }
 
     nonisolated private static func extractContent(from raw: Any?) -> String? {

@@ -38,6 +38,66 @@ private func makeInMemoryContainer() throws -> ModelContainer {
     )
 }
 
+private final class MockURLProtocol: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var requestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let handler = Self.requestHandler else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
+}
+
+private func makeMockSession(
+    handler: @escaping @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
+) -> URLSession {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [MockURLProtocol.self]
+    MockURLProtocol.requestHandler = handler
+    return URLSession(configuration: configuration)
+}
+
+private final class LockedRecorder<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    func withValue<Result>(_ body: (inout Value) -> Result) -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        return body(&value)
+    }
+
+    func snapshot() -> Value {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+}
+
 // MARK: - MetricComputer Tests
 
 @Suite("MetricComputer")
@@ -272,6 +332,7 @@ struct ProfileInfoSectionTests {
 
 // MARK: - Runtime Contract Tests
 
+@MainActor
 @Suite("RuntimeContract")
 struct RuntimeContractTests {
     private func fixtureURL(named name: String) -> URL {
@@ -339,6 +400,41 @@ struct RuntimeContractTests {
         #expect(CoachViewModel.shouldMarkOnboardingComplete(storeComplete: true) == true)
         #expect(CoachViewModel.shouldMarkOnboardingComplete(storeComplete: false) == false)
     }
+
+    @Test func a2uiPayloadCapturesInterruptIDFromLangGraphEnvelope() throws {
+        let payloadData = SSEClient.makeA2UIPayloadData(from: [
+            "id": "interrupt_123",
+            "value": [
+                "type": "a2ui",
+                "components": [],
+                "layout": "three-quarter",
+            ],
+        ])
+
+        #expect(payloadData != nil)
+        let payload = try JSONDecoder().decode(A2UIPayload.self, from: try #require(payloadData))
+        #expect(payload.interruptID == "interrupt_123")
+    }
+
+    @Test func resumeBodyIncludesInterruptID() throws {
+        let body = LangGraphAPI.makeResumeBody(
+            action: "submit",
+            data: ["energy": 7],
+            sessionMode: "onboarding",
+            preferredLanguage: "zh-Hans",
+            correlationID: "corr_test",
+            interruptID: "interrupt_123"
+        )
+
+        let command = try #require(body["command"] as? [String: Any])
+        let resume = try #require(command["resume"] as? [String: Any])
+        let config = try #require(body["config"] as? [String: Any])
+        let configurable = try #require(config["configurable"] as? [String: Any])
+
+        #expect(resume["interrupt_id"] as? String == "interrupt_123")
+        #expect(configurable["correlation_id"] as? String == "corr_test")
+        #expect(configurable["session_mode"] as? String == "onboarding")
+    }
 }
 
 @Suite("OnboardingIntegration")
@@ -352,8 +448,9 @@ struct OnboardingIntegrationTests {
             self.storeComplete = storeComplete
         }
 
-        func syncAll() async {
+        func syncAll() async -> ProjectionFreshness {
             syncAllCallCount += 1
+            return .fresh
         }
 
         func checkOnboardingComplete() async -> Bool {
@@ -364,12 +461,14 @@ struct OnboardingIntegrationTests {
     @Test func storeSyncServiceReadsWrappedOnboardingMarkerFromSharedFixture() async throws {
         let modelContext = ModelContext(try makeInMemoryContainer())
         let fixture = try loadSharedStoreFixture(named: "profile_context.value.json")
+        let expectedNamespace = StoreContract.userNamespace
+        let expectedKey = StoreContract.profileContextKey
 
         let service = StoreSyncService(
             modelContext: modelContext,
             fetchStoreItem: { namespace, key in
-                #expect(namespace == StoreContract.userNamespace)
-                #expect(key == StoreContract.profileContextKey)
+                #expect(namespace == expectedNamespace)
+                #expect(key == expectedKey)
                 return fixture
             },
             searchStoreItems: { _ in [] }
@@ -450,6 +549,240 @@ struct BackendIntegrationTests {
 
         await viewModel.postStreamSync()
 
+        #expect(viewModel.onboardingComplete == true)
+    }
+}
+
+@MainActor
+@Suite("StorePagination")
+struct StorePaginationTests {
+    @Test func searchStoreItemsPaginatesPastFirstPage() async throws {
+        let expectedFirstCount = 100
+        let expectedSecondCount = 5
+        let offsets = LockedRecorder<[Int]>([])
+        let userNamespace = StoreContract.userNamespace
+
+        let session = makeMockSession { request in
+            let url = try #require(request.url)
+            #expect(url.path == "/store/items/search")
+            let body = try #require(request.httpBody)
+            let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            let offset = try #require(json["offset"] as? Int)
+            offsets.withValue { $0.append(offset) }
+
+            let itemCount = offset == 0 ? expectedFirstCount : expectedSecondCount
+            let items: [[String: Any]] = (0..<itemCount).map { index in
+                ["key": "/ledger/item_\(offset + index)", "namespace": userNamespace]
+            }
+            let response = HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let data = try JSONSerialization.data(withJSONObject: ["items": items])
+            return (response, data)
+        }
+
+        let api = LangGraphAPI(session: session)
+        let items = try await api.searchStoreItems(namespace: userNamespace)
+
+        #expect(items.count == expectedFirstCount + expectedSecondCount)
+        #expect(offsets.snapshot() == [0, 100])
+    }
+
+    @Test func clearUserStoreDeletesAllReturnedItemsAcrossSubnamespaces() async throws {
+        let expectedFirstCount = 100
+        let expectedSecondCount = 3
+        let offsets = LockedRecorder<[Int]>([])
+        let deletedItems = LockedRecorder<Set<String>>([])
+        let userNamespace = StoreContract.userNamespace
+
+        let session = makeMockSession { request in
+            let url = try #require(request.url)
+
+            switch request.httpMethod {
+            case "POST":
+                #expect(url.path == "/store/items/search")
+                let body = try #require(request.httpBody)
+                let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+                let offset = try #require(json["offset"] as? Int)
+                offsets.withValue { $0.append(offset) }
+
+                let itemCount = offset == 0 ? expectedFirstCount : expectedSecondCount
+                let items: [[String: Any]] = (0..<itemCount).map { index in
+                    let ordinal = offset + index
+                    let subnamespace = ordinal.isMultiple(of: 2) ? "ledger" : "coping-plans"
+                    return [
+                        "key": "/\(subnamespace)/item_\(ordinal).json",
+                        "namespace": userNamespace + [subnamespace],
+                    ]
+                }
+                let response = HTTPURLResponse(
+                    url: url,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!
+                let data = try JSONSerialization.data(withJSONObject: ["items": items])
+                return (response, data)
+
+            case "DELETE":
+                #expect(url.path == "/store/items")
+                let body = try #require(request.httpBody)
+                let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+                let namespace = try #require(json["namespace"] as? [String])
+                let key = try #require(json["key"] as? String)
+                let token = namespace.joined(separator: "/") + "::" + key
+                _ = deletedItems.withValue { $0.insert(token) }
+
+                let response = HTTPURLResponse(
+                    url: url,
+                    statusCode: 204,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!
+                return (response, Data())
+
+            default:
+                Issue.record("Unexpected method: \(request.httpMethod ?? "<nil>")")
+                throw URLError(.badServerResponse)
+            }
+        }
+
+        let api = LangGraphAPI(session: session)
+        try await api.clearUserStore()
+
+        let expectedDeletedItems: Set<String> = Set((0..<(expectedFirstCount + expectedSecondCount)).map { ordinal in
+            let subnamespace = ordinal.isMultiple(of: 2) ? "ledger" : "coping-plans"
+            let namespace = (userNamespace + [subnamespace]).joined(separator: "/")
+            return namespace + "::" + "/\(subnamespace)/item_\(ordinal).json"
+        })
+
+        #expect(offsets.snapshot() == [0, 100])
+        #expect(deletedItems.snapshot() == expectedDeletedItems)
+    }
+}
+
+@Suite("ResetService")
+@MainActor
+struct ResetServiceTests {
+    @Test func resetAllClearsProductStateWithoutTouchingSystemPermissions() async throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        modelContext.insert(ChatMessage(role: .assistant, textContent: "hello", threadID: "thread_1"))
+        modelContext.insert(BehaviorEvent(timestamp: .now, kind: "state", evidence: "test"))
+        try modelContext.save()
+
+        APIConfiguration.threadID = "coach-thread"
+        APIConfiguration.onboardingThreadID = "onboarding-thread"
+        UserDefaults.standard.set(true, forKey: "onboardingComplete")
+        UserDefaults.standard.set("zh-Hans", forKey: "preferredLanguage")
+        UserDefaults.standard.set(true, forKey: "checkinReminderEnabled")
+        UserDefaults.standard.set(true, forKey: ProjectionFreshness.userDefaultsKey)
+        UserDefaults.standard.set(true, forKey: "notificationsAuthorized")
+
+        defer {
+            APIConfiguration.threadID = nil
+            APIConfiguration.onboardingThreadID = nil
+            UserDefaults.standard.removeObject(forKey: "onboardingComplete")
+            UserDefaults.standard.removeObject(forKey: "preferredLanguage")
+            UserDefaults.standard.removeObject(forKey: "checkinReminderEnabled")
+            UserDefaults.standard.removeObject(forKey: ProjectionFreshness.userDefaultsKey)
+            UserDefaults.standard.removeObject(forKey: "notificationsAuthorized")
+        }
+
+        var remoteClearCalled = false
+        let warning = await ResetService.resetAll(
+            modelContext: modelContext,
+            clearRemoteStore: {
+                remoteClearCalled = true
+            }
+        )
+
+        let remainingMessages = try modelContext.fetch(FetchDescriptor<ChatMessage>())
+        let remainingEvents = try modelContext.fetch(FetchDescriptor<BehaviorEvent>())
+
+        #expect(warning == nil)
+        #expect(remoteClearCalled == true)
+        #expect(APIConfiguration.threadID == nil)
+        #expect(APIConfiguration.onboardingThreadID == nil)
+        #expect(UserDefaults.standard.bool(forKey: "onboardingComplete") == false)
+        #expect(UserDefaults.standard.object(forKey: "preferredLanguage") == nil)
+        #expect(UserDefaults.standard.object(forKey: "checkinReminderEnabled") == nil)
+        #expect(UserDefaults.standard.bool(forKey: ProjectionFreshness.userDefaultsKey) == false)
+        #expect(UserDefaults.standard.bool(forKey: "notificationsAuthorized") == true)
+        #expect(remainingMessages.isEmpty)
+        #expect(remainingEvents.isEmpty)
+    }
+}
+
+@Suite("ProjectionFreshness")
+@MainActor
+struct ProjectionFreshnessTests {
+    private final class StubSyncService: StoreSyncing {
+        private let freshness: ProjectionFreshness
+        private let storeComplete: Bool
+
+        init(freshness: ProjectionFreshness, storeComplete: Bool) {
+            self.freshness = freshness
+            self.storeComplete = storeComplete
+        }
+
+        func syncAll() async -> ProjectionFreshness {
+            freshness
+        }
+
+        func checkOnboardingComplete() async -> Bool {
+            storeComplete
+        }
+    }
+
+    @Test func postStreamSyncMarksProjectionAsStaleWhenSyncFails() async throws {
+        let modelContext = ModelContext(try makeInMemoryContainer())
+        let viewModel = CoachViewModel()
+        let staleSync = StubSyncService(freshness: .stale, storeComplete: false)
+
+        ProjectionFreshnessStore.current = .fresh
+        UserDefaults.standard.set(false, forKey: "onboardingComplete")
+        defer {
+            ProjectionFreshnessStore.current = .fresh
+            UserDefaults.standard.removeObject(forKey: "onboardingComplete")
+        }
+
+        viewModel.configure(
+            modelContext: modelContext,
+            sessionMode: "onboarding",
+            syncService: staleSync
+        )
+
+        await viewModel.postStreamSync()
+
+        #expect(ProjectionFreshnessStore.current == .stale)
+        #expect(viewModel.onboardingComplete == false)
+    }
+
+    @Test func postStreamSyncClearsStaleProjectionAfterSuccessfulSync() async throws {
+        let modelContext = ModelContext(try makeInMemoryContainer())
+        let viewModel = CoachViewModel()
+        let freshSync = StubSyncService(freshness: .fresh, storeComplete: true)
+
+        ProjectionFreshnessStore.current = .stale
+        UserDefaults.standard.set(false, forKey: "onboardingComplete")
+        defer {
+            ProjectionFreshnessStore.current = .fresh
+            UserDefaults.standard.removeObject(forKey: "onboardingComplete")
+        }
+
+        viewModel.configure(
+            modelContext: modelContext,
+            sessionMode: "onboarding",
+            syncService: freshSync
+        )
+
+        await viewModel.postStreamSync()
+
+        #expect(ProjectionFreshnessStore.current == .fresh)
         #expect(viewModel.onboardingComplete == true)
     }
 }

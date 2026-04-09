@@ -4,7 +4,16 @@
 import Foundation
 
 struct LangGraphAPI: Sendable {
-    private let sseClient = SSEClient()
+    private let sseClient: SSEClient
+    private let session: URLSession
+
+    init(
+        session: URLSession = .shared,
+        sseClient: SSEClient = SSEClient()
+    ) {
+        self.session = session
+        self.sseClient = sseClient
+    }
     
     private func trace(_ message: String) {
 #if DEBUG
@@ -29,7 +38,7 @@ struct LangGraphAPI: Sendable {
         ]) { current, _ in current }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         try validateResponse(response)
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -120,24 +129,51 @@ struct LangGraphAPI: Sendable {
         threadID: String,
         action: String,
         data: [String: Any] = [:],
+        interruptID: String? = nil,
         sessionMode: String = "coaching"
     ) throws -> AsyncStream<SSEEvent> {
         let preferredLanguage = UserDefaults.standard.string(forKey: "preferredLanguage") ?? "system"
-        let body: [String: Any] = [
-            "assistant_id": APIConfiguration.assistantID,
-            "command": ["resume": ["action": action, "data": data]],
-            "config": ["configurable": RequestContext.configurable(
-                sessionMode: sessionMode,
-                preferredLanguage: preferredLanguage,
-                correlationID: APIConfiguration.makeCorrelationID()
-            )],
-            "stream_mode": ["messages", "values"],
-            "stream_subgraphs": true,
-        ]
+        let body = Self.makeResumeBody(
+            action: action,
+            data: data,
+            sessionMode: sessionMode,
+            preferredLanguage: preferredLanguage,
+            correlationID: APIConfiguration.makeCorrelationID(),
+            interruptID: interruptID
+        )
 
         let request = try buildStreamRequest(threadID: threadID, body: body)
         trace("resumeInterrupt request ready: threadID=\(threadID), action=\(action), url=\(request.url?.absoluteString ?? "<nil>")")
         return sseClient.stream(request: request)
+    }
+
+    static func makeResumeBody(
+        action: String,
+        data: [String: Any],
+        sessionMode: String,
+        preferredLanguage: String,
+        correlationID: String,
+        interruptID: String?
+    ) -> [String: Any] {
+        var resumeBody: [String: Any] = [
+            "action": action,
+            "data": data,
+        ]
+        if let interruptID {
+            resumeBody["interrupt_id"] = interruptID
+        }
+
+        return [
+            "assistant_id": APIConfiguration.assistantID,
+            "command": ["resume": resumeBody],
+            "config": ["configurable": RequestContext.configurable(
+                sessionMode: sessionMode,
+                preferredLanguage: preferredLanguage,
+                correlationID: correlationID
+            )],
+            "stream_mode": ["messages", "values"],
+            "stream_subgraphs": true,
+        ]
     }
 
     // MARK: - Store
@@ -157,7 +193,7 @@ struct LangGraphAPI: Sendable {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await session.data(for: request)
         try validateResponse(response)
     }
 
@@ -177,7 +213,7 @@ struct LangGraphAPI: Sendable {
         request.httpMethod = "GET"
         Self.applyAuth(&request)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
 
         // Store 在 item 不存在时可能返回 404 或非 JSON 响应，视为 nil
         guard let http = response as? HTTPURLResponse else { return nil }
@@ -210,7 +246,7 @@ struct LangGraphAPI: Sendable {
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(for: request)
             try validateResponse(response)
 
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -254,7 +290,7 @@ struct LangGraphAPI: Sendable {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await session.data(for: request)
         // 404 表示 item 已不存在，视为成功
         if let http = response as? HTTPURLResponse, http.statusCode != 404 {
             try validateResponse(response)

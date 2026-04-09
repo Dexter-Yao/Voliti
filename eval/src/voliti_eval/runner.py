@@ -49,6 +49,22 @@ def _strip_binary_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return {**payload, "components": clean_components}
 
 
+def build_a2ui_resume_response(
+    a2ui_result: dict[str, Any],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """构造 resume 所需的 A2UIResponse。"""
+    response = {
+        "action": a2ui_result.get("action", "submit"),
+        "data": a2ui_result.get("data", {}),
+    }
+    metadata = payload.get("metadata", {})
+    interrupt_id = metadata.get("interrupt_id") if isinstance(metadata, dict) else None
+    if isinstance(interrupt_id, str) and interrupt_id:
+        response["interrupt_id"] = interrupt_id
+    return response
+
+
 def _inject_timestamp(message: str) -> str:
     """在用户消息前注入 ISO 8601 时间戳，与 iOS 客户端行为一致。"""
     ts = datetime.now(UTC).isoformat()
@@ -201,10 +217,10 @@ async def run_conversation(
                 seed, turns, pending_interrupt.payload, coach_text
             )
 
-            a2ui_response = {
-                "action": a2ui_result.get("action", "submit"),
-                "data": a2ui_result.get("data", {}),
-            }
+            a2ui_response = build_a2ui_resume_response(
+                a2ui_result,
+                pending_interrupt.payload,
+            )
 
             # 记录 User A2UI 响应
             turns.append(Turn(

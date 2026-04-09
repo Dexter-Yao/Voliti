@@ -8,12 +8,18 @@ struct MirrorView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = MirrorViewModel()
     @AppStorage("onboardingComplete") private var onboardingComplete = false
+    @AppStorage(ProjectionFreshness.userDefaultsKey) private var storeProjectionIsStale = false
     @State private var showWeightHistory = false
 
     var body: some View {
         NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                if storeProjectionIsStale {
+                    staleProjectionBanner
+                        .padding(.bottom, StarpathTokens.spacingLG)
+                }
+
                 // Chapter Context
                 if let chapter = viewModel.chapter {
                     ChapterContextSection(chapter: chapter)
@@ -139,5 +145,19 @@ struct MirrorView: View {
                 .foregroundStyle(StarpathTokens.obsidian40)
         }
         .padding(.horizontal, StarpathTokens.spacingMD)
+    }
+
+    private var staleProjectionBanner: some View {
+        HStack(spacing: StarpathTokens.spacingSM) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: StarpathTokens.fontSizeXS))
+            Text(ProjectionFreshness.bannerText)
+                .starpathSans(size: StarpathTokens.fontSizeSM)
+        }
+        .foregroundStyle(StarpathTokens.copper)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, StarpathTokens.spacingMD)
+        .padding(.vertical, StarpathTokens.spacingSM)
+        .background(StarpathTokens.obsidian05)
     }
 }

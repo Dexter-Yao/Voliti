@@ -11,7 +11,12 @@ private let logger = Logger(subsystem: "com.voliti", category: "ResetService")
 enum ResetService {
     /// 执行完整重置，按中断安全顺序
     /// - Returns: 如果 Store 清除失败，返回警告消息；全部成功返回 nil
-    static func resetAll(modelContext: ModelContext) async -> String? {
+    static func resetAll(
+        modelContext: ModelContext,
+        clearRemoteStore: @MainActor @Sendable () async throws -> Void = {
+            try await LangGraphAPI().clearUserStore()
+        }
+    ) async -> String? {
         var storeWarning: String?
 
         // 1. 先设 onboardingComplete = false（中断安全）
@@ -20,8 +25,7 @@ enum ResetService {
 
         // 2. 清除后端 Store 数据
         do {
-            let api = LangGraphAPI()
-            try await api.clearUserStore()
+            try await clearRemoteStore()
             logger.info("Reset step 2: Store cleared")
         } catch {
             logger.warning("Reset step 2: Store clear failed — \(error.localizedDescription)")
@@ -55,6 +59,7 @@ enum ResetService {
             "preferredLanguage",
             "checkinReminderEnabled",
             "checkinReminderTime",
+            ProjectionFreshness.userDefaultsKey,
         ]
         for key in keysToRemove {
             UserDefaults.standard.removeObject(forKey: key)

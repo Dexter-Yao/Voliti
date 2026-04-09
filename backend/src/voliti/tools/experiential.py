@@ -26,6 +26,8 @@ from voliti.a2ui import (
     SelectComponent,
     SelectOption,
     TextComponent,
+    current_interrupt_id,
+    validate_a2ui_response,
 )
 from voliti.store_contract import make_interventions_namespace
 
@@ -305,6 +307,16 @@ def compose_witness_card(
     )
     raw_response = interrupt(payload.model_dump())
     ui_response = A2UIResponse.model_validate(raw_response)
+    try:
+        validate_a2ui_response(
+            payload,
+            ui_response,
+            expected_interrupt_id=current_interrupt_id(),
+        )
+    except ValueError:
+        with _card_cache_lock:
+            _card_cache.pop(cache_key, None)
+        return f"User response no longer matches the active Witness Card panel ({achievement_title}). Ask the user to try again."
 
     if ui_response.action == "reject":
         _finalize_card(

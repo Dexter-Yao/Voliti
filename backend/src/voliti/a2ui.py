@@ -1,8 +1,10 @@
 # ABOUTME: A2UI 组件类型目录与交互 Payload 定义
 # ABOUTME: 定义 Coach 可组合的 8 种 UI 原语及前后端共享的交互协议
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
+from langgraph.config import get_config
+from langgraph.types import Interrupt
 from pydantic import BaseModel, Field
 
 
@@ -130,5 +132,92 @@ class A2UIResponse(BaseModel):
     """前端 resume 回传的用户响应。"""
 
     action: Literal["submit", "reject", "skip"]
+    interrupt_id: str | None = None
     data: dict[str, object] = {}
     """Input component 的 key → value 映射。"""
+
+
+def current_interrupt_id() -> str | None:
+    """返回当前 graph interrupt 的权威标识。"""
+    try:
+        configurable = get_config().get("configurable", {})
+    except Exception:
+        return None
+
+    checkpoint_ns = configurable.get("checkpoint_ns")
+    if not isinstance(checkpoint_ns, str) or not checkpoint_ns:
+        return None
+    return Interrupt.from_ns(value=None, ns=checkpoint_ns).id
+
+
+def validate_a2ui_response(
+    payload: A2UIPayload,
+    response: A2UIResponse,
+    *,
+    expected_interrupt_id: str | None,
+) -> None:
+    """验证 A2UI resume 是否仍匹配当前 interrupt 与 payload。"""
+    if expected_interrupt_id is not None:
+        if not response.interrupt_id:
+            raise ValueError("A2UI response missing interrupt_id")
+        if response.interrupt_id != expected_interrupt_id:
+            raise ValueError("A2UI response interrupt_id does not match active interrupt")
+
+    if response.action != "submit":
+        if response.data:
+            raise ValueError("A2UI non-submit actions must not include data")
+        return
+
+    allowed_inputs: dict[str, Component] = {}
+    for component in payload.components:
+        key = getattr(component, "key", None)
+        if isinstance(key, str):
+            allowed_inputs[key] = component
+
+    unknown_keys = sorted(set(response.data) - set(allowed_inputs))
+    if unknown_keys:
+        raise ValueError(f"A2UI response contains unexpected keys: {', '.join(unknown_keys)}")
+
+    for key, value in response.data.items():
+        _validate_component_value(key, allowed_inputs[key], value)
+
+
+def _validate_component_value(key: str, component: Component, value: object) -> None:
+    if isinstance(component, SliderComponent):
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"A2UI response key '{key}' must be an integer")
+        if value < component.min or value > component.max:
+            raise ValueError(f"A2UI response key '{key}' is out of range")
+        if (value - component.min) % component.step != 0:
+            raise ValueError(f"A2UI response key '{key}' does not match slider step")
+        return
+
+    if isinstance(component, TextInputComponent):
+        if not isinstance(value, str):
+            raise ValueError(f"A2UI response key '{key}' must be a string")
+        return
+
+    if isinstance(component, NumberInputComponent):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"A2UI response key '{key}' must be numeric")
+        return
+
+    if isinstance(component, SelectComponent):
+        if not isinstance(value, str):
+            raise ValueError(f"A2UI response key '{key}' must be a string option")
+        allowed = {option.value for option in component.options}
+        if value not in allowed:
+            raise ValueError(f"A2UI response key '{key}' contains an invalid option")
+        return
+
+    if isinstance(component, MultiSelectComponent):
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            raise ValueError(f"A2UI response key '{key}' must be a list of string options")
+        allowed = {option.value for option in component.options}
+        if any(item not in allowed for item in value):
+            raise ValueError(f"A2UI response key '{key}' contains an invalid option")
+        if len(set(value)) != len(value):
+            raise ValueError(f"A2UI response key '{key}' contains duplicate options")
+        return
+
+    raise ValueError(f"A2UI response key '{key}' does not map to a supported input component")

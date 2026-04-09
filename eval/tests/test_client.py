@@ -4,7 +4,7 @@
 import httpx
 
 from voliti_eval import client as client_module
-from voliti_eval.client import CoachClient, build_client_timeout
+from voliti_eval.client import CoachClient, build_client_timeout, decorate_interrupt_payload
 
 
 def test_build_client_timeout_uses_short_connect_timeout() -> None:
@@ -27,7 +27,7 @@ def test_coach_client_uses_configured_turn_timeout(monkeypatch) -> None:
 
     monkeypatch.setattr(client_module, "get_client", fake_get_client)
 
-    CoachClient("http://localhost:2025", turn_timeout_seconds=180)
+    CoachClient("http://localhost:2025", assistant_id="coach", turn_timeout_seconds=180)
 
     timeout = captured["timeout"]
     assert captured["url"] == "http://localhost:2025"
@@ -36,3 +36,21 @@ def test_coach_client_uses_configured_turn_timeout(monkeypatch) -> None:
     assert timeout.pool == 5
     assert timeout.read == 180
     assert timeout.write == 180
+
+
+def test_decorate_interrupt_payload_adds_interrupt_id() -> None:
+    payload = {
+        "type": "a2ui",
+        "components": [],
+        "layout": "three-quarter",
+        "metadata": {"card_id": "card_123"},
+    }
+    interrupt = {
+        "id": "interrupt_123",
+        "value": payload,
+    }
+
+    decorated = decorate_interrupt_payload(payload, interrupt)
+
+    assert decorated["metadata"]["card_id"] == "card_123"
+    assert decorated["metadata"]["interrupt_id"] == "interrupt_123"

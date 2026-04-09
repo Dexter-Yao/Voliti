@@ -8,7 +8,12 @@ from langgraph.types import interrupt
 
 from pydantic import ValidationError
 
-from voliti.a2ui import A2UIPayload, A2UIResponse
+from voliti.a2ui import (
+    A2UIPayload,
+    A2UIResponse,
+    current_interrupt_id,
+    validate_a2ui_response,
+)
 
 
 @tool
@@ -36,6 +41,14 @@ def fan_out(
         response = A2UIResponse.model_validate(raw_response)
     except ValidationError:
         return "User response could not be parsed. Ask the user to repeat their answer verbally."
+    try:
+        validate_a2ui_response(
+            payload,
+            response,
+            expected_interrupt_id=current_interrupt_id(),
+        )
+    except ValueError:
+        return "User response no longer matches the active panel. Ask the user to try again."
 
     if response.action == "reject":
         return "User closed the panel without responding."
