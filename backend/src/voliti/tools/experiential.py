@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from langchain_core.tools import tool
+from langgraph.config import get_config
 from langgraph.prebuilt import InjectedStore
 from langgraph.store.base import BaseStore
 from langgraph.types import interrupt
@@ -26,6 +27,7 @@ from voliti.a2ui import (
     SelectOption,
     TextComponent,
 )
+from voliti.store_contract import make_interventions_namespace
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +44,6 @@ LangGraph 在 interrupt() 后 resume 时会从 node 起重新执行。
 超过 _CACHE_MAXSIZE 时 FIFO 淘汰。
 """
 _card_cache_lock = threading.Lock()
-
-INTERVENTIONS_NAMESPACE = ("voliti", "user", "interventions")
 
 CARD_STATUS_PENDING = "pending"
 CARD_STATUS_ACCEPTED = "accepted"
@@ -63,6 +63,18 @@ _ASPECT_RATIO_TO_SIZE: dict[str, str] = {
 }
 
 _openai_client: "AzureOpenAI | None" = None
+
+
+def resolve_interventions_namespace(
+    config: dict[str, object] | None = None,
+) -> tuple[str, str, str]:
+    """从运行时配置解析 Witness Card namespace。"""
+    current_config = config or get_config()
+    user_id = current_config.get("configurable", {}).get("user_id")
+    if not isinstance(user_id, str):
+        msg = "configurable.user_id is required"
+        raise ValueError(msg)
+    return make_interventions_namespace(user_id)
 
 
 def _get_openai_client() -> "AzureOpenAI":
@@ -110,6 +122,7 @@ def _make_thumbnail(png_b64: str) -> tuple[str, str]:
 def _pre_store_card(
     *,
     store: BaseStore | None,
+    namespace: tuple[str, ...],
     card_id: str,
     image_data_url: str,
     narrative: str,
@@ -126,7 +139,7 @@ def _pre_store_card(
     if store is None:
         return
     store.put(
-        INTERVENTIONS_NAMESPACE,
+        namespace,
         card_id,
         {
             "imageData": image_data_url,
@@ -145,6 +158,7 @@ def _pre_store_card(
 def _finalize_card(
     *,
     store: BaseStore | None,
+    namespace: tuple[str, ...],
     card_id: str,
     accepted: bool,
 ) -> None:
@@ -154,10 +168,10 @@ def _finalize_card(
     """
     if store is None:
         return
-    item = store.get(INTERVENTIONS_NAMESPACE, card_id)
+    item = store.get(namespace, card_id)
     if item is not None:
         status = CARD_STATUS_ACCEPTED if accepted else CARD_STATUS_REJECTED
-        store.put(INTERVENTIONS_NAMESPACE, card_id, {**item.value, "status": status})
+        store.put(namespace, card_id, {**item.value, "status": status})
 
 
 def _generate_image(prompt: str, size: str) -> tuple[str, str]:
@@ -237,10 +251,12 @@ def compose_witness_card(
         )
 
     card_id = f"card_{cache_key[:8]}"
+    namespace = resolve_interventions_namespace()
 
     try:
         _pre_store_card(
             store=store,
+            namespace=namespace,
             card_id=card_id,
             image_data_url=f"data:{cached_full_mime};base64,{cached_full_b64}",
             narrative=narrative,
@@ -291,13 +307,23 @@ def compose_witness_card(
     ui_response = A2UIResponse.model_validate(raw_response)
 
     if ui_response.action == "reject":
-        _finalize_card(store=store, card_id=card_id, accepted=False)
+        _finalize_card(
+            store=store,
+            namespace=namespace,
+            card_id=card_id,
+            accepted=False,
+        )
         with _card_cache_lock:
             _card_cache.pop(cache_key, None)
         return f"User closed the Witness Card panel without reviewing ({achievement_title})."
 
     accepted = ui_response.data.get("decision") == "accept"
-    _finalize_card(store=store, card_id=card_id, accepted=accepted)
+    _finalize_card(
+        store=store,
+        namespace=namespace,
+        card_id=card_id,
+        accepted=accepted,
+    )
     with _card_cache_lock:
         _card_cache.pop(cache_key, None)
 

@@ -1,0 +1,14 @@
+{
+  "version": "1",
+  "content": [
+    "{",
+    "  \"fixture_type\": \"chapter_current\",",
+    "  \"id\": \"chapter_fixture_001\",",
+    "  \"identity_statement\": \"我是一个会提前准备的人\",",
+    "  \"goal\": \"晚餐前先完成散步\",",
+    "  \"start_date\": \"2026-04-09T10:00:00Z\"",
+    "}"
+  ],
+  "created_at": "2026-04-09T10:00:00Z",
+  "modified_at": "2026-04-09T10:00:00Z"
+}

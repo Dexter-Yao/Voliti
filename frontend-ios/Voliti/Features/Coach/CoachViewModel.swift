@@ -28,7 +28,7 @@ final class CoachViewModel {
     private var modelContext: ModelContext?
     private var streamTask: Task<Void, Never>?
     private var syncTask: Task<Void, Never>?
-    private var syncService: StoreSyncService?
+    private var syncService: (any StoreSyncing)?
     private var sessionMode: String = "coaching"
 
     private func trace(_ message: String) {
@@ -43,15 +43,19 @@ final class CoachViewModel {
     @ObservationIgnored
     @AppStorage("onboardingComplete") var onboardingComplete = false
 
-    func configure(modelContext: ModelContext, sessionMode: String = "coaching") {
+    func configure(
+        modelContext: ModelContext,
+        sessionMode: String = "coaching",
+        syncService: (any StoreSyncing)? = nil
+    ) {
         self.modelContext = modelContext
         self.sessionMode = sessionMode
-        self.syncService = StoreSyncService(modelContext: modelContext)
+        self.syncService = syncService ?? StoreSyncService(modelContext: modelContext)
         loadMessages()
     }
 
     /// 根据 sessionMode 确保正确的 thread
-    private func ensureCorrectThread() async throws -> String {
+    func ensureCorrectThread() async throws -> String {
         if sessionMode == "onboarding" {
             return try await api.ensureOnboardingThread()
         }
@@ -156,6 +160,7 @@ final class CoachViewModel {
 
         streamTask = Task { [weak self] in
             guard let self else { return }
+            var pendingAssistantMessage: ChatMessage?
             do {
                 let threadID = try await ensureCorrectThread()
                 trace("ensureThread ok, threadID=\(threadID), mode=\(self.sessionMode)")
@@ -171,6 +176,7 @@ final class CoachViewModel {
                     textContent: "",
                     threadID: threadID
                 )
+                pendingAssistantMessage = assistantMessage
 
                 await MainActor.run {
                     self.messages.append(userMessage)
@@ -201,6 +207,9 @@ final class CoachViewModel {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.isStreaming = false
+                    if let pendingAssistantMessage, pendingAssistantMessage.textContent.isEmpty {
+                        self.messages.removeAll { $0.id == pendingAssistantMessage.id }
+                    }
                 }
             }
         }
@@ -231,7 +240,10 @@ final class CoachViewModel {
         let threadID: String? = sessionMode == "onboarding"
             ? APIConfiguration.onboardingThreadID
             : APIConfiguration.threadID
-        guard let threadID else { return }
+        guard let threadID else {
+            errorMessage = "当前会话线程不可用，请重新加载后再试。"
+            return
+        }
 
         let assistantMessage = ChatMessage(
             role: .assistant,
@@ -247,7 +259,8 @@ final class CoachViewModel {
                 let stream = try api.resumeInterrupt(
                     threadID: threadID,
                     action: action,
-                    data: data
+                    data: data,
+                    sessionMode: self.sessionMode
                 )
                 await processStream(stream, assistantMessage: assistantMessage)
             } catch {
@@ -335,11 +348,19 @@ final class CoachViewModel {
         await MainActor.run {
             let (afterThinking, thinking) = Self.extractCoachThinking(from: fullContent)
             let (cleaned, replies) = Self.extractSuggestedReplies(from: afterThinking)
+            self.suggestedReplies = replies
+            guard !cleaned.isEmpty else {
+                self.messages.removeAll { $0.id == assistantMessage.id }
+                self.isStreaming = false
+                self.trace("processStream finalized with empty assistant payload")
+                logger.info("processStream: dropped empty assistant message")
+                return
+            }
+
             assistantMessage.textContent = cleaned
             assistantMessage.thinkingStrategy = thinking?.strategy
             assistantMessage.thinkingObservations = thinking?.observations
             assistantMessage.thinkingActions = thinking?.actions
-            self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
             self.syncTask = Task { [weak self] in
@@ -353,22 +374,17 @@ final class CoachViewModel {
     // MARK: - Post-Stream Sync
 
     /// 对话结束后触发 Store 同步和 Onboarding 完成检测
-    private func postStreamSync() async {
+    func postStreamSync() async {
         await syncService?.syncAll()
         guard !onboardingComplete else { return }
         let storeComplete = await syncService?.checkOnboardingComplete() ?? false
-        if storeComplete {
+        if Self.shouldMarkOnboardingComplete(storeComplete: storeComplete) {
             onboardingComplete = true
-        } else if sessionMode == "onboarding" {
-            // InMemoryStore 重启后丢失数据时的降级判断：
-            // 统计非空 assistant 消息数，避免用户卡在 Onboarding fullScreenCover
-            let assistantCount = messages.lazy
-                .filter { $0.role == .assistant && !$0.textContent.isEmpty }
-                .prefix(3).count
-            if assistantCount >= 3 {
-                onboardingComplete = true
-            }
         }
+    }
+
+    nonisolated static func shouldMarkOnboardingComplete(storeComplete: Bool) -> Bool {
+        storeComplete
     }
 
     // MARK: - Content Sanitization Pipeline
@@ -501,10 +517,6 @@ final class CoachViewModel {
         event.setRefs(["card_id": card.id])
         modelContext?.insert(event)
 
-        if !onboardingComplete {
-            onboardingComplete = true
-        }
-
         // 异步从 Store 下载原图替换缩略图
         if let cardID = payload.cardID {
             let cardModelID = card.persistentModelID
@@ -516,7 +528,7 @@ final class CoachViewModel {
 
     /// 从 LangGraph Store 下载原图，替换 InterventionCard 中的缩略图
     private func upgradeCardImage(cardModelID: PersistentIdentifier, cardID: String) async {
-        let namespace = ["voliti", "user", "interventions"]
+        let namespace = StoreContract.interventionsNamespace
 
         do {
             guard let value = try await api.fetchStoreItem(namespace: namespace, key: cardID),

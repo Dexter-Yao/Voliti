@@ -3,7 +3,40 @@
 
 import Testing
 import Foundation
+import SwiftData
 @testable import Voliti
+
+private func sharedStoreFixtureURL(named name: String) -> URL {
+    let fileURL = URL(fileURLWithPath: #filePath)
+    return fileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("tests/contracts/fixtures/store/\(name)")
+}
+
+private func loadSharedStoreFixture(named name: String) throws -> [String: Any] {
+    let data = try Data(contentsOf: sharedStoreFixtureURL(named: name))
+    let object = try JSONSerialization.jsonObject(with: data)
+    guard let value = object as? [String: Any] else {
+        throw StoreContractError.invalidJSON
+    }
+    return value
+}
+
+private func makeInMemoryContainer() throws -> ModelContainer {
+    let schema = Schema(versionedSchema: VolitiSchemaV1.self)
+    let config = ModelConfiguration(
+        schema: schema,
+        isStoredInMemoryOnly: true,
+        cloudKitDatabase: .none
+    )
+    return try ModelContainer(
+        for: schema,
+        migrationPlan: VolitiMigrationPlan.self,
+        configurations: [config]
+    )
+}
 
 // MARK: - MetricComputer Tests
 
@@ -234,5 +267,189 @@ struct ProfileInfoSectionTests {
     @Test func unknownKeyFallback() {
         let labels = ProfileInfoSection.keyLabels
         #expect(labels["unknown_field"] == nil)
+    }
+}
+
+// MARK: - Runtime Contract Tests
+
+@Suite("RuntimeContract")
+struct RuntimeContractTests {
+    private func fixtureURL(named name: String) -> URL {
+        sharedStoreFixtureURL(named: name)
+    }
+
+    private func loadFixture(named name: String) throws -> [String: Any] {
+        try loadSharedStoreFixture(named: name)
+    }
+
+
+    @Test func requestContextInjectsUserAndCorrelation() {
+        let configurable = RequestContext.configurable(
+            sessionMode: "onboarding",
+            preferredLanguage: "zh-Hans",
+            correlationID: "corr_test"
+        )
+
+        #expect(configurable["session_mode"] as? String == "onboarding")
+        #expect(configurable["user_id"] as? String == APIConfiguration.userID)
+        #expect(configurable["correlation_id"] as? String == "corr_test")
+        #expect(configurable["preferred_language"] as? String == "zh-Hans")
+    }
+
+    @Test func storeContractUnwrapsTextEnvelope() throws {
+        let value: [String: Any] = [
+            "version": "1",
+            "content": ["line1", "line2"],
+            "created_at": "2026-04-09T10:00:00Z",
+            "modified_at": "2026-04-09T10:00:00Z",
+        ]
+
+        let text = try StoreContract.unwrapText(from: value)
+        #expect(text == "line1\nline2")
+    }
+
+    @Test func storeContractUnwrapsJSONEnvelope() throws {
+        let value: [String: Any] = [
+            "version": "1",
+            "content": ["{\"id\":\"chapter_1\",\"goal\":\"walk\"}"],
+            "created_at": "2026-04-09T10:00:00Z",
+            "modified_at": "2026-04-09T10:00:00Z",
+        ]
+
+        let json = try StoreContract.unwrapJSONDictionary(from: value)
+        #expect(json["id"] as? String == "chapter_1")
+        #expect(json["goal"] as? String == "walk")
+    }
+
+    @Test func storeContractLoadsSharedDashboardFixture() throws {
+        let value = try loadFixture(named: "dashboard_config.value.json")
+        let json = try StoreContract.unwrapJSONDictionary(from: value)
+        #expect(json["fixture_type"] as? String == "dashboard_config")
+    }
+
+    @Test func storeContractBuildsInterventionsNamespace() {
+        #expect(StoreContract.interventionsNamespace == [
+            "voliti",
+            APIConfiguration.userID,
+            "interventions",
+        ])
+    }
+
+    @Test func onboardingCompletionDependsOnlyOnStoreMarker() {
+        #expect(CoachViewModel.shouldMarkOnboardingComplete(storeComplete: true) == true)
+        #expect(CoachViewModel.shouldMarkOnboardingComplete(storeComplete: false) == false)
+    }
+}
+
+@Suite("OnboardingIntegration")
+@MainActor
+struct OnboardingIntegrationTests {
+    private final class StubSyncService: StoreSyncing {
+        private(set) var syncAllCallCount = 0
+        private let storeComplete: Bool
+
+        init(storeComplete: Bool) {
+            self.storeComplete = storeComplete
+        }
+
+        func syncAll() async {
+            syncAllCallCount += 1
+        }
+
+        func checkOnboardingComplete() async -> Bool {
+            storeComplete
+        }
+    }
+
+    @Test func storeSyncServiceReadsWrappedOnboardingMarkerFromSharedFixture() async throws {
+        let modelContext = ModelContext(try makeInMemoryContainer())
+        let fixture = try loadSharedStoreFixture(named: "profile_context.value.json")
+
+        let service = StoreSyncService(
+            modelContext: modelContext,
+            fetchStoreItem: { namespace, key in
+                #expect(namespace == StoreContract.userNamespace)
+                #expect(key == StoreContract.profileContextKey)
+                return fixture
+            },
+            searchStoreItems: { _ in [] }
+        )
+
+        let result = await service.checkOnboardingComplete()
+        #expect(result == true)
+    }
+
+    @Test func onboardingSessionUsesDedicatedThreadAndMarksCompletionAfterSync() async throws {
+        let modelContext = ModelContext(try makeInMemoryContainer())
+        let syncService = StubSyncService(storeComplete: true)
+        let viewModel = CoachViewModel()
+
+        APIConfiguration.threadID = "coach-thread"
+        APIConfiguration.onboardingThreadID = "onboarding-thread"
+        UserDefaults.standard.set(false, forKey: "onboardingComplete")
+        defer {
+            APIConfiguration.threadID = nil
+            APIConfiguration.onboardingThreadID = nil
+            UserDefaults.standard.removeObject(forKey: "onboardingComplete")
+        }
+
+        viewModel.configure(
+            modelContext: modelContext,
+            sessionMode: "onboarding",
+            syncService: syncService
+        )
+
+        let threadID = try await viewModel.ensureCorrectThread()
+        #expect(threadID == "onboarding-thread")
+
+        await viewModel.postStreamSync()
+
+        #expect(syncService.syncAllCallCount == 1)
+        #expect(viewModel.onboardingComplete == true)
+    }
+}
+
+@Suite("BackendIntegration")
+@MainActor
+struct BackendIntegrationTests {
+    @Test func onboardingCompletionUsesLiveStoreProjection() async throws {
+        guard ProcessInfo.processInfo.environment["VOLITI_E2E_BACKEND"] == "1" else {
+            return
+        }
+
+        let modelContext = ModelContext(try makeInMemoryContainer())
+        let api = LangGraphAPI()
+        let fixture = try loadSharedStoreFixture(named: "profile_context.value.json")
+        let viewModel = CoachViewModel()
+
+        APIConfiguration.threadID = nil
+        APIConfiguration.onboardingThreadID = nil
+        UserDefaults.standard.set(false, forKey: "onboardingComplete")
+        defer {
+            APIConfiguration.threadID = nil
+            APIConfiguration.onboardingThreadID = nil
+            UserDefaults.standard.removeObject(forKey: "onboardingComplete")
+        }
+
+        viewModel.configure(modelContext: modelContext, sessionMode: "onboarding")
+
+        let threadID = try await viewModel.ensureCorrectThread()
+        #expect(!threadID.isEmpty)
+        #expect(APIConfiguration.onboardingThreadID == threadID)
+
+        try await api.putStoreItem(
+            namespace: StoreContract.userNamespace,
+            key: StoreContract.profileContextKey,
+            value: fixture
+        )
+        defer {
+            Task {
+                try? await api.deleteStoreItems(namespace: StoreContract.userNamespace)
+            }
+        }
+
+        await viewModel.postStreamSync()
+
+        #expect(viewModel.onboardingComplete == true)
     }
 }

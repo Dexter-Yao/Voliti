@@ -23,9 +23,10 @@ struct LangGraphAPI: Sendable {
         Self.applyAuth(&request)
 
         var body: [String: Any] = [:]
-        if !metadata.isEmpty {
-            body["metadata"] = metadata
-        }
+        body["metadata"] = metadata.merging([
+            "user_id": APIConfiguration.userID,
+            "correlation_id": APIConfiguration.makeCorrelationID(),
+        ]) { current, _ in current }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -86,11 +87,12 @@ struct LangGraphAPI: Sendable {
         let timestamp = ISO8601DateFormatter().string(from: Date())
         content.insert(["type": "text", "text": "[\(timestamp)] "], at: 0)
 
-        var configurable: [String: Any] = ["session_mode": sessionMode]
         let preferredLanguage = UserDefaults.standard.string(forKey: "preferredLanguage") ?? "system"
-        if preferredLanguage != "system" {
-            configurable["preferred_language"] = preferredLanguage
-        }
+        let configurable = RequestContext.configurable(
+            sessionMode: sessionMode,
+            preferredLanguage: preferredLanguage,
+            correlationID: APIConfiguration.makeCorrelationID()
+        )
 
         var inputMessages: [[String: Any]] = []
         if let prior = priorAssistantMessage {
@@ -114,10 +116,21 @@ struct LangGraphAPI: Sendable {
     }
 
     /// 恢复 A2UI 中断
-    func resumeInterrupt(threadID: String, action: String, data: [String: Any] = [:]) throws -> AsyncStream<SSEEvent> {
+    func resumeInterrupt(
+        threadID: String,
+        action: String,
+        data: [String: Any] = [:],
+        sessionMode: String = "coaching"
+    ) throws -> AsyncStream<SSEEvent> {
+        let preferredLanguage = UserDefaults.standard.string(forKey: "preferredLanguage") ?? "system"
         let body: [String: Any] = [
             "assistant_id": APIConfiguration.assistantID,
             "command": ["resume": ["action": action, "data": data]],
+            "config": ["configurable": RequestContext.configurable(
+                sessionMode: sessionMode,
+                preferredLanguage: preferredLanguage,
+                correlationID: APIConfiguration.makeCorrelationID()
+            )],
             "stream_mode": ["messages", "values"],
             "stream_subgraphs": true,
         ]
@@ -128,6 +141,25 @@ struct LangGraphAPI: Sendable {
     }
 
     // MARK: - Store
+
+    /// 向 LangGraph Store 写入单个 item
+    func putStoreItem(namespace: [String], key: String, value: [String: Any]) async throws {
+        let url = APIConfiguration.baseURL.appendingPathComponent("store/items")
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        Self.applyAuth(&request)
+
+        let body: [String: Any] = [
+            "namespace": namespace,
+            "key": key,
+            "value": value,
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
+    }
 
     /// 从 LangGraph Store 获取单个 item 的 value。item 不存在时返回 nil。
     func fetchStoreItem(namespace: [String], key: String) async throws -> [String: Any]? {
@@ -161,26 +193,37 @@ struct LangGraphAPI: Sendable {
     /// 从 LangGraph Store 搜索指定 namespace 下的所有 items
     func searchStoreItems(namespace: [String]) async throws -> [[String: Any]] {
         let url = APIConfiguration.baseURL.appendingPathComponent("store/items/search")
+        var allItems: [[String: Any]] = []
+        var offset = 0
+        let limit = 100
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        Self.applyAuth(&request)
+        while true {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            Self.applyAuth(&request)
 
-        let body: [String: Any] = [
-            "namespace_prefix": namespace,
-            "limit": 100,
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let body: [String: Any] = [
+                "namespace_prefix": namespace,
+                "limit": limit,
+                "offset": offset,
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try validateResponse(response)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            try validateResponse(response)
 
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let items = json["items"] as? [[String: Any]] else {
-            return []
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let items = json["items"] as? [[String: Any]] else {
+                return allItems
+            }
+
+            allItems.append(contentsOf: items)
+            if items.count < limit {
+                return allItems
+            }
+            offset += limit
         }
-        return items
     }
 
     // MARK: - Store Deletion
@@ -221,7 +264,7 @@ struct LangGraphAPI: Sendable {
     /// 清除所有用户 Store 数据
     /// 使用 namespace_prefix wildcard 搜索，无需硬编码子 namespace 列表
     func clearUserStore() async throws {
-        let items = try await searchStoreItems(namespace: ["voliti", "user"])
+        let items = try await searchStoreItems(namespace: StoreContract.userNamespace)
         try await withThrowingTaskGroup(of: Void.self) { group in
             for item in items {
                 guard let key = item["key"] as? String,

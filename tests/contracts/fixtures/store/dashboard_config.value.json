@@ -1,0 +1,23 @@
+{
+  "version": "1",
+  "content": [
+    "{",
+    "  \"fixture_type\": \"dashboard_config\",",
+    "  \"north_star\": {",
+    "    \"key\": \"weight_trend\",",
+    "    \"label\": \"体重趋势\",",
+    "    \"type\": \"numeric\"",
+    "  },",
+    "  \"support_metrics\": [",
+    "    {",
+    "      \"key\": \"protein_days\",",
+    "      \"label\": \"达标天数\",",
+    "      \"type\": \"ratio\"",
+    "    }",
+    "  ],",
+    "  \"user_goal\": \"稳定建立晚间饮食边界\"",
+    "}"
+  ],
+  "created_at": "2026-04-09T10:00:00Z",
+  "modified_at": "2026-04-09T10:00:00Z"
+}

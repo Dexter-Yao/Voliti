@@ -238,22 +238,18 @@ struct SettingsView: View {
             defer { isLoadingProfile = false }
             do {
                 guard let value = try await api.fetchStoreItem(
-                    namespace: ["voliti", "user", "profile"],
-                    key: "context"
+                    namespace: StoreContract.userNamespace,
+                    key: StoreContract.profileContextKey
                 ) else {
                     profileItems = []
                     return
                 }
 
-                // Store context 可能是结构化 dict 或 content 字符串
-                if let content = value["content"] as? String {
-                    profileItems = parseContentString(content)
+                let content = try StoreContract.unwrapText(from: value)
+                if content.isEmpty {
+                    profileItems = []
                 } else {
-                    profileItems = value.compactMap { key, val in
-                        let strVal = "\(val)"
-                        guard !strVal.isEmpty, strVal != "<null>" else { return nil }
-                        return (key: key, value: strVal)
-                    }
+                    profileItems = parseContentString(content)
                 }
             } catch {
                 logger.warning("Profile load failed: \(error.localizedDescription)")

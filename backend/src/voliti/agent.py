@@ -15,46 +15,35 @@ from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
 from voliti.middleware.journey_analysis import JourneyAnalysisMiddleware
 from voliti.middleware.session_mode import SessionModeMiddleware
+from voliti.store_contract import InvalidUserIDError, resolve_user_namespace
 from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
 
 COACH_TOOLS = [fan_out]
 """Coach 直接调用的工具，通过 A2UI 组件组合实现动态交互。"""
 
-_DEFAULT_USER_NAMESPACE = ("voliti", "user")
-
-
 def _resolve_user_namespace(ctx: Any) -> tuple[str, ...]:
     """从运行时 config 解析用户 namespace。
 
-    支持通过 configurable.user_id 传入自定义用户标识，
-    实现多用户或评估场景下的 Store 隔离。
-    默认回退到 ("voliti", "user")。
+    要求通过 configurable.user_id 传入设备稳定匿名标识，
+    由后端统一派生 ("voliti", "<user_id>") namespace。
 
     解析优先级：
     1. ctx.runtime.config（DeepAgent 运行时注入）
     2. langgraph.config.get_config()（LangGraph 上下文）
-    3. 默认 ("voliti", "user")
+    3. 两者都缺失时直接报错
     """
-    # 优先从 runtime config 读取（与 StoreBackend legacy 一致）
     runtime_cfg = getattr(getattr(ctx, "runtime", None), "config", None)
     if isinstance(runtime_cfg, dict):
-        user_id = runtime_cfg.get("configurable", {}).get("user_id")
-        if user_id:
-            return ("voliti", str(user_id))
+        return resolve_user_namespace(runtime_cfg)
 
-    # Fallback 到 LangGraph context
     try:
         from langgraph.config import get_config
 
         cfg = get_config()
-        user_id = cfg.get("configurable", {}).get("user_id")
-        if user_id:
-            return ("voliti", str(user_id))
+        return resolve_user_namespace(cfg)
     except Exception:  # noqa: BLE001
-        pass
-
-    return _DEFAULT_USER_NAMESPACE
+        raise InvalidUserIDError("configurable.user_id is required") from None
 
 
 def _create_backend_factory() -> Callable[..., Any]:
@@ -124,4 +113,3 @@ def create_coach_agent(
         kwargs["store"] = store
 
     return create_deep_agent(**kwargs)
-

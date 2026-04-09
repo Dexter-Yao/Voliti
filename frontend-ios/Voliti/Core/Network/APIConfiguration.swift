@@ -28,8 +28,26 @@ enum APIConfiguration {
 
     static let assistantID = "coach"
 
-    private static let threadIDKey = "voliti_thread_id"
-    private static let onboardingThreadIDKey = "voliti_onboarding_thread_id"
+    private nonisolated static let userIDKey = "voliti_user_id"
+    private nonisolated static let threadIDKey = "voliti_thread_id"
+    private nonisolated static let onboardingThreadIDKey = "voliti_onboarding_thread_id"
+
+    /// 设备本地稳定匿名 user_id
+    nonisolated(unsafe) static var userID: String {
+        if let override = ProcessInfo.processInfo.environment["VOLITI_USER_ID"], !override.isEmpty {
+            return override
+        }
+        if let existing = UserDefaults.standard.string(forKey: userIDKey), !existing.isEmpty {
+            return existing
+        }
+        let generated = "device_" + UUID().uuidString.lowercased()
+        UserDefaults.standard.set(generated, forKey: userIDKey)
+        return generated
+    }
+
+    static func makeCorrelationID() -> String {
+        "corr_" + UUID().uuidString.lowercased()
+    }
 
     /// 持久化 Coaching Thread ID
     /// UserDefaults 底层线程安全，nonisolated(unsafe) 声明跨 actor 访问意图

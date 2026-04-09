@@ -8,13 +8,30 @@ import os
 private let logger = Logger(subsystem: "com.voliti", category: "StoreSyncService")
 
 @MainActor
-final class StoreSyncService {
-    private let api = LangGraphAPI()
+protocol StoreSyncing: AnyObject {
+    func syncAll() async
+    func checkOnboardingComplete() async -> Bool
+}
+
+@MainActor
+final class StoreSyncService: StoreSyncing {
     private let modelContext: ModelContext
+    private let fetchStoreItem: @Sendable ([String], String) async throws -> [String: Any]?
+    private let searchStoreItems: @Sendable ([String]) async throws -> [[String: Any]]
     private static let isoFormatter = ISO8601DateFormatter()
 
-    init(modelContext: ModelContext) {
+    init(
+        modelContext: ModelContext,
+        fetchStoreItem: @escaping @Sendable ([String], String) async throws -> [String: Any]? = { namespace, key in
+            try await LangGraphAPI().fetchStoreItem(namespace: namespace, key: key)
+        },
+        searchStoreItems: @escaping @Sendable ([String]) async throws -> [[String: Any]] = { namespace in
+            try await LangGraphAPI().searchStoreItems(namespace: namespace)
+        }
+    ) {
         self.modelContext = modelContext
+        self.fetchStoreItem = fetchStoreItem
+        self.searchStoreItems = searchStoreItems
     }
 
     // MARK: - Full Sync
@@ -30,14 +47,13 @@ final class StoreSyncService {
     /// 检查 profile 中是否包含 onboarding_complete 标记
     func checkOnboardingComplete() async -> Bool {
         do {
-            let items = try await api.searchStoreItems(
-                namespace: ["voliti", "user", "profile"]
-            )
-            guard let contextItem = items.first(where: { ($0["key"] as? String) == "context" }),
-                  let value = contextItem["value"] as? [String: Any],
-                  let content = value["content"] as? String else {
+            guard let value = try await fetchStoreItem(
+                StoreContract.userNamespace,
+                StoreContract.profileContextKey
+            ) else {
                 return false
             }
+            let content = try StoreContract.unwrapText(from: value)
             return content.contains("onboarding_complete: true")
         } catch {
             logger.warning("Failed to check onboarding status: \(error.localizedDescription)")
@@ -45,22 +61,36 @@ final class StoreSyncService {
         }
     }
 
+    private func fetchUserItems() async throws -> [[String: Any]] {
+        try await searchStoreItems(StoreContract.userNamespace)
+    }
+
+    private func decodeJSONValue(_ item: [String: Any]) throws -> [String: Any] {
+        guard let value = item["value"] as? [String: Any] else {
+            throw StoreContractError.invalidEnvelope
+        }
+        return try StoreContract.unwrapJSONDictionary(from: value)
+    }
+
     // MARK: - LifeSign Plans
 
     func syncLifeSignPlans() async {
         do {
-            let items = try await api.searchStoreItems(
-                namespace: ["voliti", "user", "coping_plans"]
-            )
+            let userItems = try await fetchUserItems()
+            let items = userItems.filter { item in
+                guard let key = item["key"] as? String else { return false }
+                return key.hasPrefix(StoreContract.copingPlansPrefix) && key.hasSuffix(".json")
+            }
 
             for item in items {
-                guard let value = item["value"] as? [String: Any],
-                      let planId = value["id"] as? String else { continue }
+                let value = try decodeJSONValue(item)
+                guard let planId = value["id"] as? String else { continue }
 
-                let trigger = value["trigger"] as? String ?? ""
-                let copingResponse = value["coping_response"] as? String ?? ""
+                let triggerData = value["trigger"] as? [String: Any]
+                let trigger = triggerData?["situation"] as? String ?? ""
+                let copingResponse = value["action"] as? String ?? value["coping_response"] as? String ?? ""
                 let successCount = value["success_count"] as? Int ?? 0
-                let totalAttempts = value["total_attempts"] as? Int ?? 0
+                let totalAttempts = value["activated_count"] as? Int ?? value["total_attempts"] as? Int ?? 0
                 let status = value["status"] as? String ?? "active"
                 let lastUpdatedStr = value["last_updated"] as? String
 
@@ -95,9 +125,12 @@ final class StoreSyncService {
                 }
             }
 
-            let remoteIds = Set(items.compactMap { ($0["value"] as? [String: Any])?["id"] as? String })
+            let remoteIDs: Set<String> = Set(items.compactMap { item in
+                guard let value = try? decodeJSONValue(item) else { return nil }
+                return value["id"] as? String
+            })
             let allLocal = try modelContext.fetch(FetchDescriptor<LifeSignPlan>())
-            for local in allLocal where !remoteIds.contains(local.id) {
+            for local in allLocal where !remoteIDs.contains(local.id) {
                 modelContext.delete(local)
             }
 
@@ -111,13 +144,15 @@ final class StoreSyncService {
 
     func syncDashboardConfig() async {
         do {
-            guard let value = try await api.fetchStoreItem(
-                namespace: ["voliti", "user", "profile"],
-                key: "dashboardConfig"
-            ) else {
+            guard let value = try await fetchStoreItem(
+                StoreContract.userNamespace,
+                StoreContract.profileDashboardConfigKey
+            )
+            else {
                 logger.info("No dashboardConfig in Store")
                 return
             }
+            let json = try StoreContract.unwrapJSONDictionary(from: value)
 
             let descriptor = FetchDescriptor<DashboardConfig>(
                 predicate: #Predicate { $0.id == "default" }
@@ -130,18 +165,18 @@ final class StoreSyncService {
             }
 
             // Parse north_star
-            if let nsRaw = value["north_star"] as? [String: Any] {
+            if let nsRaw = json["north_star"] as? [String: Any] {
                 let nsData = try JSONSerialization.data(withJSONObject: nsRaw)
                 config.northStarJSON = nsData
             }
 
             // Parse support_metrics
-            if let smRaw = value["support_metrics"] as? [[String: Any]] {
+            if let smRaw = json["support_metrics"] as? [[String: Any]] {
                 let smData = try JSONSerialization.data(withJSONObject: smRaw)
                 config.supportMetricsJSON = smData
             }
 
-            config.userGoal = value["user_goal"] as? String
+            config.userGoal = json["user_goal"] as? String
             config.lastUpdated = .now
 
             logger.info("Dashboard config sync: north_star=\(config.northStar?.key ?? "nil"), support=\(config.supportMetrics.count)")
@@ -154,23 +189,24 @@ final class StoreSyncService {
 
     func syncChapter() async {
         do {
-            guard let value = try await api.fetchStoreItem(
-                namespace: ["voliti", "user", "chapter"],
-                key: "current"
+            guard let value = try await fetchStoreItem(
+                StoreContract.userNamespace,
+                StoreContract.chapterCurrentKey
             ) else {
                 logger.info("No current chapter in Store")
                 return
             }
+            let json = try StoreContract.unwrapJSONDictionary(from: value)
 
-            guard let chapterId = value["id"] as? String,
-                  let identityStatement = value["identity_statement"] as? String,
-                  let goal = value["goal"] as? String else {
+            guard let chapterId = json["id"] as? String,
+                  let identityStatement = json["identity_statement"] as? String,
+                  let goal = json["goal"] as? String else {
                 logger.error("Chapter data missing required fields")
                 return
             }
 
             let startDate: Date
-            if let dateStr = value["start_date"] as? String {
+            if let dateStr = json["start_date"] as? String {
                 startDate = Self.isoFormatter.date(from: dateStr) ?? .now
             } else {
                 startDate = .now
@@ -205,17 +241,19 @@ final class StoreSyncService {
 
     func syncLedgerEvents() async {
         do {
-            let items = try await api.searchStoreItems(
-                namespace: ["voliti", "user", "ledger"]
-            )
+            let userItems = try await fetchUserItems()
+            let items = userItems.filter { item in
+                guard let key = item["key"] as? String else { return false }
+                return key.hasPrefix(StoreContract.ledgerPrefix)
+            }
 
             for item in items {
                 // Store item 结构：顶层 key 作为事件 id，value 包含事件字段
-                guard let eventId = item["key"] as? String,
-                      let value = item["value"] as? [String: Any] else {
+                guard let eventId = item["key"] as? String else {
                     logger.warning("Ledger item missing key or value, skipping")
                     continue
                 }
+                let value = try decodeJSONValue(item)
 
                 guard let kind = value["kind"] as? String,
                       let timestampStr = value["timestamp"] as? String,
