@@ -86,7 +86,7 @@ struct OnboardingView: View {
         GeometryReader { geometry in
         VStack(spacing: 0) {
             Spacer()
-                .frame(height: geometry.size.height * 0.3)
+                .frame(minHeight: geometry.size.height * 0.3)
 
             // Coach 标识
             Text("VOLITI COACH")
