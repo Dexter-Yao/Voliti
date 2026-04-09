@@ -372,13 +372,13 @@ def _format_transcript_for_judge(transcript: Transcript) -> str:
             for comp in turn.a2ui_payload.get("components", []):
                 kind = comp.get("kind", "?")
                 if kind in ("text", "protocol_prompt"):
-                    components_summary.append(f"  {kind}: {comp.get('content', '')[:100]}")
+                    components_summary.append(f"  {kind}: {comp.get('text', '')[:100]}")
                 elif kind == "image":
                     components_summary.append(f"  image: [generated image] alt={comp.get('alt', '')}")
                 else:
-                    name = comp.get("name", "?")
+                    key = comp.get("key", "?")
                     label = comp.get("label", "")
-                    components_summary.append(f"  {kind}: name={name}, label={label}")
+                    components_summary.append(f"  {kind}: key={key}, label={label}")
 
             lines.append(f"{prefix} [A2UI fan_out — {turn.a2ui_payload.get('layout', '?')} layout]")
             lines.extend(components_summary)
