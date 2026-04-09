@@ -31,7 +31,7 @@ class EvalConfig:
     server_url: str = "http://localhost:2025"
     assistant_id: str = "coach"
     max_turns_default: int = 20
-    turn_timeout_seconds: int = 120
+    turn_timeout_seconds: int = 300
     seed_directory: Path = field(default_factory=lambda: _EVAL_ROOT / "seeds")
     output_directory: Path = field(default_factory=lambda: _EVAL_ROOT / "output")
     auditor_model: ModelConfig = field(
@@ -86,7 +86,7 @@ def load_config(
         server_url=server_url or defaults.get("server_url", "http://localhost:2025"),
         assistant_id=assistant_id or defaults.get("assistant_id", "coach"),
         max_turns_default=max_turns or defaults.get("max_turns_default", 20),
-        turn_timeout_seconds=defaults.get("turn_timeout_seconds", 120),
+        turn_timeout_seconds=defaults.get("turn_timeout_seconds", 300),
         seed_directory=root / defaults.get("seed_directory", "seeds/"),
         output_directory=output_dir or root / defaults.get("output_directory", "output/"),
         model_labels=defaults.get("model_labels", {}),

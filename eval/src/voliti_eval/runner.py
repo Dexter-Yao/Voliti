@@ -368,7 +368,7 @@ async def run_evaluation(
         },
     )
 
-    auditor = Auditor(config.auditor_model)
+    auditor = Auditor(config.auditor_model, timeout=config.turn_timeout_seconds)
 
     # 限制并发数，避免 Azure OpenAI API 连接超时
     max_concurrency = 5

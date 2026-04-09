@@ -118,13 +118,13 @@ MIN_TURNS_BEFORE_END = 10
 class Auditor:
     """LLM 驱动的用户模拟器。"""
 
-    def __init__(self, model_config: ModelConfig) -> None:
+    def __init__(self, model_config: ModelConfig, *, timeout: float) -> None:
         self._client = AsyncAzureOpenAI(
             azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
             api_key=os.environ["AZURE_OPENAI_API_KEY"],
             api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
             max_retries=3,
-            timeout=120.0,
+            timeout=timeout,
         )
         self._deployment = model_config.deployment
         self._temperature = model_config.temperature

@@ -112,7 +112,7 @@ async def _run(seeds: list[Seed], config: EvalConfig) -> None:
     transcripts_dir = output_dir / "transcripts"
     scores_dir = output_dir / "scores"
 
-    judge = Judge(config.judge_model)
+    judge = Judge(config.judge_model, timeout=config.turn_timeout_seconds)
 
     click.echo(f"\n开始评估 → {output_dir}")
     click.echo(f"Server: {config.server_url}")
@@ -139,7 +139,7 @@ async def _run_compare(
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     compare_dir = config.output_directory / f"compare_{timestamp}"
 
-    judge = Judge(config.judge_model)
+    judge = Judge(config.judge_model, timeout=config.turn_timeout_seconds)
 
     click.echo(f"\n开始多模型对比 → {compare_dir}")
     click.echo(f"Server: {config.server_url}")

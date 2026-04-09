@@ -77,7 +77,7 @@ def _get_openai_client() -> "AzureOpenAI":
             api_version=os.environ.get(
                 "AZURE_OPENAI_API_VERSION", "2025-03-01-preview"
             ),
-            timeout=httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0),
+            timeout=httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0),
             max_retries=2,
         )
     return _openai_client

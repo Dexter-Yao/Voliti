@@ -85,8 +85,8 @@ class CoachClient:
     def __init__(
         self,
         server_url: str,
-        assistant_id: str = "coach",
-        turn_timeout_seconds: int = 300,
+        assistant_id: str,
+        turn_timeout_seconds: int,
     ) -> None:
         self._client: LangGraphClient = get_client(
             url=server_url,

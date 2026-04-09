@@ -279,13 +279,13 @@ Only include dimensions you can meaningfully evaluate. Do not guess.\
 class Judge:
     """对完成的对话记录进行多维度评分。"""
 
-    def __init__(self, model_config: ModelConfig) -> None:
+    def __init__(self, model_config: ModelConfig, *, timeout: float) -> None:
         self._client = AsyncAzureOpenAI(
             azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
             api_key=os.environ["AZURE_OPENAI_API_KEY"],
             api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
             max_retries=3,
-            timeout=120.0,
+            timeout=timeout,
         )
         self._deployment = model_config.deployment
         self._temperature = model_config.temperature
