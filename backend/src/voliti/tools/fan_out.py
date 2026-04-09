@@ -6,6 +6,8 @@ from typing import Any, Literal
 from langchain_core.tools import tool
 from langgraph.types import interrupt
 
+from pydantic import ValidationError
+
 from voliti.a2ui import A2UIPayload, A2UIResponse
 
 
@@ -23,9 +25,17 @@ def fan_out(
         components: List of component dicts, each with a "kind" field.
         layout: Display layout — "half", "three-quarter" (default, 75%), or "full".
     """
-    payload = A2UIPayload(components=components, layout=layout)
+    try:
+        payload = A2UIPayload(components=components, layout=layout)
+    except ValidationError as exc:
+        return f"Invalid UI components: {exc.error_count()} validation errors. Describe the information verbally instead."
+
     raw_response = interrupt(payload.model_dump())
-    response = A2UIResponse.model_validate(raw_response)
+
+    try:
+        response = A2UIResponse.model_validate(raw_response)
+    except ValidationError:
+        return "User response could not be parsed. Ask the user to repeat their answer verbally."
 
     if response.action == "reject":
         return "User closed the panel without responding."
