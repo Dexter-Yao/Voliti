@@ -10,3 +10,4 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 init(_PROJECT_ROOT)
 graph = create_coach_agent()
+graph_qwen = create_coach_agent(model_profile="coach_qwen")

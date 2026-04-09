@@ -42,6 +42,7 @@ class EvalConfig:
             provider="azure_openai", deployment="gpt-5.4", temperature=0.3
         )
     )
+    model_labels: dict[str, str] = field(default_factory=dict)
 
 
 def load_config(
@@ -88,6 +89,7 @@ def load_config(
         turn_timeout_seconds=defaults.get("turn_timeout_seconds", 120),
         seed_directory=root / defaults.get("seed_directory", "seeds/"),
         output_directory=output_dir or root / defaults.get("output_directory", "output/"),
+        model_labels=defaults.get("model_labels", {}),
         auditor_model=ModelConfig(
             provider=auditor_cfg.get("provider", "azure_openai"),
             deployment=auditor_cfg.get("deployment", "gpt-5.4"),

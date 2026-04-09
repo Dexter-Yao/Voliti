@@ -3,7 +3,8 @@
     "."
   ],
   "graphs": {
-    "coach": "./src/voliti/graph.py:graph"
+    "coach": "./src/voliti/graph.py:graph",
+    "coach_qwen": "./src/voliti/graph.py:graph_qwen"
   },
   "env": ".env"
 }

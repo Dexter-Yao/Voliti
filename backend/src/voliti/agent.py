@@ -96,15 +96,17 @@ def _create_witness_card_composer() -> SubAgent:
 
 def create_coach_agent(
     *,
+    model_profile: str = "coach",
     store: BaseStore | None = None,
 ) -> CompiledStateGraph:
     """创建 Coach Agent。
 
     Args:
+        model_profile: 模型 profile 名称，对应 models.toml 中的配置段。
         store: 持久化存储后端。默认为 None，由 LangGraph API 自动注入。
     """
     kwargs = {
-        "model": ModelRegistry.get("coach"),
+        "model": ModelRegistry.get(model_profile),
         "system_prompt": PromptRegistry.get("coach_system"),
         "backend": _create_backend_factory(),
         "name": "coach",

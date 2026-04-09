@@ -7,3 +7,7 @@ max_turns_default: 20
 turn_timeout_seconds: 300
 seed_directory: "seeds/"
 output_directory: "output/"
+
+model_labels:
+  coach: "GPT-5.4"
+  coach_qwen: "Qwen 3.6 Plus"

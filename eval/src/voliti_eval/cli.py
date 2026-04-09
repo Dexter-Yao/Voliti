@@ -1,5 +1,5 @@
 # ABOUTME: CLI 入口，解析参数并调用评估编排器
-# ABOUTME: 支持运行全部/指定 seed、dry-run 验证、输出目录指定
+# ABOUTME: 支持单模型评估和多模型对比模式（--compare）
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import sys
+from copy import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -14,8 +15,8 @@ import click
 
 from voliti_eval.config import EvalConfig, load_config, load_seeds
 from voliti_eval.judge import Judge
-from voliti_eval.models import Seed
-from voliti_eval.report import generate_report
+from voliti_eval.models import EvalResult, Seed
+from voliti_eval.report import generate_comparison_report, generate_report
 from voliti_eval.runner import run_evaluation
 from voliti_eval.transcript import save_transcript
 
@@ -28,6 +29,9 @@ from voliti_eval.transcript import save_transcript
 @click.option("--max-turns", default=None, type=int, help="覆盖所有 seed 的 max_turns")
 @click.option("--dry-run", is_flag=True, help="仅验证 seed 配置，不运行对话")
 @click.option("--verbose", is_flag=True, help="详细日志")
+@click.option("--compare", is_flag=True, help="对多个模型运行相同 seed 并生成对比报告")
+@click.option("--models", default=None, help="逗号分隔的 assistant ID（如 'coach,coach_qwen'）")
+@click.option("--runs", default=1, type=int, help="每个 seed 重复运行次数（统计可靠性）")
 def main(
     seeds: str,
     server_url: str | None,
@@ -36,9 +40,11 @@ def main(
     max_turns: int | None,
     dry_run: bool,
     verbose: bool,
+    compare: bool,
+    models: str | None,
+    runs: int,
 ) -> None:
     """Voliti Coach Agent 行为评估工具。"""
-    # 配置日志
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
@@ -46,7 +52,6 @@ def main(
         datefmt="%H:%M:%S",
     )
 
-    # 加载配置
     eval_root = Path(__file__).resolve().parent.parent.parent
     output_path = Path(output_dir) if output_dir else None
 
@@ -82,58 +87,137 @@ def main(
 
     if dry_run:
         click.echo("\n✓ Dry run: 所有 seed 配置有效")
-        # 输出 seed 摘要
         for s in selected:
             click.echo(f"\n[{s.id}] {s.name}")
             click.echo(f"  Persona: {s.persona.name} ({s.persona.language})")
             click.echo(f"  Max turns: {s.max_turns}")
             click.echo(f"  Pre-state: {'yes' if s.pre_state else 'no (onboarding)'}")
-            click.echo(f"  Primary focus: {', '.join(s.scoring_focus.primary)}")
+            click.echo(f"  Must-Pass: {', '.join(s.scoring_focus.primary)}")
+        if compare:
+            model_ids = [m.strip() for m in (models or "coach,coach_qwen").split(",")]
+            click.echo(f"\n对比模式: {model_ids} × {runs} runs")
         return
 
-    # 运行评估
-    asyncio.run(_run(selected, config))
+    if compare:
+        model_ids = [m.strip() for m in (models or "coach,coach_qwen").split(",")]
+        asyncio.run(_run_compare(selected, config, model_ids, runs))
+    else:
+        asyncio.run(_run(selected, config))
 
 
 async def _run(seeds: list[Seed], config: EvalConfig) -> None:
-    """异步执行评估流程。"""
-    # 创建输出目录
+    """异步执行单模型评估流程。"""
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     output_dir = config.output_directory / timestamp
     transcripts_dir = output_dir / "transcripts"
     scores_dir = output_dir / "scores"
 
-    # 创建 Judge
     judge = Judge(config.judge_model)
 
     click.echo(f"\n开始评估 → {output_dir}")
     click.echo(f"Server: {config.server_url}")
-    click.echo(f"Auditor: {config.auditor_model.deployment} (reasoning={config.auditor_model.reasoning_effort})")
-    click.echo(f"Judge: {config.judge_model.deployment} (reasoning={config.judge_model.reasoning_effort})")
+    click.echo(f"Assistant: {config.assistant_id}")
     click.echo()
 
     result = await run_evaluation(seeds, config, judge_fn=judge.score, output_dir=str(output_dir))
 
-    # 保存 transcript 和评分
-    for sr in result.seed_results:
-        t_path = save_transcript(sr.transcript, transcripts_dir)
-        click.echo(f"  Transcript: {t_path}")
+    _save_results(result, transcripts_dir, scores_dir)
 
-        # 保存评分
-        scores_dir.mkdir(parents=True, exist_ok=True)
-        score_path = scores_dir / f"{sr.seed.id}.json"
-        score_data = sr.score_card.model_dump(mode="json")
-        score_path.write_text(json.dumps(score_data, ensure_ascii=False, indent=2), encoding="utf-8")
-        click.echo(f"  Score: {score_path} (avg={sr.score_card.weighted_average})")
-
-    # 生成报告
     report_path = generate_report(result, output_dir)
     click.echo(f"\n报告已生成: {report_path}")
 
-    # 总结
-    click.echo("\n" + "=" * 50)
-    click.echo("评估完成")
+    _print_summary([result])
+
+
+async def _run_compare(
+    seeds: list[Seed],
+    config: EvalConfig,
+    model_ids: list[str],
+    runs_per_model: int,
+) -> None:
+    """对多个模型顺序运行评估，生成对比报告。"""
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+    compare_dir = config.output_directory / f"compare_{timestamp}"
+
+    judge = Judge(config.judge_model)
+
+    click.echo(f"\n开始多模型对比 → {compare_dir}")
+    click.echo(f"Server: {config.server_url}")
+    click.echo(f"Models: {model_ids}")
+    click.echo(f"Runs per model: {runs_per_model}")
+    click.echo()
+
+    all_results: dict[str, list[EvalResult]] = {}
+
+    for model_id in model_ids:
+        label = config.model_labels.get(model_id, model_id)
+        click.echo(f"\n{'=' * 50}")
+        click.echo(f"模型: {label} (assistant_id={model_id})")
+        click.echo(f"{'=' * 50}")
+
+        model_config = replace(config, assistant_id=model_id)
+        model_results: list[EvalResult] = []
+
+        for run_idx in range(1, runs_per_model + 1):
+            click.echo(f"\n--- Run {run_idx}/{runs_per_model} ---")
+            run_dir = compare_dir / model_id / f"run_{run_idx}"
+            transcripts_dir = run_dir / "transcripts"
+            scores_dir = run_dir / "scores"
+
+            result = await run_evaluation(
+                seeds, model_config, judge_fn=judge.score, output_dir=str(run_dir),
+            )
+            _save_results(result, transcripts_dir, scores_dir)
+            model_results.append(result)
+
+        # 为每个模型生成独立报告（使用最后一次 run 的结果）
+        model_report_dir = compare_dir / model_id
+        generate_report(model_results[-1], model_report_dir)
+
+        all_results[model_id] = model_results
+
+    # 生成对比报告
+    comparison_path = generate_comparison_report(
+        all_results, config.model_labels, compare_dir,
+    )
+    click.echo(f"\n对比报告已生成: {comparison_path}")
+
+    # 打印所有模型的总结
+    click.echo(f"\n{'=' * 60}")
+    click.echo("多模型对比完成")
+    for model_id, results in all_results.items():
+        label = config.model_labels.get(model_id, model_id)
+        click.echo(f"\n  [{label}] ({len(results)} runs)")
+        _print_summary(results, indent=4)
+    click.echo(f"{'=' * 60}")
+
+
+def _save_results(
+    result: EvalResult,
+    transcripts_dir: Path,
+    scores_dir: Path,
+) -> None:
+    """保存 transcript 和评分文件。"""
     for sr in result.seed_results:
-        status = "✓" if sr.score_card.weighted_average >= 3.5 else "!"
-        click.echo(f"  [{status}] {sr.seed.id} — avg {sr.score_card.weighted_average:.1f} ({sr.transcript.end_reason})")
-    click.echo("=" * 50)
+        save_transcript(sr.transcript, transcripts_dir)
+
+        scores_dir.mkdir(parents=True, exist_ok=True)
+        score_path = scores_dir / f"{sr.seed.id}.json"
+        score_data = sr.score_card.model_dump(mode="json")
+        score_path.write_text(
+            json.dumps(score_data, ensure_ascii=False, indent=2), encoding="utf-8",
+        )
+
+
+def _print_summary(results: list[EvalResult], indent: int = 2) -> None:
+    """打印评估结果摘要。"""
+    prefix = " " * indent
+    for result in results:
+        for sr in result.seed_results:
+            status = "✓" if sr.score_card.must_pass_met and sr.score_card.pass_rate >= 0.7 else "!"
+            click.echo(
+                f"{prefix}[{status}] {sr.seed.id} — "
+                f"pass {sr.score_card.pass_rate:.0%} "
+                f"must={'✓' if sr.score_card.must_pass_met else '✗'} "
+                f"({sr.transcript.end_reason})"
+            )

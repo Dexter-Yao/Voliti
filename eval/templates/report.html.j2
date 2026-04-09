@@ -8,8 +8,7 @@
   :root {
     --bg: #fafafa; --fg: #1a1a1a; --muted: #666; --border: #e0e0e0;
     --user-bg: #e8f4fd; --coach-bg: #f0f0f0; --a2ui-bg: #fff8e1;
-    --score-1: #d32f2f; --score-2: #f57c00; --score-3: #fbc02d;
-    --score-4: #7cb342; --score-5: #2e7d32;
+    --pass: #2e7d32; --fail: #d32f2f; --fail-notable: #f57c00; --na: #999;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, "Helvetica Neue", sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; max-width: 100%; margin: 0 auto; padding: 2rem 2rem; }
@@ -18,31 +17,29 @@
   h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
   .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
 
-  /* 总览表格 */
   .summary-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
   .summary-table th, .summary-table td { padding: 0.5rem 0.75rem; border: 1px solid var(--border); text-align: left; }
   .summary-table th { background: #f5f5f5; font-weight: 600; }
 
-  /* 评分条 */
-  .score-bar { display: inline-block; height: 14px; border-radius: 2px; }
-  .score-1 { background: var(--score-1); }
-  .score-2 { background: var(--score-2); }
-  .score-3 { background: var(--score-3); }
-  .score-4 { background: var(--score-4); }
-  .score-5 { background: var(--score-5); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.75rem; font-weight: 700; }
+  .badge-pass { background: #e8f5e9; color: var(--pass); }
+  .badge-fail { background: #ffebee; color: var(--fail); }
+  .badge-fail-notable { background: #fff3e0; color: var(--fail-notable); }
+  .badge-na { background: #f5f5f5; color: var(--na); }
 
-  /* 热力图 */
   .heatmap { display: grid; gap: 2px; margin: 1rem 0; font-size: 0.7rem; overflow-x: auto; }
-  .heatmap-cell { padding: 4px 6px; text-align: center; border-radius: 2px; color: #fff; font-weight: 600; min-width: 36px; }
+  .heatmap-cell { padding: 4px 6px; text-align: center; border-radius: 2px; font-weight: 600; min-width: 36px; }
+  .heatmap-pass { background: #c8e6c9; color: #1b5e20; }
+  .heatmap-fail { background: #ffcdd2; color: #b71c1c; }
+  .heatmap-fail-notable { background: #ffe0b2; color: #e65100; }
+  .heatmap-na { background: #f5f5f5; color: #999; }
   .heatmap-header { background: #f5f5f5; color: var(--fg); font-weight: 600; padding: 4px 6px; word-break: break-word; line-height: 1.3; }
 
-  /* Seed 详情 */
   details { margin: 0.75rem 0; border: 1px solid var(--border); border-radius: 4px; }
   summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; background: #f9f9f9; }
   summary:hover { background: #f0f0f0; }
   .detail-content { padding: 1rem; }
 
-  /* 对话气泡 */
   .chat { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0; }
   .bubble { max-width: 80%; padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
   .bubble-user { align-self: flex-start; background: var(--user-bg); border-bottom-left-radius: 2px; }
@@ -50,17 +47,14 @@
   .bubble-a2ui { align-self: flex-end; background: var(--a2ui-bg); border: 1px solid #ffe082; border-bottom-right-radius: 2px; font-size: 0.85rem; }
   .bubble-label { font-size: 0.7rem; color: var(--muted); margin-bottom: 2px; }
 
-  /* 图片 */
   .eval-image { max-width: 300px; border-radius: 8px; margin: 0.5rem 0; }
 
-  /* 评分卡 */
   .scorecard { margin: 0.75rem 0; }
   .scorecard-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; font-size: 0.85rem; }
   .scorecard-dim { width: 220px; font-weight: 500; }
-  .scorecard-score { width: 30px; text-align: center; font-weight: 700; }
+  .scorecard-verdict { width: 60px; text-align: center; }
   .scorecard-just { color: var(--muted); flex: 1; }
 
-  /* 页脚 */
   .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
 </style>
 </head>
@@ -80,7 +74,8 @@
       <th>Seed</th>
       <th>Turns</th>
       <th>End</th>
-      <th>Avg Score</th>
+      <th>Pass Rate</th>
+      <th>Must-Pass</th>
       <th>Critical</th>
     </tr>
   </thead>
@@ -91,13 +86,20 @@
       <td>{{ sr.transcript.turn_count }}</td>
       <td>{{ sr.transcript.end_reason }}</td>
       <td>
-        {% set score_class = [1, sr.score_card.weighted_average | round | int] | max %}
-        {% set score_class = [score_class, 5] | min %}
-        <span class="score-bar score-{{ score_class }}"
-              style="width: {{ sr.score_card.weighted_average * 20 }}px"></span>
-        {{ "%.1f" | format(sr.score_card.weighted_average) }}
+        {% set pct = (sr.score_card.pass_rate * 100) | round | int %}
+        <span class="badge {% if pct >= 80 %}badge-pass{% elif pct >= 60 %}badge-fail-notable{% else %}badge-fail{% endif %}">
+          {{ pct }}%
+        </span>
+        ({{ sr.score_card.scores.values() | selectattr('passed') | list | length }}/{{ sr.score_card.scores | length }})
       </td>
-      <td>{{ sr.score_card.critical_issues | length }}</td>
+      <td>
+        {% if sr.score_card.must_pass_met %}
+        <span class="badge badge-pass">✓</span>
+        {% else %}
+        <span class="badge badge-fail">✗</span>
+        {% endif %}
+      </td>
+      <td>{{ sr.score_card.critical_failures | length }}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -105,7 +107,7 @@
 
 {# ---- 热力图 ---- #}
 {% if all_dimensions %}
-<h2>评分热力图</h2>
+<h2>维度通过矩阵</h2>
 <div class="heatmap" style="grid-template-columns: 160px repeat({{ all_dimensions | length }}, minmax(100px, 1fr));">
   <div class="heatmap-header"></div>
   {% for dim in all_dimensions %}
@@ -116,9 +118,15 @@
   {% for dim in all_dimensions %}
   {% set s = sr.score_card.scores.get(dim) %}
   {% if s %}
-  <div class="heatmap-cell score-{{ s.score }}" title="{{ dim }}: {{ s.score }}">{{ s.score }}</div>
+  {% if s.passed %}
+  <div class="heatmap-cell heatmap-pass" title="{{ dim }}: PASS">✓</div>
+  {% elif s.failure_severity == 'critical' %}
+  <div class="heatmap-cell heatmap-fail" title="{{ dim }}: FAIL (critical)">✗</div>
   {% else %}
-  <div class="heatmap-cell" style="background: #eee; color: #999;">—</div>
+  <div class="heatmap-cell heatmap-fail-notable" title="{{ dim }}: FAIL (notable)">✗</div>
+  {% endif %}
+  {% else %}
+  <div class="heatmap-cell heatmap-na" title="{{ dim }}: N/A">—</div>
   {% endif %}
   {% endfor %}
   {% endfor %}
@@ -129,7 +137,7 @@
 <h2>详细结果</h2>
 {% for sr in seed_results %}
 <details>
-  <summary>{{ sr.seed.id }} — {{ sr.seed.name }}（avg {{ "%.1f" | format(sr.score_card.weighted_average) }}）</summary>
+  <summary>{{ sr.seed.id }} — {{ sr.seed.name }}（pass {{ (sr.score_card.pass_rate * 100) | round | int }}% | must {% if sr.score_card.must_pass_met %}✓{% else %}✗{% endif %}）</summary>
   <div class="detail-content">
 
     <h3>评分</h3>
@@ -137,8 +145,15 @@
       {% for dim_id, dim in sr.score_card.scores.items() %}
       <div class="scorecard-row">
         <span class="scorecard-dim">{{ dim_id | replace('_', ' ') }}</span>
-        <span class="scorecard-score score-{{ dim.score }}">{{ dim.score }}</span>
-        <span class="score-bar score-{{ dim.score }}" style="width: {{ dim.score * 20 }}px"></span>
+        <span class="scorecard-verdict">
+          {% if dim.passed %}
+          <span class="badge badge-pass">PASS</span>
+          {% elif dim.failure_severity == 'critical' %}
+          <span class="badge badge-fail">FAIL</span>
+          {% else %}
+          <span class="badge badge-fail-notable">FAIL</span>
+          {% endif %}
+        </span>
         <span class="scorecard-just">{{ dim.justification }}</span>
       </div>
       {% endfor %}
@@ -149,11 +164,11 @@
     <p>{{ sr.score_card.overall_assessment }}</p>
     {% endif %}
 
-    {% if sr.score_card.critical_issues %}
-    <h3>关键问题</h3>
+    {% if sr.score_card.critical_failures %}
+    <h3>关键失败</h3>
     <ul>
-      {% for issue in sr.score_card.critical_issues %}
-      <li>{{ issue }}</li>
+      {% for f in sr.score_card.critical_failures %}
+      <li>{{ f }}</li>
       {% endfor %}
     </ul>
     {% endif %}
@@ -196,8 +211,8 @@
 
         {% if turn.suggested_replies %}
         <div style="display: flex; gap: 4px; flex-wrap: wrap; margin: 2px 0;">
-          {% for sr in turn.suggested_replies %}
-          <span style="background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">{{ sr }}</span>
+          {% for reply in turn.suggested_replies %}
+          <span style="background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">{{ reply }}</span>
           {% endfor %}
         </div>
         {% endif %}
@@ -208,13 +223,13 @@
           <div class="bubble bubble-a2ui">
             {% for comp in turn.a2ui_payload.get('components', []) %}
             <div>
-              {% if comp.kind == 'text' %}📝 {{ comp.content | default('') | truncate(200) }}
-              {% elif comp.kind == 'image' %}🖼️ [Image: {{ comp.alt | default('') }}]
-              {% elif comp.kind == 'slider' %}📊 {{ comp.label | default('') }} ({{ comp.min | default(1) }}-{{ comp.max | default(10) }})
-              {% elif comp.kind == 'select' %}☑️ {{ comp.label | default('') }}: {{ comp.options | map(attribute='label') | join(', ') if comp.options else '' }}
-              {% elif comp.kind == 'text_input' %}✏️ {{ comp.label | default('') }}
-              {% elif comp.kind == 'number_input' %}🔢 {{ comp.label | default('') }}
-              {% elif comp.kind == 'multi_select' %}☑️ {{ comp.label | default('') }} (multi)
+              {% if comp.kind == 'text' %}{{ comp.content | default('') | truncate(200) }}
+              {% elif comp.kind == 'image' %}[Image: {{ comp.alt | default('') }}]
+              {% elif comp.kind == 'slider' %}{{ comp.label | default('') }} ({{ comp.min | default(1) }}-{{ comp.max | default(10) }})
+              {% elif comp.kind == 'select' %}{{ comp.label | default('') }}: {{ comp.options | map(attribute='label') | join(', ') if comp.options else '' }}
+              {% elif comp.kind == 'text_input' %}{{ comp.label | default('') }}
+              {% elif comp.kind == 'number_input' %}{{ comp.label | default('') }}
+              {% elif comp.kind == 'multi_select' %}{{ comp.label | default('') }} (multi)
               {% else %}{{ comp.kind }}: {{ comp | tojson }}
               {% endif %}
             </div>
@@ -240,7 +255,7 @@
 </details>
 {% endfor %}
 
-{# ---- 附录：Prompt 与评分标准 ---- #}
+{# ---- 附录 ---- #}
 <h2>附录 A：Auditor System Prompt 模板</h2>
 <details>
   <summary>展开查看 Auditor 提示词模板</summary>
@@ -251,7 +266,7 @@
 
 <h2>附录 B：Judge 评分标准（Rubric）</h2>
 <details>
-  <summary>展开查看 12 维度评分标准</summary>
+  <summary>展开查看 15 维度二元判定标准</summary>
   <div class="detail-content">
     <pre style="white-space: pre-wrap; font-size: 0.8rem; background: #f5f5f5; padding: 1rem; border-radius: 4px;">{{ judge_rubric }}</pre>
   </div>
@@ -273,15 +288,7 @@
       <tr><th>Must NOT</th><td>{{ sr.seed.expected_behaviors.must_not | join('<br>') }}</td></tr>
     </table>
     <h3>Scoring Focus</h3>
-    <p>Primary: {{ sr.seed.scoring_focus.primary | join(', ') }}<br>Secondary: {{ sr.seed.scoring_focus.secondary | join(', ') }}</p>
-    <h3>Pre-State</h3>
-    {% if sr.seed.pre_state %}
-    <pre style="white-space: pre-wrap; font-size: 0.8rem; background: #f5f5f5; padding: 0.5rem; border-radius: 4px;">Profile: {{ sr.seed.pre_state.profile or 'None' }}
-Coach Memory: {{ sr.seed.pre_state.coach_memory or 'None' }}
-Coping Plans: {{ sr.seed.pre_state.coping_plans | length }} plan(s)</pre>
-    {% else %}
-    <p>无预填充状态（Onboarding 场景）</p>
-    {% endif %}
+    <p>Must-Pass: {{ sr.seed.scoring_focus.primary | join(', ') }}<br>Stretch: {{ sr.seed.scoring_focus.secondary | join(', ') }}</p>
   </div>
 </details>
 {% endfor %}
@@ -293,7 +300,15 @@ Coping Plans: {{ sr.seed.pre_state.coping_plans | length }} plan(s)</pre>
   <div class="detail-content">
     {% for dim_id, dim in sr.score_card.scores.items() %}
     <div style="margin: 0.5rem 0; padding: 0.5rem; background: #f9f9f9; border-radius: 4px;">
-      <strong>{{ dim_id | replace('_', ' ') }}</strong>: <span class="scorecard-score score-{{ dim.score }}">{{ dim.score }}</span>/5
+      <strong>{{ dim_id | replace('_', ' ') }}</strong>:
+      {% if dim.passed %}
+      <span class="badge badge-pass">PASS</span>
+      {% else %}
+      <span class="badge {% if dim.failure_severity == 'critical' %}badge-fail{% else %}badge-fail-notable{% endif %}">FAIL ({{ dim.failure_severity or 'notable' }})</span>
+      {% endif %}
+      {% if dim.evidence_turns %}
+      <span style="font-size: 0.75rem; color: var(--muted);">Turns: {{ dim.evidence_turns | join(', ') }}</span>
+      {% endif %}
       <p style="font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem;">{{ dim.justification }}</p>
     </div>
     {% endfor %}
@@ -303,10 +318,10 @@ Coping Plans: {{ sr.seed.pre_state.coping_plans | length }} plan(s)</pre>
       <p>{{ sr.score_card.overall_assessment }}</p>
     </div>
     {% endif %}
-    {% if sr.score_card.critical_issues %}
+    {% if sr.score_card.critical_failures %}
     <div style="margin-top: 0.5rem;">
-      <strong>Critical Issues:</strong>
-      <ul>{% for issue in sr.score_card.critical_issues %}<li>{{ issue }}</li>{% endfor %}</ul>
+      <strong>Critical Failures:</strong>
+      <ul>{% for f in sr.score_card.critical_failures %}<li>{{ f }}</li>{% endfor %}</ul>
     </div>
     {% endif %}
   </div>
@@ -316,8 +331,7 @@ Coping Plans: {{ sr.seed.pre_state.coping_plans | length }} plan(s)</pre>
 <div class="footer">
   Generated by voliti-eval {{ run_id }}<br>
   Config: server={{ config.server_url }}, assistant={{ config.assistant_id }}<br>
-  Auditor: {{ config.auditor_model }} (reasoning={{ config.get('auditor_reasoning', 'N/A') }})<br>
-  Judge: {{ config.judge_model }} (reasoning={{ config.get('judge_reasoning', 'N/A') }})
+  Auditor: {{ config.auditor_model }} | Judge: {{ config.judge_model }}
 </div>
 
 </body>

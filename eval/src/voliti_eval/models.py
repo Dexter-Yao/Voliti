@@ -151,7 +151,7 @@ class Transcript(BaseModel):
     started_at: datetime
     finished_at: datetime | None = None
     turn_count: int = 0
-    end_reason: Literal["auditor_ended", "max_turns", "error"] = "error"
+    end_reason: Literal["auditor_ended", "auditor_ended_early", "max_turns", "empty_response", "auditor_empty", "error"] = "error"
     turns: list[Turn] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -162,10 +162,12 @@ class Transcript(BaseModel):
 
 
 class DimensionScore(BaseModel):
-    """单个评分维度的结果。"""
+    """单个评分维度的二元判定结果。"""
 
-    score: int = Field(ge=1, le=5)
+    passed: bool
     justification: str
+    evidence_turns: list[int] = Field(default_factory=list)
+    failure_severity: Literal["critical", "notable"] | None = None
 
 
 class ScoreCard(BaseModel):
@@ -174,8 +176,9 @@ class ScoreCard(BaseModel):
     seed_id: str
     scores: dict[str, DimensionScore] = Field(default_factory=dict)
     overall_assessment: str = ""
-    critical_issues: list[str] = Field(default_factory=list)
-    weighted_average: float = 0.0
+    critical_failures: list[str] = Field(default_factory=list)
+    pass_rate: float = 0.0
+    must_pass_met: bool = True
 
 
 # ---------------------------------------------------------------------------
