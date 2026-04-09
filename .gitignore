@@ -17,6 +17,9 @@ build/
 
 # Xcode
 *.xcuserdata
+*.xcuserdatad
+*.xcuserstate
+xcuserdata/
 DerivedData/
 build/
 *.pbxuser

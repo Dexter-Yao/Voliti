@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+import httpx
 from langgraph_sdk import get_client
 from langgraph_sdk.client import LangGraphClient
 
@@ -34,6 +35,19 @@ class A2UIInterruptEvent:
 
 
 CoachEvent = TextEvent | A2UIInterruptEvent
+
+
+def build_client_timeout(turn_timeout_seconds: int) -> httpx.Timeout:
+    """构造 LangGraph 客户端超时配置。
+
+    连接与连接池等待保持短超时，流式读取与写入使用评估配置。
+    """
+    return httpx.Timeout(
+        connect=5,
+        read=turn_timeout_seconds,
+        write=turn_timeout_seconds,
+        pool=5,
+    )
 
 
 def _text_from_content(content: Any) -> str:
@@ -68,8 +82,16 @@ def _text_from_content(content: Any) -> str:
 class CoachClient:
     """与 Coach Agent 通信的 LangGraph SDK 客户端。"""
 
-    def __init__(self, server_url: str, assistant_id: str = "coach") -> None:
-        self._client: LangGraphClient = get_client(url=server_url)
+    def __init__(
+        self,
+        server_url: str,
+        assistant_id: str = "coach",
+        turn_timeout_seconds: int = 300,
+    ) -> None:
+        self._client: LangGraphClient = get_client(
+            url=server_url,
+            timeout=build_client_timeout(turn_timeout_seconds),
+        )
         self._assistant_id = assistant_id
         self._user_id: str | None = None
         self._session_mode: str = "coaching"

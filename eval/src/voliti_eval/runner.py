@@ -282,7 +282,11 @@ async def _run_single_seed(
 ) -> SeedResult:
     """执行单个 seed 的完整流程（Store 隔离 → 对话 → 评分）。"""
     user_id = f"eval_{seed.id}"
-    client = CoachClient(config.server_url, config.assistant_id)
+    client = CoachClient(
+        config.server_url,
+        config.assistant_id,
+        config.turn_timeout_seconds,
+    )
     client.with_user_id(user_id)
 
     # Onboarding seed（无 pre_state）使用 onboarding session_mode
