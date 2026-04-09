@@ -83,9 +83,10 @@ struct OnboardingView: View {
     // MARK: - Welcome Phase (centered, Coach speaks first)
 
     private var welcomePhase: some View {
+        GeometryReader { geometry in
         VStack(spacing: 0) {
             Spacer()
-                .frame(minHeight: 60)
+                .frame(minHeight: geometry.size.height * 0.3)
 
             // Coach 标识
             Text("VOLITI COACH")
@@ -143,6 +144,7 @@ struct OnboardingView: View {
                     disabled: viewModel.isStreaming
                 )
             }
+        }
         }
     }
 

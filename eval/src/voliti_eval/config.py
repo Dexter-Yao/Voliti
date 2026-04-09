@@ -28,7 +28,7 @@ class ModelConfig:
 class EvalConfig:
     """评估运行的完整配置。"""
 
-    server_url: str = "http://localhost:2024"
+    server_url: str = "http://localhost:2025"
     assistant_id: str = "coach"
     max_turns_default: int = 20
     turn_timeout_seconds: int = 120
@@ -83,7 +83,7 @@ def load_config(
     judge_cfg = models.get("judge", {})
 
     config = EvalConfig(
-        server_url=server_url or defaults.get("server_url", "http://localhost:2024"),
+        server_url=server_url or defaults.get("server_url", "http://localhost:2025"),
         assistant_id=assistant_id or defaults.get("assistant_id", "coach"),
         max_turns_default=max_turns or defaults.get("max_turns_default", 20),
         turn_timeout_seconds=defaults.get("turn_timeout_seconds", 120),

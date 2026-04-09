@@ -130,18 +130,12 @@ def generate_comparison_report(
     }
     for dim_id in dim_ids:
         model_pass_all: dict[str, bool] = {}
-        model_pass_any: dict[str, bool] = {}
         for model_id in model_ids:
             all_bools: list[bool] = []
             for seed_id in seed_ids:
                 bools = matrix.get(model_id, {}).get(seed_id, {}).get(dim_id, [])
                 all_bools.extend(bools)
-            if all_bools:
-                model_pass_all[model_id] = all(all_bools)
-                model_pass_any[model_id] = any(all_bools)
-            else:
-                model_pass_all[model_id] = True
-                model_pass_any[model_id] = True
+            model_pass_all[model_id] = all(all_bools) if all_bools else True
 
         if all(model_pass_all.values()):
             bottlenecks["resolved"].append({"dim": dim_id})

@@ -2,6 +2,30 @@
 
 All notable changes to Voliti will be documented in this file.
 
+## [0.1.2.0] - 2026-04-09
+
+### Fixed
+- JourneyAnalysisMiddleware 因缺少 summarizer model profile 导致完全不可用
+- eval judge.py 和 report.html.j2 中 A2UI 字段名未随 content→text, name→key 重命名同步
+- eval cli.py `from copy import replace` 在 Python 3.12 下报 ImportError
+- eval config.py 默认端口 2024 与实际 dev server 端口 2025 不一致
+- fan_out 工具 Pydantic ValidationError 直接上溢到 LangGraph runtime，改为返回友好错误
+- Witness Card 图片 API 无超时设置，添加 120s read timeout + 2 次重试
+- 错误消息泄露内部实现细节（Azure 错误码、endpoint URL）到 Coach 对话
+- clearUserStore 遗漏 interventions/timeline/derived/coach 四个 namespace，重置不彻底
+- SSEClient 未解析 LangGraph error 事件类型，用户在 Agent 出错时无限等待
+- InputBar 建议回复 pill 字号 14px 不符合 DESIGN.md 规格 13px
+- ThinkingCard 展开区字号 14px 与标题 13px 层级倒挂
+- Onboarding Coach 标识使用固定 minHeight 而非 DESIGN.md 要求的垂直 30% 定位
+
+### Changed
+- processStream 嵌套 Task 提取为 postStreamSync() 方法，存储 syncTask 引用支持取消
+- upgradeCardImage 改为传递 PersistentIdentifier 而非 @Model 引用（Swift 6 并发安全）
+- 依赖约束收紧：deepagents <0.5.0 上限、openai >=2.0.0、eval jinja2 >=3.1.6
+
+### Removed
+- eval report.py model_pass_any 死代码
+
 ## [0.1.1.0] - 2026-04-09
 
 ### Fixed

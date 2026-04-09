@@ -223,7 +223,7 @@
           <div class="bubble bubble-a2ui">
             {% for comp in turn.a2ui_payload.get('components', []) %}
             <div>
-              {% if comp.kind == 'text' %}{{ comp.content | default('') | truncate(200) }}
+              {% if comp.kind == 'text' %}{{ comp.text | default('') | truncate(200) }}
               {% elif comp.kind == 'image' %}[Image: {{ comp.alt | default('') }}]
               {% elif comp.kind == 'slider' %}{{ comp.label | default('') }} ({{ comp.min | default(1) }}-{{ comp.max | default(10) }})
               {% elif comp.kind == 'select' %}{{ comp.label | default('') }}: {{ comp.options | map(attribute='label') | join(', ') if comp.options else '' }}

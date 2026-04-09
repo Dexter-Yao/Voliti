@@ -104,10 +104,11 @@ class TestFanOutPayload:
 class TestFanOutValidation:
     """fan_out 输入验证测试。"""
 
-    def test_invalid_component_raises(self) -> None:
-        """无效 kind 应触发 ValidationError。"""
-        with pytest.raises(ValidationError):
-            fan_out.invoke({"components": [{"kind": "invalid"}]})
+    def test_invalid_component_returns_error_string(self) -> None:
+        """无效 kind 应返回友好错误字符串而非抛出异常。"""
+        result = fan_out.invoke({"components": [{"kind": "invalid"}]})
+        assert "Invalid UI components" in result
+        assert "validation errors" in result
 
     @patch("voliti.tools.fan_out.interrupt")
     def test_multiple_components(self, mock_interrupt) -> None:  # noqa: ANN001

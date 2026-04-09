@@ -69,12 +69,16 @@ def _get_openai_client() -> "AzureOpenAI":
     if _openai_client is None:
         from openai import AzureOpenAI
 
+        import httpx
+
         _openai_client = AzureOpenAI(
             api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
             azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT", ""),
             api_version=os.environ.get(
                 "AZURE_OPENAI_API_VERSION", "2025-03-01-preview"
             ),
+            timeout=httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0),
+            max_retries=2,
         )
     return _openai_client
 
@@ -216,7 +220,7 @@ def compose_witness_card(
         except Exception as exc:
             logger.warning("Witness Card image generation failed: %s", exc)
             return (
-                f"Image generation failed ({type(exc).__name__}: {exc}). "
+                f"Image generation failed ({type(exc).__name__}). "
                 "Continue the conversation without a Witness Card. "
                 "You may acknowledge the milestone verbally instead."
             )
@@ -246,7 +250,7 @@ def compose_witness_card(
     except Exception as exc:
         logger.warning("Witness Card Store write failed: %s", exc)
         return (
-            f"Card storage failed ({type(exc).__name__}: {exc}). "
+            f"Card storage failed ({type(exc).__name__}). "
             "Continue the conversation without a Witness Card."
         )
 

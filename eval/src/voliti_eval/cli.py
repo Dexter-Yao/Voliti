@@ -7,7 +7,7 @@ import asyncio
 import json
 import logging
 import sys
-from copy import replace
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 

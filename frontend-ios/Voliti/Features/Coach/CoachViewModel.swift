@@ -27,6 +27,7 @@ final class CoachViewModel {
     private let api = LangGraphAPI()
     private var modelContext: ModelContext?
     private var streamTask: Task<Void, Never>?
+    private var syncTask: Task<Void, Never>?
     private var syncService: StoreSyncService?
     private var sessionMode: String = "coaching"
 
@@ -341,26 +342,32 @@ final class CoachViewModel {
             self.suggestedReplies = replies
             self.modelContext?.insert(assistantMessage)
             self.isStreaming = false
-            Task { [weak self] in
-                await self?.syncService?.syncAll()
-                if let self, !self.onboardingComplete {
-                    let storeComplete = await self.syncService?.checkOnboardingComplete() ?? false
-                    if storeComplete {
-                        await MainActor.run { self.onboardingComplete = true }
-                    } else if self.sessionMode == "onboarding" {
-                        // InMemoryStore 重启后丢失数据时的降级判断：
-                        // 统计非空 assistant 消息数，避免用户卡在 Onboarding fullScreenCover
-                        let assistantCount = self.messages.lazy
-                            .filter { $0.role == .assistant && !$0.textContent.isEmpty }
-                            .prefix(3).count
-                        if assistantCount >= 3 {
-                            await MainActor.run { self.onboardingComplete = true }
-                        }
-                    }
-                }
+            self.syncTask = Task { [weak self] in
+                await self?.postStreamSync()
             }
             self.trace("processStream finalized, cleanedChars=\(cleaned.count), replies=\(replies.count)")
             logger.info("processStream: final text=\(cleaned.count) chars, replies=\(replies.count)")
+        }
+    }
+
+    // MARK: - Post-Stream Sync
+
+    /// 对话结束后触发 Store 同步和 Onboarding 完成检测
+    private func postStreamSync() async {
+        await syncService?.syncAll()
+        guard !onboardingComplete else { return }
+        let storeComplete = await syncService?.checkOnboardingComplete() ?? false
+        if storeComplete {
+            onboardingComplete = true
+        } else if sessionMode == "onboarding" {
+            // InMemoryStore 重启后丢失数据时的降级判断：
+            // 统计非空 assistant 消息数，避免用户卡在 Onboarding fullScreenCover
+            let assistantCount = messages.lazy
+                .filter { $0.role == .assistant && !$0.textContent.isEmpty }
+                .prefix(3).count
+            if assistantCount >= 3 {
+                onboardingComplete = true
+            }
         }
     }
 
@@ -500,14 +507,15 @@ final class CoachViewModel {
 
         // 异步从 Store 下载原图替换缩略图
         if let cardID = payload.cardID {
+            let cardModelID = card.persistentModelID
             Task { [weak self] in
-                await self?.upgradeCardImage(card: card, cardID: cardID)
+                await self?.upgradeCardImage(cardModelID: cardModelID, cardID: cardID)
             }
         }
     }
 
     /// 从 LangGraph Store 下载原图，替换 InterventionCard 中的缩略图
-    private func upgradeCardImage(card: InterventionCard, cardID: String) async {
+    private func upgradeCardImage(cardModelID: PersistentIdentifier, cardID: String) async {
         let namespace = ["voliti", "user", "interventions"]
 
         do {
@@ -518,9 +526,11 @@ final class CoachViewModel {
                 return
             }
 
-            await MainActor.run {
-                card.imageData = fullImage
+            guard let card = modelContext?.model(for: cardModelID) as? InterventionCard else {
+                trace("upgradeCardImage: card not found in context for \(cardID)")
+                return
             }
+            card.imageData = fullImage
             trace("upgradeCardImage: upgraded \(cardID), \(fullImage.count) bytes")
         } catch {
             trace("upgradeCardImage failed: \(error.localizedDescription)")

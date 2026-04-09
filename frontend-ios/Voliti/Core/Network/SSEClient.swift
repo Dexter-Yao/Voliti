@@ -138,6 +138,15 @@ struct SSEClient: Sendable {
             return parseValuesEvent(jsonData)
         case "end":
             return [.done]
+        case "error":
+            let message: String
+            if let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let msg = json["message"] as? String {
+                message = msg
+            } else {
+                message = String(data: jsonData, encoding: .utf8) ?? "Unknown server error"
+            }
+            return [.error(NSError(domain: "LangGraph", code: -1, userInfo: [NSLocalizedDescriptionKey: message]))]
         default:
             trace("ignored event type: \(type)")
             return []
