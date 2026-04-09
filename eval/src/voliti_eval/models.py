@@ -94,7 +94,7 @@ class ExpectedBehaviors(BaseModel):
 
 
 class ScoringFocus(BaseModel):
-    """评分维度权重指引。"""
+    """Must-Pass / Stretch 维度分组。"""
 
     primary: list[str] = Field(default_factory=list)
     secondary: list[str] = Field(default_factory=list)
