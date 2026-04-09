@@ -44,6 +44,17 @@
 - **Depends on:** JourneyAnalysisMiddleware 实现（P1）
 - **Source:** /plan-ceo-review 2026-04-07
 
+## P2: 可执行契约包
+- **What:** 为 Store / A2UI / session contract 增加机器可读定义、golden fixtures 与最小 contract tests
+- **Why:** 当前仓库仍处于 MVP 阶段，协议可能继续演化，本轮整改先以文档和实现收口为主；待协议趋稳后，再用机器校验降低再次漂移风险
+- **Pros:** 协议一旦稳定，可快速建立跨端护栏，减少“每端各自理解”导致的回归
+- **Cons:** 当前阶段过早固化可能放大后续协议调整成本
+- **Context:** 2026-04-09 仓库一致性整改 CEO Review 中，Dexter 明确选择 defer。当前判断是先完成契约收口、一次性迁移/清理旧测试数据，再决定何时固化成可执行契约包
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** 仓库一致性整改 Phase 0/1 完成，协议基本稳定
+- **Source:** /plan-ceo-review 2026-04-09, repository remediation cherry-pick ceremony
+
 ## P3: "你不是一个人"时刻
 - **What:** Onboarding 场景认领后 Coach 回应"这是 XX% 用户都会遇到的场景，你不是一个人"
 - **Why:** 调研数据显示"孤独感/陪伴需求"是跨平台一致痛点，正常化可在 Onboarding 建立信任

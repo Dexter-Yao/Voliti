@@ -1,363 +1,218 @@
-# Voliti Architecture
+<!-- ABOUTME: Voliti 系统结构文档，说明核心组件、数据流、部署路径与测试视图 -->
+<!-- ABOUTME: 本文只描述系统结构，不承担运行时契约真相定义职责 -->
 
-> 基于多模态教练 Agent 的系统设计，使用 Azure OpenAI GPT-5.4 构建
+# Voliti 系统架构
 
-## 相关文档
+> 相关文档：
+> 产品定位见 [`01_Product_Foundation.md`](01_Product_Foundation.md)。
+> 设计理念见 [`02_Design_Philosophy.md`](02_Design_Philosophy.md)。
+> 设计规格见项目根目录 [`DESIGN.md`](/Users/dexter/DexterOS/products/Voliti/DESIGN.md)。
+> 运行时契约见 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md)。
+> 基础设施实施路径见 [`05_Runtime_Foundation_Milestone.md`](05_Runtime_Foundation_Milestone.md)。
 
-- `/docs/01_Product_Foundation.md` — 产品定位与理论基础
-- `/docs/02_Design_Philosophy.md` — 设计理念与交互原则
-- `/DESIGN.md` — 设计规格（tokens、色值、组件）
-- `/docs/04_Image_Generation.md` — 图像生成技术指南
+## 一、文档职责
 
-## Overview
+本文描述 Voliti 当前系统的结构关系、主要组件、关键数据流与部署形态。凡涉及以下内容，均以 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md) 为准：
 
-Voliti is a multi-agent system that maintains coaching continuity across sessions through structured memory, composes dynamic UI interactions, and generates personalized behavioral interventions using Azure OpenAI's GPT-5.4 family and gpt-image-1.5.
+1. Store 正式结构。
+2. session type、A2UI、错误封装的正式语义。
+3. 记忆分层与用户态状态覆盖。
+4. 观测字段与事件契约。
 
-## System Architecture
+## 二、系统总览
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     LangGraph Dev Server (:2025)                     │
-│                                                                       │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │                    Coach Agent (DeepAgent)                      │ │
-│  │  Model: gpt-5.4 (Azure OpenAI)                                │ │
-│  │  Tools: fan_out (A2UI)                                         │ │
-│  │  Subagents: witness_card_composer                               │ │
-│  │  Memory: /user/coach/AGENTS.md, /user/profile/context.md,     │ │
-│  │          /user/coping_plans_index.md                          │ │
-│  │                                                                │ │
-│  │  ┌──────────────────────────────────────────────────────────┐ │ │
-│  │  │         Witness Card Composer (Subagent)                   │ │ │
-│  │  │  Model: gpt-5.4-nano (Azure OpenAI)                      │ │ │
-│  │  │  Tool: compose_witness_card                 │ │ │
-│  │  │         └─> gpt-image-1.5 (Azure OpenAI Image API)      │ │ │
-│  │  │         └─> A2UI interrupt (card + accept/reject)        │ │ │
-│  │  └──────────────────────────────────────────────────────────┘ │ │
-│  └────────────────┬───────────────────────────────────────────────┘ │
-│                   │                                                  │
-│  ┌────────────────┴───────────────────────────────────────────────┐ │
-│  │                    CompositeBackend                             │ │
-│  │  /user/      → StoreBackend (persistent cross-session)          │ │
-│  │  /scratch/   → StateBackend (temporary within-session)          │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                                                       │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  ModelRegistry                 │  PromptRegistry                │ │
-│  │  coach → gpt-5.4               │  coach_system.j2              │ │
-│  │  summarizer → gpt-5.4-nano     │  intervention_composer_system │ │
-│  │  intervention_composer          │    .j2                        │ │
-│  │    → gpt-5.4-nano              │                               │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                                                       │
-│  SessionModeMiddleware (onboarding mode prompt injection)            │
-│  JourneyAnalysisMiddleware (temporal awareness, 3-day trigger)       │
-│  SummarizationMiddleware (85% context triggers compression)          │
-└───────────────────────────┬───────────────────────────────────────────┘
-                            │ SSE stream + interrupt
-┌───────────────────────────┴───────────────────────────────────────────┐
-│                  iOS Native Client (SwiftUI + SwiftData)               │
-│  CoachView → MessageList + InputBar                                   │
-│  FanOutPanel (slide-in: half / three-quarter / full) → A2UIRenderer   │
-│  TabView → Coach / Mirror                                             │
-└───────────────────────────────────────────────────────────────────────┘
-```
+Voliti 由三部分组成：
 
-**Evergreen vs 可能过时的内容**：
-- 长期有效：System Architecture总览、核心组件定义、技术选型理由、数据流程
-- 可能演化：具体文件路径、API参数细节、部署方案
+1. **iOS 原生客户端**：负责对话界面、A2UI 渲染、设备本地状态与投影视图。
+2. **LangGraph backend**：负责单一 Coach Agent 的运行时、共享持久化真相与会话执行。
+3. **eval 模块**：负责对 Coach Agent 行为进行离线评估与验证。
 
-## Core Components
+当前系统遵循两个结构性原则：
 
-### 1. Coach Agent (DeepAgent)
+1. 用户只面对单一 Coach Agent。
+2. 共享持久化真相由 backend 持有，客户端负责设备本地状态与投影。
 
-**Role:** Main conversational interface, maintains coaching relationship across sessions
+## 三、核心组件
 
-**Configuration:**
-```python
-agent = create_deep_agent(
-    name="coach",
-    model=ModelRegistry.get("coach"),  # gpt-5.4 (Azure OpenAI)
-    system_prompt=PromptRegistry.get("coach_system"),
-    backend=composite_backend,
-    memory=["/user/coach/AGENTS.md", "/user/profile/context.md", "/user/coping_plans_index.md", "/user/timeline/markers.json"],
-    middleware=[SessionModeMiddleware(), JourneyAnalysisMiddleware()],
-    tools=[fan_out],
-    subagents=[witness_card_composer],
-)
-```
+### 3.1 iOS 原生客户端
 
-**Key Capabilities:**
-- **Cross-session memory:** MemoryMiddleware auto-loads persistent memory files into system prompt
-- **File system tools:** Built-in tools (ls, read_file, write_file, edit_file, glob, grep) for behavior ledger manipulation
-- **Dynamic UI composition:** `fan_out` tool for A2UI interactions
-- **Subagent delegation:** Delegates Witness Card generation to specialist subagent at milestone moments
+**技术栈**
 
-**Context Management:**
-- `SummarizationMiddleware` compresses conversation at 85% context utilization
-- Full history stored to `/conversation_history/{thread_id}.md`
-- Coach edits `/user/coach/AGENTS.md` to update long-term memory
+1. SwiftUI
+2. SwiftData
+3. SSE 与 LangGraph backend 通信
 
-### 2. Witness Card Composer (Subagent)
+**职责**
 
-**Role:** Specialist agent for generating Witness Card images and text at milestone moments
+1. 呈现 Coach 对话与结构化交互。
+2. 持有设备本地状态、缓存与投影视图。
+3. 管理 thread 标识、草稿、临时输入和系统权限相关状态。
+4. 将共享持久化请求发送到 backend。
 
-**Tool:** `compose_witness_card`
-- Receives Coach delegation (achievement description, user context, emotional tone)
-- Constructs scene-based image prompt within unified visual system
-- Generates personalized narrative text for card
-- Calls Azure OpenAI gpt-image-1.5
-- Returns A2UI payload (brand frame + image + text + accept/reject)
+### 3.2 Coach Agent
 
-**Trigger:** Coach 判断里程碑时刻（显性/隐性成就、旅程节点）。详见`/docs/01_Product_Foundation.md` 4.1 节（见证系统）
+**运行形态**
 
-**Ethical Constraints:** 详见`/docs/01_Product_Foundation.md`第六节（Guardrail）
+当前 backend 使用单一 Coach Agent 作为用户唯一可见的智能体入口。其运行时可组合以下能力：
 
-**Caching:** Module-level cache prevents duplicate API calls on interrupt resume
+1. 系统 prompt。
+2. memory 文件读取。
+3. middleware 注入。
+4. A2UI 工具。
+5. 专项 subagent。
 
-### 3. A2UI System (Agent-to-UI Protocol)
+**当前稳定特征**
 
-**Concept:** Composable UI primitives for dynamic agent-driven interactions
+1. 用户不会直接接触后台分析代理。
+2. 会话差异通过 `session profile` 组合，而不是多套独立 agent。
+3. Witness Card 等专项能力通过工具或 subagent 组合进入主运行时。
 
-**8 Component Primitives:** text, image, slider, text_input, number_input, select, multi_select, protocol_prompt。详见代码库`src/voliti/a2ui.py`
+### 3.3 LangGraph Store 与运行态
 
-**Unified Interrupt Protocol:**
-```json
-{
-  "type": "a2ui",
-  "components": [{"kind": "text", "content": "..."}, ...],
-  "layout": "half" | "three-quarter" | "full"
-}
+backend 同时承载两类后端状态：
+
+1. **共享持久化真相**
+   - 长期语义记忆
+   - 会话完成态
+   - 业务状态
+2. **运行时临时状态**
+   - 当前执行周期内的中断状态
+   - A2UI payload snapshot
+   - 会话过程态
+
+正式边界以 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md) 为准。
+
+### 3.4 Eval 模块
+
+eval 是独立 Python 包，用于：
+
+1. 跑本地或开发环境下的行为评估。
+2. 验证特定模型、配置或提示词组合。
+3. 为回归测试和多模型对比提供离线检查入口。
+
+eval 不是运行时系统的一部分，但它必须遵守同一份 Store 与会话契约。
+
+## 四、关键数据流
+
+### 4.1 标准对话流
+
+```text
+用户输入
+  → iOS 客户端
+    → SSE 请求到 backend
+      → Coach Agent 运行
+        → 读取所需 memory / state
+        → 可选调用工具或 subagent
+      → 流式返回响应
+    → iOS 渲染临时 assistant 输出
+      → 收到完成信号后转为正式消息
 ```
 
-**Resume Protocol:**
-```json
-{
-  "action": "submit" | "reject" | "skip",
-  "data": {"component_name": "value", ...}
-}
+### 4.2 A2UI 中断流
+
+```text
+Coach 调用 A2UI 工具
+  → backend 生成 interrupt 与 payload snapshot
+    → iOS 渲染结构化交互面板
+      → 用户提交 / 取消
+        → backend 校验合法性与一次性
+          → 通过后恢复会话
 ```
 
-**Implementation:**
-- Backend: `src/voliti/a2ui.py` (Pydantic discriminated union on `kind`)
-- Tool: `src/voliti/tools/fan_out.py`
-- iOS: `frontend-ios/Voliti/Features/Coach/A2UI/A2UIRenderer.swift`
+### 4.3 共享状态同步流
 
-**Usage Pattern:**
-1. Coach calls `fan_out(components, layout)`
-2. Payload validated → `interrupt()` → iOS FanOutPanel
-3. User interacts → `resume(A2UIResponse)`
-4. Tool returns result → Coach continues
-
-### 4. Behavioral Ledger (Virtual File System)
-
-**Data Model:** Event-sourced behavior history
-
-**Directory Structure:**
-```
-/user/
-├── profile/
-│   └── context.md              # User identity, goals, preferences
-├── ledger/
-│   └── {YYYY-MM-DD}/           # Daily directory
-│       └── {HHMMSS}_{kind}.json  # Event file (kind + metrics + context)
-├── derived/
-│   ├── weekly_trend.json       # Aggregated patterns
-│   └── pattern_log.md          # Pattern recognition history
-└── coach/
-    └── AGENTS.md               # Coach persistent memory
+```text
+backend 写入共享持久化状态
+  → LangGraph Store
+    → iOS 按契约解包
+      → 更新本地投影视图
 ```
 
-**Event Schema:** Coach-defined, not enforced by backend. 通用维度模型（kind + metrics + context + refs + quality markers），详见 `backend/prompts/coach_system.j2` Event Recording 段落
+### 4.4 原始记录归档流
 
-**Writing Strategy:**
-- Async event recording (user silence ≥5 min or session end)
-- One event per file
-- Evidence field required (references user's words)
-
-**Backend Routing:**
-| Path | Backend | Persistence |
-|------|---------|-------------|
-| `/user/` | StoreBackend | Cross-session persistent |
-| `/scratch/` | StateBackend | Within-session temporary |
-
-**Demo:** InMemoryStore (clears on restart)
-**Production:** Supabase-backed custom backend (JSONB columns + path indexing)
-
-### 5. Configuration Registries
-
-**ModelRegistry (`src/voliti/config/models.py`):**
-- Central LLM configuration with lazy loading
-- TOML-based config with environment variable interpolation
-- Example: `config/models.toml`
-  ```toml
-  [models.coach]
-  model = "azure_openai:gpt-5.4"
-  azure_deployment = "gpt-5.4"
-  azure_endpoint = "${AZURE_OPENAI_ENDPOINT}"
-  api_key = "${AZURE_OPENAI_API_KEY}"
-
-  [models.intervention_composer]
-  model = "azure_openai:gpt-5.4-nano"
-  azure_deployment = "gpt-5.4-nano"
-  azure_endpoint = "${AZURE_OPENAI_ENDPOINT}"
-  api_key = "${AZURE_OPENAI_API_KEY}"
-  ```
-
-**PromptRegistry (`src/voliti/config/prompts.py`):**
-- Jinja2 template engine for system prompts
-- Templates in `prompts/` directory
-- StrictUndefined mode for fail-fast on missing variables
-
-## Data Flow
-
-### Standard Conversation Flow
-
-```
-User message
-  → LangGraph runtime
-    → Coach Agent
-      → Process with system prompt + memory
-      → (Optional) Call fan_out for UI interaction
-        → interrupt() → iOS FanOutPanel
-          → User input → resume()
-      → (Optional) Write to behavior ledger
-      → Response message
-    → iOS MessageList
+```text
+主对话完成
+  → backend 异步 / 后置写入 archive
+    → 默认不自动进入 Coach 上下文
+      → 仅在显式检索时提供摘要或片段
 ```
 
-### Witness Card Flow
+## 五、当前技术选型
 
-```
-Coach detects milestone moment (explicit/implicit achievement)
-  → Delegate to witness_card_composer subagent
-    → Subagent constructs scene prompt + narrative text
-      → Call compose_witness_card tool
-        → Generate image via Azure OpenAI gpt-image-1.5
-        → Assemble Witness Card (brand frame + image + text)
-        → interrupt() propagates: tool → subagent → coach → client
-          → iOS renders full-screen FanOutPanel
-            → User: accept (save to collection) / dismiss
-              → resume() with decision
-        → Tool returns result
-      → Subagent completes
-    → Coach continues conversation
-```
+### 5.1 为什么保留单一 Coach Agent
 
-## Technology Choices
+1. 用户面对统一关系对象，产品语义更清晰。
+2. 会话差异通过 profile、middleware、工具边界组合，不需要平行的 agent 世界。
+3. 运行时控制面更集中，便于约束 Store、session、A2UI 与错误语义。
 
-### Why Azure OpenAI GPT-5.4 Family?
-- **gpt-5.4:**
-  - Main Coach Agent (complex reasoning, coaching continuity, nuanced conversations)
-- **gpt-5.4-nano:**
-  - Intervention Composer (fast prompt assembly)
-  - Summarization (context compression)
-- **gpt-image-1.5:**
-  - Image generation (text rendering, ethical constraints adherence, artistic styles)
-- Azure AI Foundry 统一管理，无地区限制
+### 5.2 为什么使用 A2UI
 
-### Why LangGraph + DeepAgent?
-- Virtual file system abstraction (agent-native data manipulation)
-- Built-in memory middleware (auto-loading persistent context)
-- Interrupt/resume protocol (HITL interventions)
-- Subagent composition (separation of coaching vs. intervention assembly)
+1. 教练对话中的结构化交互不可预先穷举。
+2. 同一组基础组件可以复用到补采、反思、干预与确认场景。
+3. 单一 interrupt / resume 机制有助于客户端收口。
 
-### Why A2UI over fixed forms?
-- Coaching conversations are inherently unpredictable
-- Same primitives serve multiple purposes (data collection, micro-interventions, experiential delivery)
-- Single interrupt protocol simplifies client rendering
-- Composability enables unlimited interaction patterns from 8 base components
+### 5.3 为什么采用分层记忆
 
-### Why event-sourced ledger over normalized database?
-- Preserves full behavior context (evidence quotes, confidence levels, tags)
-- Schema evolution without migrations (coach defines structure)
-- Natural alignment with EMA research methodology
-- Supports both structured queries (patterns) and full-text search (evidence)
+1. 原始 transcript、长期语义记忆与 observability 有不同职责。
+2. 原始记录默认不应污染上下文。
+3. 语义记忆需要由 `Coach` 主导写入，而不是简单堆积原始数据。
 
-## Deployment
+## 六、部署视图
 
-### Backend
+### 6.1 Backend
 
-**本地开发:**
+**本地开发**
+
 ```bash
 cd backend && uv run langgraph dev --port 2025
 ```
 
-**Production:** LangGraph Cloud
+**目标部署形态**
 
-### iOS Client
+1. LangGraph Cloud 负责 agent runtime。
+2. Store 使用正式后端实现承载共享持久化真相。
 
-- Xcode 构建，通过 App Store / TestFlight 分发
-- 通过 SSE 与 LangGraph 后端通信
+### 6.2 iOS 客户端
 
-### Scalability Considerations
+1. 通过 Xcode 构建。
+2. 通过 SSE 与 backend 通信。
+3. 本地使用 SwiftData 承载设备本地状态与投影视图。
 
-**Current (Demo):**
-- Single-user InMemoryStore
-- Local LangGraph dev server
-- No authentication
+### 6.3 当前阶段说明
 
-**Production Path:**
-- Custom Supabase backend implementing BackendProtocol
-- File paths → JSONB columns with GIN indexing
-- Row-Level Security for multi-user isolation
-- LangGraph Cloud for agent runtime
+当前仓库处于基础设施收口阶段，因此部署重点不是横向扩展，而是：
 
-**No agent code changes required** — backend is pluggable interface
+1. 先建立可信运行时边界。
+2. 再恢复跨端验证能力。
+3. 最后再承接更复杂的长期记忆与主动干预能力。
 
-## Security & Ethics
+## 七、测试视图
 
-**Content Safety:** 详见`/docs/01_Product_Foundation.md`第六节（Guardrail）
+### 7.1 Backend / Eval
 
-**Data Privacy:**
-- Behavior ledger is user-owned (can export/delete)
-- No third-party analytics on sensitive data
-- Coach memory is user-specific, never cross-contaminated
+当前至少需要覆盖：
 
-**Transparency:**
-- Generated content labeled as AI-generated
-- User consent required before experiential interventions
-- Coaching decisions visible in conversation flow
+1. Store 契约与解包逻辑。
+2. A2UI 合法性与一次性语义。
+3. 迁移 / 清理脚本。
+4. eval 默认入口与关键客户端接口。
 
-## Testing Strategy
+### 7.2 iOS
 
-**Unit Tests (Backend):**
-- A2UI component validation (`tests/test_a2ui.py`)
-- Event schema validation (agent-driven, not enforced)
-- Model/Prompt registry (`tests/test_model_registry.py`)
+当前至少需要覆盖：
 
-**Unit Tests (iOS — VolitiTests target, Swift Testing):**
-- MetricComputer：currentValue、trend、delta、format（15 测试）
-- BehaviorEvent：metrics/context JSON 编解码、kind 映射（4 测试）
-- ProfileInfoSection：key-label 映射（2 测试）
+1. Store 投影视图解包与同步。
+2. thread 选择与 onboarding 状态恢复。
+3. 流式 assistant 临时态与完成态切换。
+4. A2UI 提交与错误态呈现。
 
-**Integration Tests:**
-- Coach agent conversation flows
-- Subagent delegation + interrupt/resume cycles
-- Fan-out tool + A2UI rendering
+### 7.3 跨端验证
 
-**Manual Testing:**
-- LangGraph Studio for conversation debugging
-- Step-through execution in Graph mode
-- State inspection at each node
+本轮必须具备：
 
-## Future Enhancements
-
-**Multi-modal input:**
-- Voice journaling (audio transcription)
-- Wearable data integration (sleep, activity)
-
-**Advanced interventions:**
-- Video-based scenario rehearsal
-- Interactive decision tree simulations
-
-**Cross-domain extension:**
-- Sleep coaching (same architecture, different domain knowledge)
-- Exercise adherence (same S-PDCA methodology)
-
-**Collaborative coaching:**
-- Peer accountability groups
-- Coach-assisted goal setting workshops
+1. 跨端 contract fixture tests。
+2. 关键状态转换测试。
+3. 至少一条 iOS → backend → Store → iOS projection 的真实纵向路径。
 
 ---
 
@@ -365,10 +220,5 @@ cd backend && uv run langgraph dev --port 2025
 
 | 日期 | 变更内容 |
 |------|----------|
-| 2026-02-12 | 初始创建：系统架构总览、核心组件、数据流程、技术选型、部署指南 |
-| 2026-02-12 | 激进清理：删除冗余理论/伦理内容（约60-80行），替换为对01_Product_Foundation.md的引用；新增文档导航表与Evergreen说明；控制篇幅至2000字左右 |
-| 2026-03-20 | 前端架构更新为 iOS 原生客户端（SwiftUI + SwiftData）；路径引用 doc/ → docs/；A2UI 组件数量 7 → 8 |
-| 2026-04-01 | 模型全面迁移 Gemini 3 → Azure OpenAI GPT-5.4 系列 + gpt-image-1.5 |
-| 2026-04-06 | 新增 SessionModeMiddleware；memory 列表补充 coping_plans_index；Event Schema 引用更新；VolitiTests 测试策略段落；端口 2024→2025 |
-| 2026-04-07 | Intervention Composer 重命名为 Witness Card Composer；角色从"干预图片生成"调整为"里程碑见证卡片生成"；更新数据流示意图；Subagent delegation 描述更新 |
-| 2026-04-08 | Tool 函数名 compose_experiential_intervention → compose_witness_card；JourneyAnalysisMiddleware 增加隐性成就扫描；get_session_mode 提取到 base.py |
+| 2026-02-12 | 初始创建：系统架构总览、核心组件、数据流程、技术选型与部署视图 |
+| 2026-04-09 | 重写文档职责：移除失真的运行时细节，将 Store、session、A2UI、错误与记忆边界统一指向 `06_Runtime_Contracts.md` |
