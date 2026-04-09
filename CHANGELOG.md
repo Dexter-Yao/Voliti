@@ -10,7 +10,7 @@ All notable changes to Voliti will be documented in this file.
 - eval cli.py `from copy import replace` 在 Python 3.12 下报 ImportError
 - eval config.py 默认端口 2024 与实际 dev server 端口 2025 不一致
 - fan_out 工具 Pydantic ValidationError 直接上溢到 LangGraph runtime，改为返回友好错误
-- Witness Card 图片 API 无超时设置，添加 120s read timeout + 2 次重试
+- 全链路 timeout 统一为 `defaults.yaml` 的 `turn_timeout_seconds`（300s）单一来源，Judge/Auditor/CoachClient/图片生成 API 不再各自硬编码
 - 错误消息泄露内部实现细节（Azure 错误码、endpoint URL）到 Coach 对话
 - clearUserStore 遗漏 interventions/timeline/derived/coach 四个 namespace，重置不彻底
 - SSEClient 未解析 LangGraph error 事件类型，用户在 Agent 出错时无限等待

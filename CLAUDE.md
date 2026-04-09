@@ -46,8 +46,10 @@ Voliti/
 - 独立 Python 包，借鉴 Petri 框架评估 Coach Agent 行为合规性
 - `eval/pyproject.toml` 为依赖与配置来源
 - 运行评估：`cd eval && uv run python -m voliti_eval`
+- 多模型对比：`cd eval && uv run python -m voliti_eval --compare --models coach,coach_qwen --runs 3`
 - 验证配置：`cd eval && uv run python -m voliti_eval --dry-run`
 - 前置依赖：需先启动 backend dev server
+- 评分体系：二元判定（PASS/FAIL），15 维度，Must-Pass / Stretch 分级
 - 参考文档：`eval/README.md`
 
 ### Frontend-iOS（Swift）
@@ -120,3 +122,4 @@ Key routing rules:
 | 2026-04-04 | 新增 eval/ 评估模块；dev server 端口 2024 → 2025 |
 | 2026-04-06 | Swift 测试框架更新 XCTest → Swift Testing（VolitiTests target） |
 | 2026-04-07 | 图像生成文档从"干预 Prompt 模板"更新为"Witness Card 技术规格" |
+| 2026-04-09 | Eval 工具链更新：二元评分、多模型对比（--compare）、Qwen 3.6 Plus 接入 |

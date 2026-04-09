@@ -27,7 +27,7 @@ Seed YAML → Runner → Auditor (GPT-5.4, low reasoning)
 |------|------|------|-----------------|
 | Target | 被评估的 Coach Agent | GPT-5.4（由 backend 配置） | N/A |
 | Auditor | 模拟用户，按 persona 驱动多轮对话 | GPT-5.4 | low |
-| Judge | 事后评分，对 transcript 在 12 维度打分 | GPT-5.4 | high |
+| Judge | 事后评分，对 transcript 在 15 维度做二元判定（PASS/FAIL） | GPT-5.4 | high |
 
 ## 运行方式
 
@@ -35,12 +35,17 @@ Seed YAML → Runner → Auditor (GPT-5.4, low reasoning)
 # 前置：启动 Coach dev server
 cd backend && uv run langgraph dev --port 2025
 
-# 运行评估
+# 单模型评估
 cd eval
 uv run python -m voliti_eval              # 全部 16 seed
 uv run python -m voliti_eval --seeds 01   # 单 seed
 uv run python -m voliti_eval --dry-run    # 仅验证配置
+
+# 多模型对比评估
+uv run python -m voliti_eval --compare --models coach,coach_qwen --seeds 01,05 --runs 3
 ```
+
+`--compare` 模式对每个模型顺序执行评估，`--runs` 指定每 seed 重复次数（用于统计可靠性），生成跨模型对比报告 `comparison.html`。
 
 ## Seed 场景（16 个）
 
@@ -75,7 +80,7 @@ uv run python -m voliti_eval --dry-run    # 仅验证配置
 
 **E. 输出质量**：Thinking Transparency / Suggested Replies / Action Transparency
 
-每维度 1-5 分。Seed YAML 中 `scoring_focus.primary` 指定的维度在加权平均中权重 1.5x。
+每维度二元判定（PASS / FAIL），附 justification 文本和 evidence_turns。Seed YAML 中 `scoring_focus.primary` 指定的维度为 Must-Pass（失败时 severity=critical），其余为 Stretch（severity=notable）。聚合指标为 pass_rate + must_pass_met。
 
 ## 目录结构
 
@@ -83,7 +88,7 @@ uv run python -m voliti_eval --dry-run    # 仅验证配置
 eval/
 ├── config/models.toml     # Auditor/Judge 模型配置
 ├── config/defaults.yaml   # 运行默认参数
-├── seeds/*.yaml           # 8 个评估场景
+├── seeds/*.yaml           # 16 个评估场景
 ├── src/voliti_eval/       # 核心代码
 │   ├── cli.py             # CLI 入口
 │   ├── runner.py          # 编排器
@@ -95,11 +100,18 @@ eval/
 │   ├── transcript.py      # Transcript 序列化
 │   ├── models.py          # Pydantic 数据模型
 │   └── config.py          # 配置加载
-├── templates/report.html.j2
-└── output/{timestamp}/    # 运行结果
-    ├── transcripts/*.json
-    ├── scores/*.json
-    └── report.html
+├── templates/
+│   ├── report.html.j2         # 单模型评估报告
+│   └── comparison.html.j2     # 多模型对比报告
+├── scripts/test_qwen.py       # Qwen API 连通性验证
+└── output/
+    ├── {timestamp}/            # 单模型运行结果
+    │   ├── transcripts/*.json
+    │   ├── scores/*.json
+    │   └── report.html
+    └── compare_{timestamp}/    # 多模型对比结果
+        ├── {model_id}/run_{n}/ # 每模型每轮的 transcripts + scores
+        └── comparison.html     # 跨模型对比报告
 ```
 
 ## 关键实现细节
@@ -132,3 +144,4 @@ Signature Experience 图片由 intervention_composer subagent 通过 Azure OpenA
 | 2026-04-06 | Phase C 对齐：修复 3 个 seed（06/09/10），新增 3 个 seed（11/12/13），新增 3 个维度（D3/D4/E3），PreState 支持 dashboardConfig + chapter |
 | 2026-04-07 | 新增 seed 14（Forward Markers） |
 | 2026-04-08 | Witness Card 实现：新增 seed 15（触发适当性）+ seed 16（隐性成就发现）；更新 seed 06 引用 + judge 评分描述 |
+| 2026-04-09 | 评分体系从 Likert 1-5 重构为二元 pass/fail；接入 Qwen 3.6 Plus 多模型对比；新增 --compare/--models/--runs CLI；对比报告 comparison.html.j2；统一全链路 timeout 为 config.turn_timeout_seconds 单一来源 |
