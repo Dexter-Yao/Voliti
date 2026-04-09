@@ -218,13 +218,17 @@ struct LangGraphAPI: Sendable {
         }
     }
 
-    /// 清除所有用户 Store 数据（profile、chapter、ledger、coping_plans）
+    /// 清除所有用户 Store 数据
     func clearUserStore() async throws {
         let namespaces: [[String]] = [
             ["voliti", "user", "profile"],
             ["voliti", "user", "chapter"],
             ["voliti", "user", "ledger"],
             ["voliti", "user", "coping_plans"],
+            ["voliti", "user", "interventions"],
+            ["voliti", "user", "timeline"],
+            ["voliti", "user", "derived"],
+            ["voliti", "user", "coach"],
         ]
         try await withThrowingTaskGroup(of: Void.self) { group in
             for ns in namespaces {

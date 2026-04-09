@@ -73,7 +73,7 @@ struct ThinkingCard: View {
             Text(bullet)
                 .foregroundStyle(bulletColor ?? color)
             Text(text)
-                .starpathSans()
+                .starpathSans(size: 13)
                 .foregroundStyle(color)
         }
     }

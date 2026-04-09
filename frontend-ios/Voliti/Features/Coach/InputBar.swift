@@ -28,7 +28,7 @@ struct InputBar: View {
                                 onSuggestionTap?(reply)
                             } label: {
                                 Text(reply)
-                                    .starpathSans()
+                                    .starpathSans(size: 13)
                                     .fixedSize(horizontal: true, vertical: false)
                                     .foregroundStyle(StarpathTokens.obsidian)
                                     .padding(.horizontal, StarpathTokens.spacingSM)
