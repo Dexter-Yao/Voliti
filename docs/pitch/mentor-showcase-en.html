@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voliti — AI Fat Loss Leadership Coach · Product Showcase</title>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --obsidian: #1A1816;
+  --parchment: #F4F0E8;
+  --copper: #B87333;
+  --aligned: #8A9A8A;
+  --risk-red: #8B3A3A;
+  --obsidian-05: rgba(26, 24, 22, 0.05);
+  --obsidian-10: rgba(26, 24, 22, 0.10);
+  --obsidian-15: rgba(26, 24, 22, 0.15);
+  --obsidian-20: rgba(26, 24, 22, 0.20);
+  --obsidian-40: rgba(26, 24, 22, 0.40);
+  --copper-40: rgba(184, 115, 51, 0.40);
+  --font-serif: 'DM Serif Display', Georgia, serif;
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --page-bg: #FAFAF8;
+  --page-max: 960px;
+  --section-gap: 80px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans); color: var(--obsidian); background: var(--page-bg); line-height: 1.6; }
+
+.page-wrapper { max-width: var(--page-max); margin: 0 auto; padding: 0 32px; }
+.page-section { padding: var(--section-gap) 0; border-bottom: 1px solid var(--obsidian-10); }
+.page-section:last-child { border-bottom: none; }
+
+.section-label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); margin-bottom: 12px; }
+.section-title { font-family: var(--font-serif); font-size: 32px; font-weight: 400; line-height: 1.3; margin-bottom: 16px; }
+.section-desc { font-family: var(--font-sans); font-size: 16px; line-height: 1.7; color: var(--obsidian); opacity: 0.75; max-width: 640px; }
+.section-desc + .section-desc { margin-top: 12px; }
+
+/* Cover */
+.cover { min-height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 120px 0 80px; border-bottom: 1px solid var(--obsidian-10); }
+.cover-brand { font-family: var(--font-mono); font-size: 13px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: var(--copper); margin-bottom: 32px; }
+.cover-title { font-family: var(--font-serif); font-size: 48px; font-weight: 400; line-height: 1.25; margin-bottom: 24px; max-width: 780px; }
+.cover-subtitle { font-family: var(--font-sans); font-size: 18px; line-height: 1.8; color: var(--obsidian); opacity: 0.65; max-width: 620px; margin-bottom: 48px; }
+.cover-meta { font-family: var(--font-mono); font-size: 12px; color: var(--obsidian-40); letter-spacing: 1px; }
+.cover-tagline { font-family: var(--font-serif); font-size: 22px; line-height: 1.5; color: var(--copper); margin-bottom: 32px; max-width: 600px; }
+
+/* Phone Frame */
+.phone-frame { width: 375px; min-height: 680px; background: var(--parchment); border-radius: 40px; box-shadow: 0 24px 80px rgba(26,24,22,0.12), 0 2px 8px rgba(26,24,22,0.06); overflow: hidden; position: relative; flex-shrink: 0; }
+.phone-notch { width: 120px; height: 28px; background: var(--obsidian); border-radius: 0 0 16px 16px; margin: 0 auto; }
+.phone-content { padding: 8px 0 0; height: 100%; }
+
+/* Tab Bar */
+.app-tabbar { display: flex; justify-content: center; gap: 48px; padding: 12px 0 14px; border-top: 1px solid var(--obsidian-10); background: var(--parchment); position: absolute; bottom: 0; left: 0; right: 0; }
+.app-tab { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--obsidian-40); position: relative; padding-bottom: 4px; }
+.app-tab--active { color: var(--obsidian); }
+.app-tab--active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 2px; background: var(--obsidian); }
+
+/* Chat */
+.chat-area { padding: 16px 16px 70px; display: flex; flex-direction: column; gap: 12px; }
+.chat-timestamp { font-family: var(--font-mono); font-size: 11px; color: var(--obsidian-40); text-align: center; margin: 4px 0; }
+.msg-coach { font-family: var(--font-serif); font-size: 16px; line-height: 1.6; padding-right: 48px; color: var(--obsidian); }
+.msg-user { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; align-self: flex-end; background: var(--obsidian-05); padding: 10px 14px; border-radius: 12px; max-width: 260px; color: var(--obsidian); }
+.msg-coach-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--copper); margin-bottom: 4px; }
+.suggested-replies { display: flex; gap: 8px; flex-wrap: wrap; padding-right: 48px; }
+.reply-pill { font-family: var(--font-sans); font-size: 13px; padding: 6px 14px; border: 1px solid var(--obsidian-10); border-radius: 999px; color: var(--obsidian); white-space: nowrap; }
+.input-bar { position: absolute; bottom: 44px; left: 0; right: 0; padding: 8px 16px; background: var(--parchment); border-top: 1px solid var(--obsidian-10); display: flex; align-items: center; gap: 8px; }
+.input-field { flex: 1; font-family: var(--font-sans); font-size: 14px; padding: 8px 12px; border: 1px solid var(--obsidian-10); border-radius: 4px; background: transparent; color: var(--obsidian-40); }
+.input-mic { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--obsidian-40); }
+
+/* LifeSign */
+.lifesign-card { background: white; border-left: 3px solid var(--copper); padding: 14px 16px; margin: 8px 0; }
+.lifesign-if, .lifesign-then { font-family: var(--font-mono); font-size: 13px; color: var(--copper); margin-bottom: 4px; }
+.lifesign-text { font-family: var(--font-sans); font-size: 14px; line-height: 1.5; color: var(--obsidian); margin-bottom: 8px; }
+
+/* Thinking card */
+.thinking-card { border-left: 2px solid var(--obsidian-10); padding: 8px 12px; margin: 4px 0; }
+.thinking-label { font-family: var(--font-sans); font-size: 12px; color: var(--obsidian-40); margin-bottom: 2px; }
+.thinking-text { font-family: var(--font-sans); font-size: 13px; color: var(--obsidian-40); line-height: 1.5; }
+
+/* Fan-out */
+.fanout-panel { background: white; border-top: 2px solid var(--obsidian-20); padding: 20px 16px; margin: 8px 0; }
+.fanout-title { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); margin-bottom: 12px; }
+
+/* Mirror */
+.mirror-content { padding: 20px 16px 70px; }
+.mirror-chapter { margin-bottom: 24px; }
+.mirror-chapter-num { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; color: var(--obsidian-40); margin-bottom: 4px; }
+.mirror-identity { font-family: var(--font-serif); font-size: 22px; line-height: 1.3; color: var(--obsidian); margin-bottom: 4px; }
+.mirror-goal { font-family: var(--font-sans); font-size: 13px; color: var(--obsidian-40); }
+.mirror-divider { height: 1px; background: var(--obsidian-10); margin: 16px 0; }
+.mirror-northstar-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); margin-bottom: 8px; }
+.mirror-northstar-value { font-family: var(--font-serif); font-size: 36px; line-height: 1; color: var(--obsidian); display: inline; }
+.mirror-northstar-unit { font-family: var(--font-mono); font-size: 12px; color: var(--obsidian-40); margin-left: 4px; }
+.mirror-northstar-delta { font-family: var(--font-mono); font-size: 12px; color: var(--aligned); margin-left: 8px; }
+.trend-bars { display: flex; align-items: flex-end; gap: 6px; height: 40px; margin: 12px 0 4px; }
+.trend-bar { flex: 1; background: var(--obsidian-10); min-height: 4px; }
+.trend-bar--today { background: var(--copper); }
+.trend-labels { display: flex; gap: 6px; }
+.trend-label { flex: 1; font-family: var(--font-mono); font-size: 9px; color: var(--obsidian-40); text-align: center; }
+.support-metrics { display: flex; margin: 16px 0; }
+.support-metric { flex: 1; padding: 0 12px; border-left: 1px solid var(--obsidian-10); }
+.support-metric:first-child { border-left: none; padding-left: 0; }
+.support-metric-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--obsidian-40); margin-bottom: 4px; }
+.support-metric-value { font-family: var(--font-serif); font-size: 20px; line-height: 1; color: var(--obsidian); }
+.support-metric-sub { font-family: var(--font-mono); font-size: 10px; color: var(--obsidian-40); margin-top: 2px; }
+.lifesign-summary { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; }
+.lifesign-summary-title { font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); }
+.lifesign-summary-stats { font-family: var(--font-sans); font-size: 14px; color: var(--obsidian); }
+.event-filters { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.event-filter { font-family: var(--font-sans); font-size: 13px; padding: 4px 12px; border: 1px solid var(--obsidian-10); border-radius: 999px; color: var(--obsidian-40); }
+.event-filter--active { background: var(--obsidian); color: var(--parchment); border-color: var(--obsidian); }
+.event-filter-count { font-family: var(--font-mono); font-size: 10px; margin-left: 4px; }
+.event-row { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--obsidian-05); }
+.event-time { font-family: var(--font-mono); font-size: 11px; color: var(--obsidian-40); width: 44px; flex-shrink: 0; }
+.event-type { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--copper); width: 36px; flex-shrink: 0; }
+.event-summary { font-family: var(--font-sans); font-size: 14px; color: var(--obsidian); flex: 1; }
+
+/* Witness Card */
+.witness-card-frame { width: 320px; background: var(--parchment); border: 1px solid var(--obsidian-20); overflow: hidden; flex-shrink: 0; }
+.witness-card-image { width: 100%; height: 200px; background: linear-gradient(135deg, #2a2520 0%, #3d342a 40%, #4a3f33 100%); position: relative; display: flex; align-items: center; justify-content: center; }
+.witness-card-image-text { font-family: var(--font-serif); font-size: 14px; color: rgba(244, 240, 232, 0.3); text-align: center; line-height: 1.6; }
+.witness-card-body { padding: 24px 20px; }
+.witness-card-date { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--obsidian-40); margin-bottom: 12px; }
+.witness-card-text { font-family: var(--font-serif); font-size: 15px; line-height: 1.7; color: var(--obsidian); }
+.witness-card-brand { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--copper); margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--obsidian-10); }
+
+/* Layout helpers */
+.flex-row { display: flex; gap: 48px; align-items: flex-start; }
+.flex-col-text { flex: 1; min-width: 280px; }
+.quote-block { border-left: 3px solid var(--copper); padding: 16px 20px; margin: 24px 0; background: rgba(184, 115, 51, 0.04); }
+.quote-text { font-family: var(--font-serif); font-size: 18px; line-height: 1.6; color: var(--obsidian); font-style: italic; }
+.quote-attr { font-family: var(--font-mono); font-size: 11px; color: var(--obsidian-40); margin-top: 8px; letter-spacing: 1px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin: 32px 0; }
+.stat-card { padding: 20px; border-left: 2px solid var(--obsidian-10); }
+.stat-number { font-family: var(--font-serif); font-size: 36px; line-height: 1; color: var(--obsidian); margin-bottom: 8px; }
+.stat-label { font-family: var(--font-sans); font-size: 14px; color: var(--obsidian-40); }
+.feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin: 32px 0; }
+.feature-card { padding: 24px; border: 1px solid var(--obsidian-10); }
+.feature-card-num { font-family: var(--font-mono); font-size: 11px; color: var(--copper); letter-spacing: 2px; margin-bottom: 8px; }
+.feature-card-title { font-family: var(--font-serif); font-size: 20px; margin-bottom: 8px; }
+.feature-card-desc { font-family: var(--font-sans); font-size: 14px; line-height: 1.6; color: var(--obsidian); opacity: 0.7; }
+.scenario-note { background: rgba(184, 115, 51, 0.06); border-left: 3px solid var(--copper); padding: 12px 16px; margin: 16px 0; font-family: var(--font-sans); font-size: 13px; line-height: 1.6; color: var(--obsidian); opacity: 0.8; }
+.scenario-note strong { color: var(--copper); font-weight: 600; }
+
+/* Architecture diagram */
+.arch-diagram { display: flex; flex-direction: column; gap: 24px; margin: 32px auto; max-width: 900px; }
+.arch-layer { display: flex; align-items: stretch; gap: 0; }
+.arch-label { width: 120px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--obsidian-40); padding: 16px 16px 16px 0; display: flex; align-items: center; flex-shrink: 0; }
+.arch-boxes { display: flex; gap: 12px; flex: 1; }
+.arch-box { flex: 1; padding: 16px; border: 1px solid var(--obsidian-10); }
+.arch-box--highlight { border-color: var(--copper); background: rgba(184, 115, 51, 0.04); }
+.arch-box-title { font-family: var(--font-sans); font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.arch-box-desc { font-family: var(--font-sans); font-size: 12px; color: var(--obsidian-40); line-height: 1.5; }
+.arch-arrow { text-align: center; font-family: var(--font-mono); font-size: 18px; color: var(--obsidian-20); padding-left: 120px; }
+
+/* 2D Positioning chart */
+.positioning-chart { position: relative; width: 700px; height: 420px; margin: 24px auto; padding-bottom: 30px; }
+.chart-axis-x { position: absolute; bottom: 40px; left: 60px; right: 0; height: 1px; background: var(--obsidian-15); }
+.chart-axis-y { position: absolute; top: 0; bottom: 40px; left: 60px; width: 1px; background: var(--obsidian-15); }
+.chart-label-x { position: absolute; bottom: 10px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--obsidian-40); }
+.chart-label-y { position: absolute; left: 0; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--obsidian-40); writing-mode: vertical-rl; transform: rotate(180deg); }
+.chart-label-y-h { position: absolute; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--obsidian-40); }
+.chart-dot { position: absolute; width: 10px; height: 10px; border-radius: 50%; transform: translate(-50%, -50%); }
+.chart-dot--competitor { background: var(--obsidian-20); }
+.chart-dot--voliti { background: var(--copper); width: 16px; height: 16px; box-shadow: 0 0 0 4px rgba(184, 115, 51, 0.2); }
+.chart-dot-label { position: absolute; font-family: var(--font-sans); font-size: 12px; white-space: nowrap; }
+.chart-dot-label--competitor { color: var(--obsidian-40); }
+.chart-dot-label--voliti { color: var(--copper); font-weight: 600; }
+.chart-quadrant-label { position: absolute; font-family: var(--font-sans); font-size: 11px; color: rgba(26, 24, 22, 0.12); }
+
+/* Thank you */
+.thankyou { text-align: center; padding: 120px 0; }
+.thankyou-brand { font-family: var(--font-mono); font-size: 16px; letter-spacing: 4px; text-transform: uppercase; color: var(--copper); margin-bottom: 24px; }
+.thankyou-text { font-family: var(--font-serif); font-size: 40px; color: var(--obsidian); }
+
+@media (max-width: 860px) {
+  .flex-row { flex-direction: column; align-items: center; }
+  .flex-col-text { min-width: auto; }
+  .stat-grid { grid-template-columns: 1fr; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .cover-title { font-size: 36px; }
+  .positioning-chart { width: 100%; }
+}
+</style>
+</head>
+
+<body>
+<div class="page-wrapper">
+
+  <!-- COVER -->
+  <section class="cover page-section">
+    <div class="cover-brand">Voliti</div>
+    <h1 class="cover-title">AI Fat Loss Coach</h1>
+    <div class="cover-tagline">
+      Timely interventions that build self-management skills<br>for lasting fat loss results.
+    </div>
+    <p class="cover-subtitle">
+      The real challenge of fat loss isn't "not knowing what to do." It's failing to make consistent choices under stress, fatigue, and social pressure. Voliti is an AI coach that intervenes at the moments that matter, training users to build lasting self-management capability.
+    </p>
+    <div class="cover-meta">Dexter Yao · CEIBS &nbsp;|&nbsp; April 2026</div>
+  </section>
+
+  <!-- 01 THE PROBLEM -->
+  <section class="page-section">
+    <div class="section-label">01 · The Problem</div>
+    <h2 class="section-title">Fat loss fails not from ignorance,<br>but from moments of weakness</h2>
+
+    <p class="section-desc">
+      We interviewed ~35 real users across China and global markets, including Xiaohongshu, Reddit, and in-depth conversations. We found a universal struggle that crosses cultures and age groups:
+    </p>
+
+    <div class="quote-block">
+      <div class="quote-text">"I know everything I need to know. I just can't control myself. I just need someone with me."</div>
+      <div class="quote-attr">— Xiaohongshu user</div>
+    </div>
+
+    <div class="quote-block">
+      <div class="quote-text">"I already know this. Being consistent is the problem for me."</div>
+      <div class="quote-attr">— Reddit r/loseit, "tried 40 times in 7 years"</div>
+    </div>
+
+    <p class="section-desc">
+      Existing fat loss tools (calorie counters, fitness trackers, diet apps) all solve the "don't know how" problem. But what users actually lack is <strong>someone to help them make the right choice when they're stressed, tired, or emotionally overwhelmed</strong>.
+    </p>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-number">6-8 Weeks</div>
+        <div class="stat-label">The typical breakdown point. After the honeymoon phase ends, most people quit.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">5-10 Times</div>
+        <div class="stat-label">Average number of diet attempts by serial dieters. Each time they say "this time is different."</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">0</div>
+        <div class="stat-label">Existing products that deeply integrate AI with systematic behavior change methodology.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 THE SOLUTION -->
+  <section class="page-section">
+    <div class="section-label">02 · The Solution</div>
+    <h2 class="section-title">An AI coach that knows your patterns<br>and shows up at the right moment</h2>
+
+    <p class="section-desc">
+      Voliti acts like a calm strategic advisor. It won't motivate you with streaks and rewards. Instead, it helps you see your own behavior patterns, prepares you for high-risk moments, and intervenes gently when you're about to drift.
+    </p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-num">01</div>
+        <div class="feature-card-title">Daily Coach Rhythm</div>
+        <div class="feature-card-desc">
+          Morning state check-in, micro-interventions at key moments during the day, evening reflection on today's choices. Three touchpoints that form a continuous behavior change process.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num">02</div>
+        <div class="feature-card-title">LifeSign System</div>
+        <div class="feature-card-desc">
+          Pre-set coping plans for vulnerable moments while you're clear-headed. "If I feel tired at 3pm and want snacks, then drink water and walk for 5 minutes first." Replace willpower with planning.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num">03</div>
+        <div class="feature-card-title">Temporal Awareness</div>
+        <div class="feature-card-desc">
+          The coach remembers your life timeline: last week's business trip, this Friday's dinner party, recurring weekend loss-of-control patterns. It predicts risk in advance, not after the fact.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num">04</div>
+        <div class="feature-card-title">Witness System</div>
+        <div class="feature-card-desc">
+          When you hit a milestone, the coach generates a personalized commemorative card. Not a reward, but a record: "I saw what you did." Something to look back on during low moments and find strength.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 COACH TAB — Daily Conversation -->
+  <section class="page-section">
+    <div class="section-label">03 · Daily Dialogue</div>
+    <h2 class="section-title">Your day, with a coach<br>always by your side</h2>
+
+    <p class="section-desc" style="margin-bottom: 40px;">
+      Here's a typical day for "Alex," a product manager in his third week of coaching. The coach adapts its support based on his state and life rhythm throughout the day.
+    </p>
+
+    <div class="flex-row">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="chat-area">
+            <div class="chat-timestamp">7:45 AM</div>
+            <div>
+              <div class="msg-coach-label">Coach</div>
+              <div class="msg-coach">
+                Good morning, Alex.<br><br>
+                It's Wednesday. You mentioned a client dinner tonight.<br>
+                How are you feeling right now, energy-wise?
+              </div>
+            </div>
+            <div class="suggested-replies">
+              <div class="reply-pill">Pretty good, slept well</div>
+              <div class="reply-pill">So-so, a bit tired</div>
+              <div class="reply-pill">Not great</div>
+            </div>
+            <div class="msg-user">Pretty good, got 7 hours of sleep</div>
+            <div>
+              <div class="msg-coach">
+                7 hours, better than your average last week. With the dinner tonight, let's think ahead. The plan you used last time at a business dinner, "order light dishes first," does that still work?
+              </div>
+            </div>
+            <div class="msg-user">Yeah, but tonight I might need to drink</div>
+            <div>
+              <div class="msg-coach">
+                Got it. Let's add one rule: if pressed to drink, alternate with sparkling water. You don't need to be perfect. Just hold one choice.
+              </div>
+            </div>
+          </div>
+          <div class="app-tabbar">
+            <div class="app-tab app-tab--active">Coach</div>
+            <div class="app-tab">Mirror</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-col-text">
+        <div class="scenario-note">
+          <strong>Scene: Morning Check-in</strong><br>
+          The coach knows about tonight's client dinner (temporal awareness) and proactively brings it up, linking to an existing plan. Instead of waiting for a post-failure analysis, it helps the user prepare ahead.
+        </div>
+        <div class="scenario-note">
+          <strong>Key Design Choices:</strong><br>
+          &bull; The coach's tone is "strategic advisor," not fitness trainer<br>
+          &bull; References the user's own past successful plans, not new advice<br>
+          &bull; "You don't need to be perfect. Just hold one choice." reduces mental burden
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 COACH TAB — Micro-intervention -->
+  <section class="page-section">
+    <div class="section-label">04 · Critical Moment Intervention</div>
+    <h2 class="section-title">3 PM. The moment<br>fatigue hits.</h2>
+
+    <div class="flex-row" style="margin-top: 40px;">
+      <div class="flex-col-text">
+        <p class="section-desc">
+          3 PM is Alex's recurring vulnerable moment. Three meetings back to back, brain fried, automatically thinking about the cake at the cafe downstairs.
+        </p>
+        <p class="section-desc">
+          At this moment, the coach won't wait until he finishes the cake to say "you went over today." Instead, it gently surfaces his pre-made plan right when the craving hits.
+        </p>
+        <div class="scenario-note">
+          <strong>Why this moment matters:</strong> Users lose control not because they don't know what to do, but because under fatigue/stress, the brain automatically picks the path of least resistance. The coach's job is to offer an alternative at the exact moment "autopilot" kicks in.
+        </div>
+      </div>
+
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="chat-area">
+            <div class="chat-timestamp">3:12 PM</div>
+            <div class="msg-user">Done with meetings, so tired. Want to grab a bubble tea</div>
+            <div>
+              <div class="msg-coach-label">Coach</div>
+              <div class="msg-coach">Three meetings in a row. Being tired is normal.</div>
+            </div>
+            <div class="thinking-card">
+              <div class="thinking-label">Coach is thinking...</div>
+              <div class="thinking-text">Fatigue signal detected + afternoon snack scenario, matching Plan #2</div>
+            </div>
+            <div>
+              <div class="msg-coach">You set a plan for this before, remember?</div>
+            </div>
+            <div class="lifesign-card">
+              <div class="lifesign-if">IF feeling tired in the afternoon and craving snacks</div>
+              <div class="lifesign-then">THEN</div>
+              <div class="lifesign-text">Drink a glass of water, stand up and walk for 5 minutes. If you still want to eat after 5 minutes, choose a protein snack.</div>
+            </div>
+            <div>
+              <div class="msg-coach">It's not about not eating. Give yourself 5 minutes first, then decide.</div>
+            </div>
+            <div class="msg-user">OK, let me grab some water and take a walk</div>
+            <div>
+              <div class="msg-coach">Sounds good. Tell me how you feel when you're back.</div>
+            </div>
+          </div>
+          <div class="input-bar">
+            <div class="input-field">Say something...</div>
+            <div class="input-mic">🎤</div>
+          </div>
+          <div class="app-tabbar">
+            <div class="app-tab app-tab--active">Coach</div>
+            <div class="app-tab">Mirror</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 MIRROR TAB -->
+  <section class="page-section">
+    <div class="section-label">05 · Self-Reflection</div>
+    <h2 class="section-title">MIRROR:<br>Your self-awareness dashboard</h2>
+
+    <p class="section-desc" style="margin-bottom: 40px;">
+      MIRROR is not a conventional data dashboard. It's ordered by importance top to bottom: who you are, your key metric, your actions, what happened today. The first thing you see is your identity statement, not a weight number.
+    </p>
+
+    <div class="flex-row">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="mirror-content">
+            <div class="mirror-chapter">
+              <div class="mirror-chapter-num">Chapter 2 · Day 18</div>
+              <div class="mirror-identity">"Someone who makes clear choices under pressure"</div>
+              <div class="mirror-goal">Goal: 12 weeks 78kg → 72kg</div>
+            </div>
+            <div class="mirror-divider"></div>
+            <div class="mirror-northstar-label">★ North Star</div>
+            <div>
+              <span class="mirror-northstar-value">74.8</span>
+              <span class="mirror-northstar-unit">KG</span>
+              <span class="mirror-northstar-delta">↓ 0.6 this week</span>
+            </div>
+            <div class="trend-bars">
+              <div class="trend-bar" style="height: 32px;"></div>
+              <div class="trend-bar" style="height: 30px;"></div>
+              <div class="trend-bar" style="height: 28px;"></div>
+              <div class="trend-bar" style="height: 26px;"></div>
+              <div class="trend-bar" style="height: 28px;"></div>
+              <div class="trend-bar" style="height: 24px;"></div>
+              <div class="trend-bar trend-bar--today" style="height: 22px;"></div>
+            </div>
+            <div class="trend-labels">
+              <div class="trend-label">Mon</div>
+              <div class="trend-label">Tue</div>
+              <div class="trend-label">Wed</div>
+              <div class="trend-label">Thu</div>
+              <div class="trend-label">Fri</div>
+              <div class="trend-label">Sat</div>
+              <div class="trend-label">Now</div>
+            </div>
+            <div class="mirror-divider"></div>
+            <div class="support-metrics">
+              <div class="support-metric">
+                <div class="support-metric-label">Intake</div>
+                <div class="support-metric-value">1,620</div>
+                <div class="support-metric-sub">KCAL</div>
+              </div>
+              <div class="support-metric">
+                <div class="support-metric-label">Energy</div>
+                <div class="support-metric-value">7/10</div>
+                <div class="support-metric-sub">Today</div>
+              </div>
+              <div class="support-metric">
+                <div class="support-metric-label">Consistency</div>
+                <div class="support-metric-value">5/7</div>
+                <div class="support-metric-sub">Days</div>
+              </div>
+            </div>
+            <div class="mirror-divider"></div>
+            <div class="lifesign-summary">
+              <div>
+                <div class="lifesign-summary-title">Plans</div>
+                <div class="lifesign-summary-stats">3 plans · 8 triggered · 6 succeeded</div>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 12px; color: var(--obsidian-40);">›</div>
+            </div>
+            <div class="mirror-divider"></div>
+            <div class="event-filters">
+              <div class="event-filter event-filter--active">All <span class="event-filter-count">8</span></div>
+              <div class="event-filter">Meals <span class="event-filter-count">4</span></div>
+              <div class="event-filter">Weight <span class="event-filter-count">1</span></div>
+              <div class="event-filter">State <span class="event-filter-count">3</span></div>
+            </div>
+            <div class="event-row">
+              <div class="event-time">10:15</div>
+              <div class="event-type">State</div>
+              <div class="event-summary">Evening review · held dinner plan today</div>
+            </div>
+            <div class="event-row">
+              <div class="event-time">07:45</div>
+              <div class="event-type">State</div>
+              <div class="event-summary">Morning check-in · Energy 7/10 · Sleep 7h</div>
+            </div>
+            <div class="event-row">
+              <div class="event-time">12:30</div>
+              <div class="event-type">Meal</div>
+              <div class="event-summary">Lunch · Chicken salad + brown rice · ~550 kcal</div>
+            </div>
+          </div>
+          <div class="app-tabbar">
+            <div class="app-tab">Coach</div>
+            <div class="app-tab app-tab--active">Mirror</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-col-text">
+        <div class="scenario-note">
+          <strong>Information hierarchy, top to bottom:</strong><br>
+          1. Identity statement: "Who I am"<br>
+          2. North Star metric: One key number + 7-day trend<br>
+          3. Supporting metrics: Today's snapshot<br>
+          4. LifeSign system: Plan execution status<br>
+          5. Event stream: What happened today
+        </div>
+        <div class="scenario-note">
+          <strong>"Consistency" over "perfection":</strong> 5 out of 7 days on target this week. The coach won't say "you missed two days," but rather "5/7, that's progress."
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 WITNESS CARD -->
+  <section class="page-section">
+    <div class="section-label">06 · Witness Moments</div>
+    <h2 class="section-title">Being seen,<br>not being rewarded</h2>
+
+    <div class="flex-row" style="margin-top: 40px;">
+      <div class="flex-col-text">
+        <p class="section-desc">
+          When a user achieves a milestone, the coach generates a Witness Card, a personalized commemorative card.
+        </p>
+        <p class="section-desc">
+          This is not a "congratulations, you earned a gold medal" gamification reward. It's the coach saying: "I recorded what you did." Psychology research shows that informational feedback supports intrinsic motivation, while controlling rewards erode it.
+        </p>
+        <div class="scenario-note">
+          <strong>High-value scenario:</strong> The coach discovers progress the user hasn't noticed themselves (e.g., consistent weekday breakfast structure for three weeks straight), and proactively generates a Witness Card. This experience of "being seen" is the core value of the coaching relationship.
+        </div>
+      </div>
+
+      <div class="witness-card-frame">
+        <div class="witness-card-image">
+          <div class="witness-card-image-text">
+            AI-generated scene image<br>
+            Warm tones · City night view<br>
+            A glass of sparkling water
+          </div>
+        </div>
+        <div class="witness-card-body">
+          <div class="witness-card-date">April 2, 2026 · Chapter 2</div>
+          <div class="witness-card-text">
+            Alex, tonight at the dinner you chose sparkling water.<br><br>
+            That wasn't an easy choice. You said business dinners are the hardest moments to hold the line. But you held it. Not through willpower, but because you planned ahead and executed on site.<br><br>
+            This is what you've been practicing: making clear choices in complex environments.
+          </div>
+          <div class="witness-card-brand">Voliti · Witness</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 LIFESIGN SCENARIO -->
+  <section class="page-section">
+    <div class="section-label">07 · LifeSign System</div>
+    <h2 class="section-title">Not willpower.<br>Pre-made plans.</h2>
+
+    <div class="flex-row" style="margin-top: 40px;">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-content">
+          <div class="chat-area">
+            <div class="chat-timestamp">Sunday 8:30 PM</div>
+            <div>
+              <div class="msg-coach-label">Coach</div>
+              <div class="msg-coach">
+                Alex, I noticed a pattern: for the last three Friday nights, your intake has been notably higher, all after business dinner scenarios.<br><br>
+                This isn't criticism. It's a signal. Want to prepare for it together?
+              </div>
+            </div>
+            <div class="msg-user">True, Fridays are almost always business dinners... hard to avoid</div>
+            <div>
+              <div class="msg-coach">
+                No need to avoid them. We can build a plan for this scenario.<br><br>
+                The uncontrollable part is the environment. The controllable part is your few choice points.
+              </div>
+            </div>
+            <div class="fanout-panel">
+              <div class="fanout-title">Create Plan</div>
+              <div class="lifesign-card" style="border-left-color: var(--copper); margin: 0;">
+                <div class="lifesign-if">IF Friday has a business dinner</div>
+                <div class="lifesign-then">THEN</div>
+                <div class="lifesign-text">
+                  1. Choose a light lunch that day<br>
+                  2. Order a vegetable/protein dish first upon arrival<br>
+                  3. Alternate alcohol with sparkling water
+                </div>
+              </div>
+              <div class="suggested-replies" style="margin-top: 12px;">
+                <div class="reply-pill" style="background: var(--obsidian); color: var(--parchment); border-color: var(--obsidian);">Confirm & Save</div>
+                <div class="reply-pill">I want to modify</div>
+              </div>
+            </div>
+          </div>
+          <div class="app-tabbar">
+            <div class="app-tab app-tab--active">Coach</div>
+            <div class="app-tab">Mirror</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-col-text">
+        <div class="scenario-note">
+          <strong>Scene: Pattern Recognition → Plan Creation</strong><br>
+          After detecting a three-week Friday pattern, the coach doesn't say "you eat too much on Fridays." Instead: "This is a signal. Let's prepare."
+        </div>
+        <div class="scenario-note">
+          <strong>Plan Lifecycle:</strong><br>
+          1. Coach detects pattern → proposes creating a plan<br>
+          2. User and coach co-create the plan (user has edit rights)<br>
+          3. Next time it triggers, the coach proactively reminds<br>
+          4. Post-execution tracking of effectiveness<br>
+          5. Ineffective plans get iteratively revised
+        </div>
+        <p class="section-desc" style="margin-top: 16px;">
+          Psychology research shows that "if-then plans" (implementation intentions) are far more effective for long-term behavior maintenance than action plans alone. The key: prepare for vulnerable moments while clear-headed, replacing on-the-spot willpower consumption with pre-made plans.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 USER PERSONAS -->
+  <section class="page-section">
+    <div class="section-label">08 · User Validation</div>
+    <h2 class="section-title">Who needs this product</h2>
+
+    <p class="section-desc" style="margin-bottom: 32px;">
+      We identified four core user segments. Their shared trait: they don't lack knowledge. They lack execution support at critical moments.
+    </p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-num" style="color: var(--copper);">~40%</div>
+        <div class="feature-card-title">Execution Strugglers</div>
+        <div class="feature-card-desc">
+          "I know what to do, I just can't do it." Knowledge workers whose habits break due to travel, overtime, and social obligations. Need minimum viable consistency.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num" style="color: var(--copper);">~30%</div>
+        <div class="feature-card-title">Emotional Eaters</div>
+        <div class="feature-card-desc">
+          "I know what triggers me, but I can't stop." Use food to process anxiety and boredom. Need to be understood, not judged.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num" style="color: var(--copper);">~20%</div>
+        <div class="feature-card-title">Serial Dieters</div>
+        <div class="feature-card-desc">
+          "This time is different... until it isn't." Average of 5-10 diet attempts. Need someone to help them see recurring failure patterns.
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-num" style="color: var(--copper);">~10%</div>
+        <div class="feature-card-title">Maintenance Challengers</div>
+        <div class="feature-card-desc">
+          "I did it, but I don't know if I can keep it." Already lost weight, but maintaining is harder than losing. Need to shift from dieting mindset to lifestyle mindset.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 MARKET POSITIONING (2D Chart) -->
+  <section class="page-section">
+    <div class="section-label">09 · Market Positioning</div>
+    <h2 class="section-title">Competitors are solving the wrong problem</h2>
+
+    <p class="section-desc" style="margin-bottom: 16px;">
+      Existing fat loss products cluster in the bottom-left quadrant: passive tools with low personalization. No product is truly doing "personalized coaching interventions at critical moments."
+    </p>
+
+    <div class="positioning-chart">
+      <div class="chart-axis-x"></div>
+      <div class="chart-axis-y"></div>
+      <div class="chart-label-x" style="left: 80px; bottom: 18px;">Passive Tracking</div>
+      <div class="chart-label-x" style="right: 0; bottom: 18px;">Active Intervention</div>
+      <div class="chart-label-y-h" style="top: 8px; left: 0;">High Personalization</div>
+      <div class="chart-label-y-h" style="bottom: 50px; left: 0;">Low Personalization</div>
+      <div class="chart-quadrant-label" style="left: 100px; bottom: 60px;">Logging Tools</div>
+      <div class="chart-quadrant-label" style="right: 60px; bottom: 60px;">Course Delivery</div>
+      <div class="chart-quadrant-label" style="right: 40px; top: 20px;">Coach Relationship</div>
+
+      <!-- MyFitnessPal: passive, low personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 120px; bottom: 90px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 135px; bottom: 84px;">MyFitnessPal</div>
+
+      <!-- Boohee (薄荷健康): passive, low-mid personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 150px; bottom: 150px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 165px; bottom: 144px;">Boohee (薄荷健康)</div>
+
+      <!-- Keep (Keep): slightly active, low personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 300px; bottom: 110px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 315px; bottom: 104px;">Keep</div>
+
+      <!-- Noom: active (courses), medium personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 420px; bottom: 200px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 435px; bottom: 194px;">Noom</div>
+
+      <!-- Gentler Streak: passive-medium, medium personalization -->
+      <div class="chart-dot chart-dot--competitor" style="left: 240px; bottom: 230px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 255px; bottom: 224px;">Gentler Streak</div>
+
+      <!-- Human Coach: very active, very personalized, but expensive -->
+      <div class="chart-dot chart-dot--competitor" style="left: 580px; bottom: 280px;"></div>
+      <div class="chart-dot-label chart-dot-label--competitor" style="left: 595px; bottom: 274px;">Human Coach<br><span style="font-size: 10px; color: var(--obsidian-20);">(expensive, not scalable)</span></div>
+
+      <!-- Voliti: active intervention, high personalization -->
+      <div class="chart-dot chart-dot--voliti" style="left: 500px; bottom: 320px;"></div>
+      <div class="chart-dot-label chart-dot-label--voliti" style="left: 380px; bottom: 330px;">Voliti<br><span style="font-weight: 400; font-size: 11px;">AI Coach · Scalable</span></div>
+    </div>
+
+    <p class="section-desc">
+      Voliti is positioned as <strong>human-coach-level personalized intervention</strong>, made scalable through AI. Users get not a logging tool or course delivery system, but a coach that truly understands their behavior patterns and proactively shows up at critical moments.
+    </p>
+  </section>
+
+  <!-- 10 ARCHITECTURE (Simple) -->
+  <section class="page-section">
+    <div class="section-label">10 · Architecture</div>
+    <h2 class="section-title">How it works</h2>
+
+    <p class="section-desc" style="margin-bottom: 32px;">
+      Voliti has three layers: the user faces a coach conversation on their phone, backed by a continuously running AI system.
+    </p>
+
+    <div class="arch-diagram">
+      <div class="arch-layer">
+        <div class="arch-label">User Layer</div>
+        <div class="arch-boxes">
+          <div class="arch-box">
+            <div class="arch-box-title">iOS App</div>
+            <div class="arch-box-desc">The user's only interface. Two views: COACH (dialogue) and MIRROR (data reflection). Local storage ensures offline availability.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↕</div>
+
+      <div class="arch-layer">
+        <div class="arch-label">Coach Layer</div>
+        <div class="arch-boxes">
+          <div class="arch-box arch-box--highlight">
+            <div class="arch-box-title">AI Coach Agent</div>
+            <div class="arch-box-desc">The core engine. Understands conversation context, identifies behavior patterns, manages the LifeSign system, and delivers timely interventions. Built-in behavior change methodology.</div>
+          </div>
+          <div class="arch-box">
+            <div class="arch-box-title">Analysis System</div>
+            <div class="arch-box-desc">Background process that periodically scans user timelines, identifies cross-week behavior trends and high-risk patterns, and generates summaries for the Coach.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↕</div>
+
+      <div class="arch-layer">
+        <div class="arch-label">Data Layer</div>
+        <div class="arch-boxes">
+          <div class="arch-box">
+            <div class="arch-box-title">Behavior Log</div>
+            <div class="arch-box-desc">Every meal, state check-in, and weight record stored as event files with timestamps, context, and raw evidence.</div>
+          </div>
+          <div class="arch-box">
+            <div class="arch-box-title">Timeline</div>
+            <div class="arch-box-desc">Bidirectional timeline: retrospective behavior patterns + prospective upcoming life events. The coach's temporal awareness is built on this.</div>
+          </div>
+          <div class="arch-box">
+            <div class="arch-box-title">Plan Library</div>
+            <div class="arch-box-desc">User's LifeSign plans with trigger conditions, coping behaviors, and success rates. Continuously refined through usage.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scenario-note">
+      <strong>Key Design Principle:</strong> The user only faces one coach. All analysis, pattern recognition, and data processing happen behind the scenes. What the user experiences is a calm, steady, understanding conversation partner.
+    </div>
+  </section>
+
+  <!-- CLOSING -->
+  <section class="page-section" style="border-bottom: none;">
+    <div class="section-label">Summary</div>
+    <h2 class="section-title" style="max-width: 700px;">Making change a continuous process,<br>not a willpower sprint</h2>
+
+    <div style="margin: 40px 0; display: flex; gap: 40px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px; padding: 24px 0; border-top: 2px solid var(--copper);">
+        <div style="font-family: var(--font-serif); font-size: 20px; margin-bottom: 8px;">Focus</div>
+        <div style="font-family: var(--font-sans); font-size: 14px; color: var(--obsidian-40); line-height: 1.6;">Not an information encyclopedia. One job: help users hold their choices at critical moments.</div>
+      </div>
+      <div style="flex: 1; min-width: 200px; padding: 24px 0; border-top: 2px solid var(--copper);">
+        <div style="font-family: var(--font-serif); font-size: 20px; margin-bottom: 8px;">Companionship</div>
+        <div style="font-family: var(--font-sans); font-size: 14px; color: var(--obsidian-40); line-height: 1.6;">Not a cold tool, but a coach who knows your patterns and stays by your side.</div>
+      </div>
+      <div style="flex: 1; min-width: 200px; padding: 24px 0; border-top: 2px solid var(--copper);">
+        <div style="font-family: var(--font-serif); font-size: 20px; margin-bottom: 8px;">Long-Term</div>
+        <div style="font-family: var(--font-sans); font-size: 14px; color: var(--obsidian-40); line-height: 1.6;">Not chasing 21-day quick fixes. Building self-management capability that runs for a lifetime.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Thank You -->
+  <section class="thankyou page-section">
+    <div class="thankyou-brand">Voliti</div>
+    <div class="thankyou-text">Thank You</div>
+  </section>
+
+</div>
+</body>
+</html>
