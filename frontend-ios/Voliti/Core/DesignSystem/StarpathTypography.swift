@@ -10,7 +10,7 @@ struct StarpathSerifModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.custom("LXGWWenKai-Regular", size: size))
+            .font(.custom("LXGWWenKai-Regular", size: size, relativeTo: .body))
             .foregroundStyle(StarpathTokens.obsidian)
             .lineSpacing(size * (StarpathTokens.lineHeightBody - 1))
     }
@@ -23,7 +23,7 @@ struct StarpathSansModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.custom("DMSans-Regular", size: size))
+            .font(.custom("DMSans-Regular", size: size, relativeTo: .subheadline))
             .foregroundStyle(StarpathTokens.obsidian)
     }
 }
@@ -36,7 +36,7 @@ struct StarpathMonoModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.custom("JetBrainsMono-Regular", size: size))
+            .font(.custom("JetBrainsMono-Regular", size: size, relativeTo: .caption2))
             .foregroundStyle(StarpathTokens.obsidian40)
             .textCase(uppercase ? .uppercase : nil)
             .tracking(uppercase ? 2 : 0)

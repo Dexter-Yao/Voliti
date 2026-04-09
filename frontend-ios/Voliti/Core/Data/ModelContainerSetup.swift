@@ -5,19 +5,16 @@ import SwiftData
 
 enum ModelContainerSetup {
     static func create() throws -> ModelContainer {
-        let schema = Schema([
-            ChatMessage.self,
-            BehaviorEvent.self,
-            InterventionCard.self,
-            Chapter.self,
-            LifeSignPlan.self,
-            DashboardConfig.self,
-        ])
+        let schema = Schema(versionedSchema: VolitiSchemaV1.self)
         let config = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
             cloudKitDatabase: .none
         )
-        return try ModelContainer(for: schema, configurations: [config])
+        return try ModelContainer(
+            for: schema,
+            migrationPlan: VolitiMigrationPlan.self,
+            configurations: [config]
+        )
     }
 }

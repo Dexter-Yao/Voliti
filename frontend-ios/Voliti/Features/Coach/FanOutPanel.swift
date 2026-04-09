@@ -28,6 +28,7 @@ struct FanOutPanel: View {
                         .starpathSans()
                         .foregroundStyle(StarpathTokens.obsidian40)
                     }
+                    .accessibilityLabel("返回对话")
                     Spacer()
                 }
                 .padding(.horizontal, StarpathTokens.spacingMD)

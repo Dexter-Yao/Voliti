@@ -104,6 +104,7 @@ extension View {
                     Image(systemName: "gearshape")
                         .font(.system(size: 14))
                         .foregroundStyle(StarpathTokens.obsidian40)
+                        .accessibilityLabel("设置")
                 }
             }
         }

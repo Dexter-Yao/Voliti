@@ -219,20 +219,14 @@ struct LangGraphAPI: Sendable {
     }
 
     /// 清除所有用户 Store 数据
+    /// 使用 namespace_prefix wildcard 搜索，无需硬编码子 namespace 列表
     func clearUserStore() async throws {
-        let namespaces: [[String]] = [
-            ["voliti", "user", "profile"],
-            ["voliti", "user", "chapter"],
-            ["voliti", "user", "ledger"],
-            ["voliti", "user", "coping_plans"],
-            ["voliti", "user", "interventions"],
-            ["voliti", "user", "timeline"],
-            ["voliti", "user", "derived"],
-            ["voliti", "user", "coach"],
-        ]
+        let items = try await searchStoreItems(namespace: ["voliti", "user"])
         try await withThrowingTaskGroup(of: Void.self) { group in
-            for ns in namespaces {
-                group.addTask { try await self.deleteStoreItems(namespace: ns) }
+            for item in items {
+                guard let key = item["key"] as? String,
+                      let namespace = item["namespace"] as? [String] else { continue }
+                group.addTask { try await self.deleteStoreItem(namespace: namespace, key: key) }
             }
             try await group.waitForAll()
         }

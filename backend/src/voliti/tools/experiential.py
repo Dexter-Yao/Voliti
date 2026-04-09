@@ -6,6 +6,7 @@ import hashlib
 import io
 import logging
 import os
+import threading
 import uuid
 from collections import OrderedDict
 from datetime import datetime, timezone
@@ -40,6 +41,7 @@ LangGraph 在 interrupt() 后 resume 时会从 node 起重新执行。
 值为 (full_b64, full_mime, thumb_b64, thumb_mime) 元组。
 超过 _CACHE_MAXSIZE 时 FIFO 淘汰。
 """
+_card_cache_lock = threading.Lock()
 
 INTERVENTIONS_NAMESPACE = ("voliti", "user", "interventions")
 
@@ -213,25 +215,26 @@ def compose_witness_card(
     """
     cache_key = hashlib.sha256(prompt.encode()).hexdigest()
 
-    if cache_key not in _card_cache:
-        size = _ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "1024x1536")
-        try:
-            full_b64, full_mime = _generate_image(prompt, size)
-        except Exception as exc:
-            logger.warning("Witness Card image generation failed: %s", exc)
-            return (
-                f"Image generation failed ({type(exc).__name__}). "
-                "Continue the conversation without a Witness Card. "
-                "You may acknowledge the milestone verbally instead."
-            )
-        thumb_b64, thumb_mime = _make_thumbnail(full_b64)
-        _card_cache[cache_key] = (full_b64, full_mime, thumb_b64, thumb_mime)
-        if len(_card_cache) > _CACHE_MAXSIZE:
-            _card_cache.popitem(last=False)
+    with _card_cache_lock:
+        if cache_key not in _card_cache:
+            size = _ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "1024x1536")
+            try:
+                full_b64, full_mime = _generate_image(prompt, size)
+            except Exception as exc:
+                logger.warning("Witness Card image generation failed: %s", exc)
+                return (
+                    f"Image generation failed ({type(exc).__name__}). "
+                    "Continue the conversation without a Witness Card. "
+                    "You may acknowledge the milestone verbally instead."
+                )
+            thumb_b64, thumb_mime = _make_thumbnail(full_b64)
+            _card_cache[cache_key] = (full_b64, full_mime, thumb_b64, thumb_mime)
+            if len(_card_cache) > _CACHE_MAXSIZE:
+                _card_cache.popitem(last=False)
 
-    cached_full_b64, cached_full_mime, cached_thumb_b64, cached_thumb_mime = (
-        _card_cache[cache_key]
-    )
+        cached_full_b64, cached_full_mime, cached_thumb_b64, cached_thumb_mime = (
+            _card_cache[cache_key]
+        )
 
     card_id = f"card_{cache_key[:8]}"
 
@@ -289,12 +292,14 @@ def compose_witness_card(
 
     if ui_response.action == "reject":
         _finalize_card(store=store, card_id=card_id, accepted=False)
-        _card_cache.pop(cache_key, None)
+        with _card_cache_lock:
+            _card_cache.pop(cache_key, None)
         return f"User closed the Witness Card panel without reviewing ({achievement_title})."
 
     accepted = ui_response.data.get("decision") == "accept"
     _finalize_card(store=store, card_id=card_id, accepted=accepted)
-    _card_cache.pop(cache_key, None)
+    with _card_cache_lock:
+        _card_cache.pop(cache_key, None)
 
     if accepted:
         return f"User accepted the Witness Card ({achievement_title}). Card saved as {card_id}."

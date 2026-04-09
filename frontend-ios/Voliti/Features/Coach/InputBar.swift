@@ -74,6 +74,7 @@ struct InputBar: View {
                         .foregroundStyle(StarpathTokens.obsidian40)
                         .frame(width: 44, height: 44)
                 }
+                .accessibilityLabel("选择图片")
 
                 // 文本输入
                 TextField("", text: $text, axis: .vertical)
@@ -132,6 +133,7 @@ struct InputBar: View {
                 .clipShape(Circle())
         }
         .frame(width: 44, height: 44)
+        .accessibilityLabel("发送")
     }
 
     private var micButton: some View {
@@ -144,6 +146,7 @@ struct InputBar: View {
                 .frame(width: 44, height: 44)
         }
         .disabled(!speechService.isAuthorized || disabled)
+        .accessibilityLabel(speechService.isRecording ? "停止录音" : "语音输入")
     }
 
     private func send() {

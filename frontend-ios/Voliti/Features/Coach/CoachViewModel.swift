@@ -271,7 +271,7 @@ final class CoachViewModel {
         trace("processStream started")
         logger.info("processStream: started")
 
-        for await event in stream {
+        streamLoop: for await event in stream {
             if Task.isCancelled { break }
             eventCount += 1
 
@@ -318,7 +318,7 @@ final class CoachViewModel {
             case .done:
                 trace("event #\(eventCount): done")
                 logger.info("processStream: done at event \(eventCount)")
-                break
+                break streamLoop
 
             case .error(let error):
                 trace("event #\(eventCount): error \(error.localizedDescription)")

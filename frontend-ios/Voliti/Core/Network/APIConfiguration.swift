@@ -32,13 +32,14 @@ enum APIConfiguration {
     private static let onboardingThreadIDKey = "voliti_onboarding_thread_id"
 
     /// 持久化 Coaching Thread ID
-    static var threadID: String? {
+    /// UserDefaults 底层线程安全，nonisolated(unsafe) 声明跨 actor 访问意图
+    nonisolated(unsafe) static var threadID: String? {
         get { UserDefaults.standard.string(forKey: threadIDKey) }
         set { UserDefaults.standard.set(newValue, forKey: threadIDKey) }
     }
 
     /// 持久化 Onboarding Thread ID（独立采集会话）
-    static var onboardingThreadID: String? {
+    nonisolated(unsafe) static var onboardingThreadID: String? {
         get { UserDefaults.standard.string(forKey: onboardingThreadIDKey) }
         set { UserDefaults.standard.set(newValue, forKey: onboardingThreadIDKey) }
     }

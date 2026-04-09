@@ -47,6 +47,7 @@ struct OnboardingView: View {
                                 .foregroundStyle(StarpathTokens.obsidian40)
                                 .frame(width: 44, height: 44)
                         }
+                        .accessibilityLabel("关闭")
                     }
                     .padding(.horizontal, StarpathTokens.spacingSM)
                     Spacer()
