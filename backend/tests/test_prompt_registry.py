@@ -67,3 +67,14 @@ class TestPromptRegistry:
         """加载空目录应正常执行。"""
         PromptRegistry.load(tmp_path)
         assert PromptRegistry._env is not None
+
+    def test_coach_system_includes_conversation_retrieval_guidance(self) -> None:
+        """coach_system 应明确约束 conversation retrieval 的使用边界。"""
+        prompts_dir = Path(__file__).resolve().parents[1] / "prompts"
+        PromptRegistry.load(prompts_dir)
+
+        result = PromptRegistry.get("coach_system")
+
+        assert "retrieve_conversation_archive" in result
+        assert 'Default to `detail_level="summary"`' in result
+        assert 'Use `detail_level="excerpt"` only after you already have a `conversation_ref`.' in result

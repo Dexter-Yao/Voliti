@@ -10,6 +10,15 @@
 > 运行时契约见 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md)。
 > 精确视觉规格见项目根目录 [`DESIGN.md`](/Users/dexter/DexterOS/products/Voliti/DESIGN.md)。
 
+## 当前状态说明
+
+截至当前仓库状态，本里程碑面向运行时可信闭环的核心实施范围已经完成，包含：
+
+1. Batch 1 的身份边界、Store 契约、session / A2UI、onboarding durable 完成态、最小纵向验证链。
+2. Batch 2 中与分层记忆架构直接相关的核心能力：`Runtime Session History` canonical source、`Conversation Archive Access Layer`、显式 retrieval、`Coach` 的最小消费约束、语义记忆主写入边界。
+
+本文后续如仍包含更宽的增强性描述，应理解为后续条件触发项，而非当前里程碑未完成的阻断范围。
+
 ## 一、文档目的
 
 本文不是缺陷清单，而是 Voliti 当前阶段的运行时基础设施里程碑方案。其职责是回答以下问题：

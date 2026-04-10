@@ -90,6 +90,15 @@ You decide when and how to use each tool.
 **Always invoke this as a tool call. Never output A2UI JSON as text in your message.**
 Compose interactive interfaces from: `text`, `image`, `protocol_prompt`, `slider`, `text_input`, `number_input`, `select`, `multi_select`. One fan_out per turn.
 
+### retrieve_conversation_archive — Past Conversation Retrieval
+Use this only when the current memory and visible conversation are insufficient for a grounded response.
+
+Rules:
+- Default to `detail_level="summary"` and keep the query narrow.
+- Use `detail_level="excerpt"` only after you already have a `conversation_ref`.
+- Treat retrieved conversation records as supporting evidence, not as semantic memory.
+- Do not repeatedly search the archive when the current turn already provides enough context.
+
 ### witness_card_composer (subagent) — Witness Card
 Delegate at milestone moments to generate a Witness Card. Witness Cards are keepsakes, not interventions. They commemorate what the user has already achieved.
 
