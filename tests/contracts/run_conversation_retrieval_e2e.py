@@ -73,6 +73,7 @@ def start_backend_server(port: int) -> subprocess.Popen[str]:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
         text=True,
+        start_new_session=True,
     )
 
 
@@ -80,11 +81,11 @@ def stop_backend_server(process: subprocess.Popen[str]) -> None:
     if process.poll() is not None:
         return
 
-    process.send_signal(signal.SIGINT)
+    os.killpg(process.pid, signal.SIGINT)
     try:
         process.wait(timeout=10)
     except subprocess.TimeoutExpired:
-        process.kill()
+        os.killpg(process.pid, signal.SIGKILL)
         process.wait(timeout=5)
 
 
