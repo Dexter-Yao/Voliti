@@ -69,7 +69,7 @@ def start_backend_server(port: int) -> subprocess.Popen[str]:
         ["uv", "run", "langgraph", "dev", "--port", str(port)],
         cwd=BACKEND_DIR,
         env=os.environ.copy(),
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
         text=True,
     )
@@ -129,6 +129,16 @@ def run_assertions(port: int) -> None:
             },
             config={"configurable": {"user_id": user_id}},
         )
+        summary_all = await retrieve_conversation_archive.ainvoke(
+            {
+                "query": "",
+                "window": "all",
+                "limit": 3,
+                "detail_level": "summary",
+                "time_hint": "2026-04-10",
+            },
+            config={"configurable": {"user_id": user_id}},
+        )
 
         excerpt = await retrieve_conversation_archive.ainvoke(
             {
@@ -145,6 +155,11 @@ def run_assertions(port: int) -> None:
         assert summary["payload"]["detail_level"] == "summary"
         assert summary["payload"]["results"]
         assert summary["payload"]["results"][0]["conversation_ref"] == conversation_ref
+
+        assert summary_all["status"] == "ok"
+        assert summary_all["payload"]["detail_level"] == "summary"
+        assert summary_all["payload"]["results"]
+        assert summary_all["payload"]["results"][0]["conversation_ref"] == conversation_ref
 
         assert excerpt["status"] == "ok"
         assert excerpt["payload"]["detail_level"] == "excerpt"

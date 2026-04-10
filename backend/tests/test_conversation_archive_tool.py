@@ -76,6 +76,48 @@ def test_retrieve_conversation_archive_returns_summary_envelope(monkeypatch) -> 
     assert "找到" in result["coach_message"]
 
 
+def test_retrieve_conversation_archive_forwards_window_and_time_hint(monkeypatch) -> None:
+    monkeypatch.setenv("VOLITI_RUNTIME_API_URL", "http://127.0.0.1:3030")
+
+    fake_engine = AsyncMock()
+    fake_engine.retrieve.return_value = {
+        "detail_level": "summary",
+        "results": [],
+    }
+
+    with patch(
+        "voliti.tools.conversation_archive.get_config",
+        return_value={"configurable": {"user_id": "user-1"}},
+    ), patch(
+        "voliti.tools.conversation_archive.create_conversation_archive_access_layer"
+    ), patch(
+        "voliti.tools.conversation_archive.ConversationRetrievalEngine",
+        return_value=fake_engine,
+    ):
+        result = asyncio.run(
+            retrieve_conversation_archive.ainvoke(
+                {
+                    "query": "",
+                    "window": "all",
+                    "limit": 3,
+                    "detail_level": "summary",
+                    "time_hint": "2026-04-09",
+                }
+            )
+        )
+
+    fake_engine.retrieve.assert_awaited_once_with(
+        user_id="user-1",
+        query="",
+        window="all",
+        limit=3,
+        detail_level="summary",
+        conversation_ref=None,
+        time_hint="2026-04-09",
+    )
+    assert result["status"] == "ok"
+
+
 def test_retrieve_conversation_archive_returns_error_envelope(monkeypatch) -> None:
     monkeypatch.setenv("VOLITI_RUNTIME_API_URL", "http://127.0.0.1:3030")
 

@@ -70,7 +70,7 @@ def start_backend_server(port: int) -> subprocess.Popen[str]:
         ["uv", "run", "langgraph", "dev", "--port", str(port)],
         cwd=BACKEND_DIR,
         env=os.environ.copy(),
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
         text=True,
     )
@@ -130,6 +130,14 @@ def run_assertions(port: int) -> None:
             limit=3,
             detail_level="summary",
         )
+        summary_all = await engine.retrieve(
+            user_id=user_id,
+            query="",
+            window="all",
+            limit=3,
+            detail_level="summary",
+            time_hint="2026-04-10",
+        )
         excerpt = await engine.retrieve(
             user_id=user_id,
             query="聚餐",
@@ -143,6 +151,10 @@ def run_assertions(port: int) -> None:
         assert summary["results"]
         assert summary["results"][0]["conversation_ref"] == conversation_ref
         assert "聚餐" in summary["results"][0]["summary"]
+
+        assert summary_all["detail_level"] == "summary"
+        assert summary_all["results"]
+        assert summary_all["results"][0]["conversation_ref"] == conversation_ref
 
         assert excerpt["detail_level"] == "excerpt"
         assert excerpt["conversation_ref"] == conversation_ref

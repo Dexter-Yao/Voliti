@@ -227,3 +227,56 @@ def test_retrieve_returns_empty_summary_results_when_no_match() -> None:
         "detail_level": "summary",
         "results": [],
     }
+
+
+def test_retrieve_supports_all_window_with_wider_scan_limit() -> None:
+    import asyncio
+
+    provider = _FakeArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    result = asyncio.run(
+        engine.retrieve(
+            user_id="user-1",
+            query="",
+            window="all",
+            limit=2,
+            detail_level="summary",
+        )
+    )
+
+    assert result["detail_level"] == "summary"
+    assert len(result["results"]) == 2
+    assert provider.last_limit == 50
+
+
+def test_retrieve_filters_summary_results_by_time_hint() -> None:
+    import asyncio
+
+    provider = _FakeArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    result = asyncio.run(
+        engine.retrieve(
+            user_id="user-1",
+            query="",
+            window="all",
+            limit=2,
+            detail_level="summary",
+            time_hint="2026-04-09",
+        )
+    )
+
+    assert result == {
+        "detail_level": "summary",
+        "results": [
+            {
+                "conversation_ref": "conv-1",
+                "session_type": "onboarding",
+                "updated_at": "2026-04-09T09:05:00.000000+00:00",
+                "summary": "我是第一次来，希望减脂。 / 我们先从你的作息开始。",
+            }
+        ],
+    }

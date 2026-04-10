@@ -25,11 +25,9 @@ class ConversationRetrievalEngine:
         conversation_ref: str | None = None,
         time_hint: str | None = None,
     ) -> dict:
-        del time_hint
-
         if detail_level not in {"summary", "excerpt"}:
             raise ValueError(f"unsupported detail_level: {detail_level}")
-        if window != "recent":
+        if window not in {"recent", "all"}:
             raise ValueError(f"unsupported window: {window}")
 
         if detail_level == "excerpt":
@@ -49,12 +47,13 @@ class ConversationRetrievalEngine:
                 ],
             }
 
-        refs = await self.archive.list_conversation_refs(user_id=user_id, limit=limit)
+        scan_limit = limit if window == "recent" else max(limit, 50)
+        refs = await self.archive.list_conversation_refs(user_id=user_id, limit=scan_limit)
         records = [await self.archive.read_conversation_record(ref) for ref in refs]
         summaries = [
             self._build_summary(record, query)
             for record in records
-            if self._matches_query(record, query)
+            if self._matches_query(record, query) and self._matches_time_hint(record, time_hint)
         ]
 
         return {
@@ -66,6 +65,14 @@ class ConversationRetrievalEngine:
         if not query.strip():
             return True
         return query in " ".join(message.content for message in record.messages)
+
+    def _matches_time_hint(self, record: ConversationRecord, time_hint: str | None) -> bool:
+        if not time_hint:
+            return True
+        for value in (record.started_at, record.updated_at):
+            if value and time_hint in value:
+                return True
+        return False
 
     def _build_summary(self, record: ConversationRecord, query: str) -> dict:
         user_text = next((message.content for message in record.messages if message.role == "user"), "")

@@ -69,7 +69,7 @@ def start_backend_server(port: int) -> subprocess.Popen[str]:
         ["uv", "run", "langgraph", "dev", "--port", str(port)],
         cwd=BACKEND_DIR,
         env=os.environ.copy(),
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
         text=True,
     )
