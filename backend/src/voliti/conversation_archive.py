@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
 
+class ConversationArchiveAccessError(RuntimeError):
+    """Conversation Archive Access Layer 的稳定失败类型。"""
+
+
 @dataclass(frozen=True)
 class ConversationMessageRecord:
     """稳定的对话消息视图。"""
@@ -51,15 +55,29 @@ class ConversationArchiveAccessLayer:
     default_history_limit: int = 20
 
     async def read_conversation_record(self, conversation_ref: str) -> ConversationRecord:
-        thread = await self.provider.get_thread(conversation_ref)
-        history = await self.provider.get_history(
-            conversation_ref,
-            limit=self.default_history_limit,
-        )
+        try:
+            thread = await self.provider.get_thread(conversation_ref)
+            history = await self.provider.get_history(
+                conversation_ref,
+                limit=self.default_history_limit,
+            )
+        except ConversationArchiveAccessError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise ConversationArchiveAccessError(
+                "runtime session history is unavailable"
+            ) from exc
         return normalize_conversation_record(thread=thread, history=history)
 
     async def list_conversation_refs(self, *, user_id: str, limit: int = 10) -> list[str]:
-        threads = await self.provider.search_threads(user_id=user_id, limit=limit)
+        try:
+            threads = await self.provider.search_threads(user_id=user_id, limit=limit)
+        except ConversationArchiveAccessError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise ConversationArchiveAccessError(
+                "runtime session history is unavailable"
+            ) from exc
         refs: list[str] = []
         for thread in threads:
             thread_ref = _optional_str(thread, "thread_id")

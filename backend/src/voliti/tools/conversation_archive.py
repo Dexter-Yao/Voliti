@@ -8,6 +8,7 @@ import os
 from langchain_core.tools import tool
 from langgraph.config import get_config
 
+from voliti.conversation_archive import ConversationArchiveAccessError
 from voliti.conversation_retrieval import ConversationRetrievalEngine
 from voliti.runtime_session_history_langgraph import (
     create_conversation_archive_access_layer,
@@ -33,6 +34,44 @@ def _resolve_user_id() -> str:
     if not isinstance(user_id, str) or not user_id:
         raise ValueError("configurable.user_id is required")
     return user_id
+
+
+def _build_error_envelope(exc: Exception) -> dict:
+    message = str(exc)
+    if message == "configurable.user_id is required":
+        return {
+            "status": "error",
+            "payload": None,
+            "error_code": "conversation_archive_identity_unavailable",
+            "coach_message": "Conversation archive retrieval requires a valid user identity.",
+        }
+    if message.startswith("unsupported ") or message == "conversation_ref is required for excerpt retrieval":
+        return {
+            "status": "error",
+            "payload": None,
+            "error_code": "conversation_archive_request_invalid",
+            "coach_message": "Conversation archive retrieval request is invalid.",
+        }
+    if isinstance(exc, (ConversationArchiveAccessError, OSError)):
+        return {
+            "status": "error",
+            "payload": None,
+            "error_code": "conversation_archive_unavailable",
+            "coach_message": "Conversation archive retrieval is temporarily unavailable.",
+        }
+    if message == "runtime session history is missing required metadata":
+        return {
+            "status": "error",
+            "payload": None,
+            "error_code": "conversation_archive_record_incomplete",
+            "coach_message": "Conversation archive data is incomplete for this request.",
+        }
+    return {
+        "status": "error",
+        "payload": None,
+        "error_code": "conversation_archive_retrieval_failed",
+        "coach_message": "Conversation archive retrieval failed.",
+    }
 
 
 @tool
@@ -75,9 +114,4 @@ async def retrieve_conversation_archive(
             "coach_message": coach_message,
         }
     except Exception as exc:  # noqa: BLE001
-        return {
-            "status": "error",
-            "payload": None,
-            "error_code": "conversation_archive_retrieval_failed",
-            "coach_message": f"Conversation archive retrieval failed: {exc}",
-        }
+        return _build_error_envelope(exc)

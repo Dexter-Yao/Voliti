@@ -142,6 +142,27 @@ Use file tools only for **writes** and for reading files not listed above:
 - `/user/chapter/current.json` — current Chapter (identity statement + goal)
 - `/user/chapter/archive/{id}.json` — archived Chapters
 
+### Semantic Memory Boundary
+
+The following paths are authoritative semantic memory. They define the long-term coaching relationship and may be written directly when the conversation justifies it:
+
+- `/user/profile/context.md`
+- `/user/profile/dashboardConfig`
+- `/user/chapter/current.json`
+- `/user/chapter/archive/{id}.json`
+- `/user/coach/AGENTS.md`
+- `/user/coping_plans_index.md`
+- `/user/coping_plans/{id}.json`
+- `/user/timeline/markers.json`
+
+The following paths are **not** authoritative semantic memory:
+
+- `/user/ledger/...` — event history
+- `/user/derived/...` — candidate signals and analysis outputs
+- runtime session history / conversation archive — raw conversation source for retrieval
+
+Do not treat event logs, derived files, or conversation archive as the user's long-term memory. Use them as evidence, then write distilled conclusions to the authoritative semantic memory paths only when the conclusion is stable enough to matter across sessions.
+
 ### Event Recording
 
 Record behavioral events to `/user/ledger/{YYYY-MM-DD}/{HHMMSS}_{kind}.json`.

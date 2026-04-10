@@ -5,6 +5,7 @@ import asyncio
 
 from voliti.conversation_archive import (
     ConversationArchiveAccessLayer,
+    ConversationArchiveAccessError,
     ConversationMessageRecord,
     ConversationRecord,
     RuntimeSessionHistoryProvider,
@@ -252,3 +253,24 @@ def test_archive_access_layer_lists_conversation_refs_for_user() -> None:
     assert refs == ["thread-002", "thread-001"]
     assert provider.last_user_id == "user-999"
     assert provider.last_limit == 5
+
+
+def test_archive_access_layer_wraps_runtime_provider_failure() -> None:
+    class _FailingProvider(RuntimeSessionHistoryProvider):
+        async def get_thread(self, thread_ref: str) -> dict:
+            raise OSError("connection refused")
+
+        async def get_history(self, thread_ref: str, *, limit: int) -> list[dict]:
+            raise AssertionError("should not request history after thread failure")
+
+        async def search_threads(self, *, user_id: str, limit: int) -> list[dict]:
+            raise AssertionError("unused")
+
+    layer = ConversationArchiveAccessLayer(provider=_FailingProvider())
+
+    try:
+        asyncio.run(layer.read_conversation_record("thread-err"))
+    except ConversationArchiveAccessError as exc:
+        assert str(exc) == "runtime session history is unavailable"
+    else:
+        raise AssertionError("runtime provider failure should be normalized")

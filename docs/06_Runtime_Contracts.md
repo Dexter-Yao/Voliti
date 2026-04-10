@@ -326,6 +326,29 @@ resume 同时校验以下两类约束：
 
 `Coach` 是语义记忆主写入者。后台分析流程只生成候选信号，不直接改写权威语义记忆。
 
+当前阶段，权威语义记忆路径至少包括：
+
+1. `/profile/context.md`
+2. `/profile/dashboardConfig`
+3. `/chapter/current.json`
+4. `/chapter/archive/{id}.json`
+5. `/coach/AGENTS.md`
+6. `/coping_plans_index.md`
+7. `/coping_plans/{id}.json`
+8. `/timeline/markers.json`
+
+以下内容不属于权威语义记忆：
+
+1. `/ledger/...` 等事件历史。
+2. `/derived/...` 等候选信号与分析结果。
+3. `Runtime Session History` 与 `Conversation Archive Access Layer` 提供的原始会话记录。
+
+约束如下：
+
+1. `Coach` 只能把跨会话仍有持续价值的结论写入权威语义记忆路径。
+2. 原始事件、候选信号与会话归档只能作为证据来源，不得直接等同于长期语义记忆。
+3. backend 的分析与中间件若产生候选信号，必须写入候选层，而不是直接覆盖权威语义记忆。
+
 ### 10.4 可观测性层
 
 用于调试、排障、评估与回放，包括：

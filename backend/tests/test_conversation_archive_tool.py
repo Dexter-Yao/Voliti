@@ -107,8 +107,8 @@ def test_retrieve_conversation_archive_returns_error_envelope(monkeypatch) -> No
     assert result == {
         "status": "error",
         "payload": None,
-        "error_code": "conversation_archive_retrieval_failed",
-        "coach_message": "Conversation archive retrieval failed: conversation_ref is required for excerpt retrieval",
+        "error_code": "conversation_archive_request_invalid",
+        "coach_message": "Conversation archive retrieval request is invalid.",
     }
 
 
@@ -133,6 +133,71 @@ def test_retrieve_conversation_archive_returns_error_when_user_id_missing(monkey
     assert result == {
         "status": "error",
         "payload": None,
-        "error_code": "conversation_archive_retrieval_failed",
-        "coach_message": "Conversation archive retrieval failed: configurable.user_id is required",
+        "error_code": "conversation_archive_identity_unavailable",
+        "coach_message": "Conversation archive retrieval requires a valid user identity.",
+    }
+
+
+def test_retrieve_conversation_archive_hides_runtime_transport_details(monkeypatch) -> None:
+    monkeypatch.setenv("VOLITI_RUNTIME_API_URL", "http://127.0.0.1:3030")
+
+    with patch(
+        "voliti.tools.conversation_archive.get_config",
+        return_value={"configurable": {"user_id": "user-1"}},
+    ), patch(
+        "voliti.tools.conversation_archive.create_conversation_archive_access_layer",
+        side_effect=OSError("connection refused"),
+    ):
+        result = asyncio.run(
+            retrieve_conversation_archive.ainvoke(
+                {
+                    "query": "聚餐",
+                    "window": "recent",
+                    "limit": 3,
+                    "detail_level": "summary",
+                }
+            )
+        )
+
+    assert result == {
+        "status": "error",
+        "payload": None,
+        "error_code": "conversation_archive_unavailable",
+        "coach_message": "Conversation archive retrieval is temporarily unavailable.",
+    }
+
+
+def test_retrieve_conversation_archive_hides_incomplete_metadata_details(monkeypatch) -> None:
+    monkeypatch.setenv("VOLITI_RUNTIME_API_URL", "http://127.0.0.1:3030")
+
+    fake_engine = AsyncMock()
+    fake_engine.retrieve.side_effect = ValueError(
+        "runtime session history is missing required metadata"
+    )
+
+    with patch(
+        "voliti.tools.conversation_archive.get_config",
+        return_value={"configurable": {"user_id": "user-1"}},
+    ), patch(
+        "voliti.tools.conversation_archive.create_conversation_archive_access_layer"
+    ), patch(
+        "voliti.tools.conversation_archive.ConversationRetrievalEngine",
+        return_value=fake_engine,
+    ):
+        result = asyncio.run(
+            retrieve_conversation_archive.ainvoke(
+                {
+                    "query": "聚餐",
+                    "window": "recent",
+                    "limit": 3,
+                    "detail_level": "summary",
+                }
+            )
+        )
+
+    assert result == {
+        "status": "error",
+        "payload": None,
+        "error_code": "conversation_archive_record_incomplete",
+        "coach_message": "Conversation archive data is incomplete for this request.",
     }
