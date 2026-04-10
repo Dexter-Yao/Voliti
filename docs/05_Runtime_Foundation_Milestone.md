@@ -429,16 +429,16 @@ backend 生成 payload snapshot
 
 | 测试层 | 负责内容 | 不负责内容 | 最小执行入口 |
 |------|---------|-----------|-------------|
-| backend `pytest` | `user_id` 校验、session profile 入口、A2UI 合法性与一次性、错误 envelope、迁移 / 清理脚本 | iOS 投影视图、模型行为评分 | `cd backend && uv run pytest` |
+| backend `pytest` | `user_id` 校验、session profile 入口、A2UI 合法性与一次性、错误 envelope、迁移 / 清理脚本 | iOS 投影视图、模型行为评分 | `cd backend && uv run python -m pytest` |
 | iOS 测试（`VolitiTests`） | Store 解包、thread 选择、onboarding completion marker 投影、流式临时态与 durable 边界、只读降级映射 | backend 内部契约判定、模型行为评分 | `xcodebuild test -project frontend-ios/Voliti.xcodeproj -scheme Voliti -destination 'platform=iOS Simulator,name=<simulator>' -only-testing:VolitiTests` |
 | 共享 contract fixture tests | Store、session、A2UI 的跨端共享样例解析与关键状态转换 | Judge / Auditor / seed 驱动评估 | 由 backend、iOS、eval 各自测试入口消费同一份共享 fixture 源 |
-| `eval` 的 Batch 1 pytest | pytest 收集稳定性、与 backend 契约对齐所需的最小辅助测试 | dataset、evaluator、experiment、模型行为优劣判断 | `cd eval && uv run pytest` |
+| `eval` 的 Batch 1 pytest | pytest 收集稳定性、与 backend 契约对齐所需的最小辅助测试 | dataset、evaluator、experiment、模型行为优劣判断 | `cd eval && uv run python -m pytest` |
 | API / integration 层最小 E2E | `onboarding completion` 主路径的 iOS → backend → Store → iOS projection 纵向链路 | 真实 UI 自动化、长流程视觉验证、A2UI 作为唯一纵向主路径 | 纳入 Batch 1 自动化命令集，作为 release gate 之一 |
 
 **Batch 1 最小必跑命令**
 
-1. `cd backend && uv run pytest`
-2. `cd eval && uv run pytest`
+1. `cd backend && uv run python -m pytest`
+2. `cd eval && uv run python -m pytest`
 3. `xcodebuild test -project frontend-ios/Voliti.xcodeproj -scheme Voliti -destination 'platform=iOS Simulator,name=<simulator>' -only-testing:VolitiTests`
 4. 一条 API / integration 层最小纵向 E2E 命令，绑定 `onboarding completion` 主路径，覆盖 thread 选择、completion marker、Store 落盘、iOS projection 与无本地 durable fallback
 
