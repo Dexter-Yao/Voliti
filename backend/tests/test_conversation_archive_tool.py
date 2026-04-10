@@ -110,3 +110,29 @@ def test_retrieve_conversation_archive_returns_error_envelope(monkeypatch) -> No
         "error_code": "conversation_archive_retrieval_failed",
         "coach_message": "Conversation archive retrieval failed: conversation_ref is required for excerpt retrieval",
     }
+
+
+def test_retrieve_conversation_archive_returns_error_when_user_id_missing(monkeypatch) -> None:
+    monkeypatch.setenv("VOLITI_RUNTIME_API_URL", "http://127.0.0.1:3030")
+
+    with patch(
+        "voliti.tools.conversation_archive.get_config",
+        return_value={"configurable": {}},
+    ):
+        result = asyncio.run(
+            retrieve_conversation_archive.ainvoke(
+                {
+                    "query": "聚餐",
+                    "window": "recent",
+                    "limit": 3,
+                    "detail_level": "summary",
+                }
+            )
+        )
+
+    assert result == {
+        "status": "error",
+        "payload": None,
+        "error_code": "conversation_archive_retrieval_failed",
+        "coach_message": "Conversation archive retrieval failed: configurable.user_id is required",
+    }

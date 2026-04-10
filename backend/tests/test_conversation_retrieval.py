@@ -158,3 +158,72 @@ def test_retrieve_excerpt_without_conversation_ref_is_rejected() -> None:
         assert str(exc) == "conversation_ref is required for excerpt retrieval"
     else:
         raise AssertionError("excerpt retrieval should require conversation_ref")
+
+
+def test_retrieve_rejects_unknown_detail_level() -> None:
+    import asyncio
+
+    provider = _FakeArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    try:
+        asyncio.run(
+            engine.retrieve(
+                user_id="user-1",
+                query="聚餐",
+                window="recent",
+                limit=2,
+                detail_level="full",
+            )
+        )
+    except ValueError as exc:
+        assert str(exc) == "unsupported detail_level: full"
+    else:
+        raise AssertionError("unsupported detail_level should be rejected")
+
+
+def test_retrieve_rejects_unknown_window() -> None:
+    import asyncio
+
+    provider = _FakeArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    try:
+        asyncio.run(
+            engine.retrieve(
+                user_id="user-1",
+                query="聚餐",
+                window="all_time",
+                limit=2,
+                detail_level="summary",
+            )
+        )
+    except ValueError as exc:
+        assert str(exc) == "unsupported window: all_time"
+    else:
+        raise AssertionError("unsupported window should be rejected")
+
+
+def test_retrieve_returns_empty_summary_results_when_no_match() -> None:
+    import asyncio
+
+    provider = _FakeArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    result = asyncio.run(
+        engine.retrieve(
+            user_id="user-1",
+            query="不存在的关键词",
+            window="recent",
+            limit=2,
+            detail_level="summary",
+        )
+    )
+
+    assert result == {
+        "detail_level": "summary",
+        "results": [],
+    }

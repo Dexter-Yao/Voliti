@@ -25,7 +25,12 @@ class ConversationRetrievalEngine:
         conversation_ref: str | None = None,
         time_hint: str | None = None,
     ) -> dict:
-        del window, time_hint
+        del time_hint
+
+        if detail_level not in {"summary", "excerpt"}:
+            raise ValueError(f"unsupported detail_level: {detail_level}")
+        if window != "recent":
+            raise ValueError(f"unsupported window: {window}")
 
         if detail_level == "excerpt":
             if not conversation_ref:
