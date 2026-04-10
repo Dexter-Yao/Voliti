@@ -16,6 +16,7 @@
 
 1. Batch 1 的身份边界、Store 契约、session / A2UI、onboarding durable 完成态、最小纵向验证链。
 2. Batch 2 中与分层记忆架构直接相关的核心能力：`Runtime Session History` canonical source、`Conversation Archive Access Layer`、显式 retrieval、`Coach` 的最小消费约束、语义记忆主写入边界。
+3. 默认验证入口已恢复到稳定状态：backend `pytest`、`eval` `pytest`、iOS `VolitiTests`，以及 conversation archive / retrieval live integration 脚本。
 
 本文后续如仍包含更宽的增强性描述，应理解为后续条件触发项，而非当前里程碑未完成的阻断范围。
 
@@ -126,7 +127,7 @@
 1. 将分层记忆架构纳入正式方案。
 2. 原始记录只允许通过显式检索进入 `Coach` 上下文。
 3. transcript retrieval 默认小窗口、摘要优先。
-4. archive 默认异步 / 后置写入，不阻塞主对话路径。
+4. 原始记录层的 canonical source 附着于 `Runtime Session History`，通过 `Conversation Archive Access Layer` 规范化读取，不引入 raw transcript 双写真相。
 5. 当前不单独设“本地私有数据层”，只区分后端权威数据与设备本地状态。
 
 ### 4.6 实施策略
@@ -195,6 +196,8 @@ Batch 2 在 Batch 1 通过后继续承接以下内容：
 3. 更完整的用户态状态覆盖。
 4. 更完整的 observability 闭环。
 5. 更高层的 eval、回归与长期质量护栏。
+
+截至当前仓库状态，前两项核心闭环已经完成；后三项继续保留为条件触发的后续增强项，不构成当前里程碑的未完成阻断项。
 
 ### 7.3 实施落位表
 
@@ -450,6 +453,7 @@ backend 生成 payload snapshot
 2. `cd eval && uv run python -m pytest`
 3. `xcodebuild test -project frontend-ios/Voliti.xcodeproj -scheme Voliti -destination 'platform=iOS Simulator,name=<simulator>' -only-testing:VolitiTests`
 4. 一条 API / integration 层最小纵向 E2E 命令，绑定 `onboarding completion` 主路径，覆盖 thread 选择、completion marker、Store 落盘、iOS projection 与无本地 durable fallback
+5. conversation archive / retrieval 的 live integration 脚本，覆盖 archive access、retrieval engine 与 tool wrapper 的真实运行链路
 
 **Release Gate**
 
@@ -461,10 +465,11 @@ backend 生成 payload snapshot
 
 **完成标准**
 
-1. `cd eval && uv run pytest` 可稳定收集与执行。
+1. `cd eval && uv run python -m pytest` 可稳定收集与执行。
 2. 至少一条 API / integration 测试以 `onboarding completion` 为主路径，覆盖 iOS → backend → Store → iOS projection。
 3. backend、iOS、eval 从同一份共享 fixture 源消费契约样例。
 4. 迁移 / 清理脚本具备专门测试。
+5. conversation archive / retrieval 的真实运行链路具备独立 live integration 验证入口。
 
 ### 工作流 G：可观测性与文档对齐
 
@@ -623,6 +628,7 @@ backend 生成 payload snapshot
 | 2026-04-09 | 初始创建：基于全库审查结果，定义仓库一致性整改目标、工作流、分期计划、验证矩阵与风险控制 |
 | 2026-04-09 | 升级定位为运行时基础设施里程碑；新增契约主文档分工、分层记忆架构、LangSmith 观测职责、用户态状态覆盖与明确延后项 |
 | 2026-04-09 | 文档重命名为 `05_Runtime_Foundation_Milestone.md`，统一文件名、标题与文档分工语义 |
+| 2026-04-10 | 同步当前完成态：补充默认验证入口恢复、archive canonical source 收口与 conversation archive / retrieval live integration 基线 |
 
 ## 附录：GSTACK REVIEW REPORT
 

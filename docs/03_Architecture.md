@@ -80,6 +80,8 @@ backend 同时承载两类后端状态：
    - A2UI payload snapshot
    - 会话过程态
 
+当前原始会话记录的 canonical source 附着于运行时会话历史。产品层通过 `Conversation Archive Access Layer` 将其规范化为稳定的 `Conversation Record` 视图，再供显式检索消费。
+
 正式边界以 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md) 为准。
 
 ### 3.4 Eval 模块
@@ -131,10 +133,11 @@ backend 写入共享持久化状态
 ### 4.4 原始记录归档流
 
 ```text
-主对话完成
-  → backend 异步 / 后置写入 archive
-    → 默认不自动进入 Coach 上下文
-      → 仅在显式检索时提供摘要或片段
+Runtime Session History
+  → Conversation Archive Access Layer
+    → 规范化为 Conversation Record
+      → 默认不自动进入 Coach 上下文
+        → 仅在显式检索时提供摘要或片段
 ```
 
 ## 五、当前技术选型
@@ -213,6 +216,7 @@ cd backend && uv run langgraph dev --port 2025
 1. 跨端 contract fixture tests。
 2. 关键状态转换测试。
 3. 至少一条 iOS → backend → Store → iOS projection 的真实纵向路径。
+4. conversation archive / retrieval 的 live integration 脚本。
 
 ---
 
@@ -222,3 +226,4 @@ cd backend && uv run langgraph dev --port 2025
 |------|----------|
 | 2026-02-12 | 初始创建：系统架构总览、核心组件、数据流程、技术选型与部署视图 |
 | 2026-04-09 | 重写文档职责：移除失真的运行时细节，将 Store、session、A2UI、错误与记忆边界统一指向 `06_Runtime_Contracts.md` |
+| 2026-04-10 | 同步原始会话记录主线：以 `Runtime Session History` 与 `Conversation Archive Access Layer` 取代 archive 双写叙述，并补充 live integration 验证入口 |

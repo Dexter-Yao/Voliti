@@ -391,7 +391,7 @@ resume 同时校验以下两类约束：
 2. backend run
 3. A2UI interrupt / resume
 4. Store 关键写入
-5. archive 写入
+5. conversation archive access / retrieval
 6. 错误封装
 7. LangSmith trace
 
@@ -411,7 +411,7 @@ resume 同时校验以下两类约束：
 4. `a2ui.resume.rejected`
 5. `store.write.completed`
 6. `store.contract.decode_failed`
-7. `archive.write.failed`
+7. `conversation_archive.retrieval_failed`
 
 ### 12.3 最小字段标准
 
@@ -453,3 +453,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 日期 | 变更内容 |
 |------|----------|
 | 2026-04-09 | 初始创建：建立 Voliti 运行时契约主文档，定义身份、Store、会话、A2UI、错误、记忆分层、用户态与可观测性边界 |
+| 2026-04-10 | 同步原始会话记录与观测契约：以 runtime history canonical source 与 retrieval 事件替代 archive 双写叙述 |
