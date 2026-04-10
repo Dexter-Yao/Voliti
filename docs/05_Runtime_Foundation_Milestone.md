@@ -393,7 +393,7 @@ backend 生成 payload snapshot
 
 1. 定义四层记忆架构与访问边界。
 2. 以 `Runtime Session History` 作为原始记录层的 canonical source，先落地 `Conversation Archive Access Layer`。
-3. transcript retrieval 改为显式检索、摘要优先、小窗口读取。
+3. transcript retrieval 改为显式检索、摘要优先、小窗口读取；`excerpt` 仅返回围绕命中消息的有限片段，当前上限为 4 条消息。
 4. `Coach` 作为语义记忆主写入者落地到实际存储边界。
 5. 为权威语义记忆路径与候选信号路径建立单一分类入口，禁止把 ledger、derived 或 conversation archive 直接当作长期记忆。
 

@@ -26,8 +26,12 @@ class _FakeArchiveProvider(RuntimeSessionHistoryProvider):
                 updated_at="2026-04-10T03:25:00.000000+00:00",
                 source="runtime_session_history",
                 messages=[
-                    ConversationMessageRecord("u2", "user", "我昨晚聚餐吃多了。"),
-                    ConversationMessageRecord("a2", "assistant", "你想回看那次聚餐后的应对吗？", "coach"),
+                    ConversationMessageRecord("u2", "user", "这周我压力很大。"),
+                    ConversationMessageRecord("a2", "assistant", "我们先看压力和饮食之间的关系。", "coach"),
+                    ConversationMessageRecord("u3", "user", "我昨晚聚餐吃多了。"),
+                    ConversationMessageRecord("a3", "assistant", "你想回看那次聚餐后的应对吗？", "coach"),
+                    ConversationMessageRecord("u4", "user", "今天早上我又有点内疚。"),
+                    ConversationMessageRecord("a4", "assistant", "先不要自责，我们拆开看。", "coach"),
                 ],
             ),
             "conv-1": ConversationRecord(
@@ -133,8 +137,72 @@ def test_retrieve_excerpt_requires_conversation_ref_and_returns_message_slice() 
 
     assert result["detail_level"] == "excerpt"
     assert result["conversation_ref"] == "conv-2"
-    assert result["excerpt"][0]["role"] == "user"
-    assert "聚餐" in result["excerpt"][0]["content"]
+    assert [item["message_ref"] for item in result["excerpt"]] == ["u2", "a2", "u3", "a3"]
+    assert result["excerpt"][2]["role"] == "user"
+    assert "聚餐" in result["excerpt"][2]["content"]
+
+
+def test_retrieve_excerpt_without_query_returns_leading_message_slice() -> None:
+    import asyncio
+
+    provider = _FakeArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    result = asyncio.run(
+        engine.retrieve(
+            user_id="user-1",
+            query="",
+            window="recent",
+            limit=2,
+            detail_level="excerpt",
+            conversation_ref="conv-2",
+        )
+    )
+
+    assert [item["message_ref"] for item in result["excerpt"]] == ["u2", "a2", "u3", "a3"]
+
+
+def test_retrieve_excerpt_expands_backward_when_match_is_near_end() -> None:
+    import asyncio
+
+    provider = _FakeArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    result = asyncio.run(
+        engine.retrieve(
+            user_id="user-1",
+            query="内疚",
+            window="recent",
+            limit=2,
+            detail_level="excerpt",
+            conversation_ref="conv-2",
+        )
+    )
+
+    assert [item["message_ref"] for item in result["excerpt"]] == ["u3", "a3", "u4", "a4"]
+
+
+def test_retrieve_excerpt_returns_all_messages_when_conversation_is_short() -> None:
+    import asyncio
+
+    provider = _FakeArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    result = asyncio.run(
+        engine.retrieve(
+            user_id="user-1",
+            query="减脂",
+            window="recent",
+            limit=2,
+            detail_level="excerpt",
+            conversation_ref="conv-1",
+        )
+    )
+
+    assert [item["message_ref"] for item in result["excerpt"]] == ["u1", "a1"]
 
 
 def test_retrieve_excerpt_without_conversation_ref_is_rejected() -> None:
@@ -280,3 +348,32 @@ def test_retrieve_filters_summary_results_by_time_hint() -> None:
             }
         ],
     }
+
+
+def test_retrieve_sorts_summary_results_by_updated_at_desc() -> None:
+    import asyncio
+
+    class _UnsortedArchiveProvider(_FakeArchiveProvider):
+        async def search_threads(self, *, user_id: str, limit: int) -> list[dict]:
+            self.last_user_id = user_id
+            self.last_limit = limit
+            return [
+                {"thread_id": "conv-1", "updated_at": "2026-04-09T09:05:00.000000+00:00"},
+                {"thread_id": "conv-2", "updated_at": "2026-04-10T03:25:00.000000+00:00"},
+            ]
+
+    provider = _UnsortedArchiveProvider()
+    layer = ConversationArchiveAccessLayer(provider=provider)
+    engine = ConversationRetrievalEngine(archive=layer)
+
+    result = asyncio.run(
+        engine.retrieve(
+            user_id="user-1",
+            query="",
+            window="all",
+            limit=2,
+            detail_level="summary",
+        )
+    )
+
+    assert [item["conversation_ref"] for item in result["results"]] == ["conv-2", "conv-1"]
