@@ -24,6 +24,37 @@ private func loadSharedStoreFixture(named name: String) throws -> [String: Any] 
     return value
 }
 
+private func requestBodyData(from request: URLRequest) throws -> Data? {
+    if let body = request.httpBody {
+        return body
+    }
+
+    guard let stream = request.httpBodyStream else {
+        return nil
+    }
+
+    stream.open()
+    defer { stream.close() }
+
+    var data = Data()
+    let bufferSize = 1024
+    let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+    defer { buffer.deallocate() }
+
+    while stream.hasBytesAvailable {
+        let read = stream.read(buffer, maxLength: bufferSize)
+        if read < 0 {
+            throw stream.streamError ?? URLError(.badServerResponse)
+        }
+        if read == 0 {
+            break
+        }
+        data.append(buffer, count: read)
+    }
+
+    return data
+}
+
 private func makeInMemoryContainer() throws -> ModelContainer {
     let schema = Schema(versionedSchema: VolitiSchemaV1.self)
     let config = ModelConfiguration(
@@ -39,7 +70,25 @@ private func makeInMemoryContainer() throws -> ModelContainer {
 }
 
 private final class MockURLProtocol: URLProtocol, @unchecked Sendable {
-    nonisolated(unsafe) static var requestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
+    private static let sessionHeader = "X-Voliti-Mock-Session-ID"
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var requestHandlers: [String: @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)] = [:]
+
+    static func registerHandler(
+        _ handler: @escaping @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
+    ) -> String {
+        let sessionID = UUID().uuidString
+        lock.lock()
+        requestHandlers[sessionID] = handler
+        lock.unlock()
+        return sessionID
+    }
+
+    static func handler(for sessionID: String) -> (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))? {
+        lock.lock()
+        defer { lock.unlock() }
+        return requestHandlers[sessionID]
+    }
 
     override class func canInit(with request: URLRequest) -> Bool {
         true
@@ -50,7 +99,8 @@ private final class MockURLProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override func startLoading() {
-        guard let handler = Self.requestHandler else {
+        guard let sessionID = request.value(forHTTPHeaderField: Self.sessionHeader),
+              let handler = Self.handler(for: sessionID) else {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return
         }
@@ -73,7 +123,8 @@ private func makeMockSession(
 ) -> URLSession {
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [MockURLProtocol.self]
-    MockURLProtocol.requestHandler = handler
+    let sessionID = MockURLProtocol.registerHandler(handler)
+    configuration.httpAdditionalHeaders = [ "X-Voliti-Mock-Session-ID": sessionID ]
     return URLSession(configuration: configuration)
 }
 
@@ -556,6 +607,47 @@ struct BackendIntegrationTests {
 @MainActor
 @Suite("StorePagination")
 struct StorePaginationTests {
+    @Test func requestBodyDataReadsFromHTTPBodyStream() throws {
+        let payload = Data("{\"offset\":100}".utf8)
+        var request = URLRequest(url: URL(string: "https://example.com")!)
+        request.httpBodyStream = InputStream(data: payload)
+
+        let body = try requestBodyData(from: request)
+
+        #expect(body == payload)
+    }
+
+    @Test func mockSessionsKeepIndependentHandlers() async throws {
+        let url = URL(string: "https://example.com/store/items/search")!
+
+        let firstSession = makeMockSession { request in
+            let response = HTTPURLResponse(
+                url: try #require(request.url),
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("first".utf8))
+        }
+
+        let secondSession = makeMockSession { request in
+            let response = HTTPURLResponse(
+                url: try #require(request.url),
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data("second".utf8))
+        }
+
+        async let firstResult = firstSession.data(from: url)
+        async let secondResult = secondSession.data(from: url)
+        let (firstData, secondData) = try await (firstResult.0, secondResult.0)
+
+        #expect(String(decoding: firstData, as: UTF8.self) == "first")
+        #expect(String(decoding: secondData, as: UTF8.self) == "second")
+    }
+
     @Test func searchStoreItemsPaginatesPastFirstPage() async throws {
         let expectedFirstCount = 100
         let expectedSecondCount = 5
@@ -565,7 +657,8 @@ struct StorePaginationTests {
         let session = makeMockSession { request in
             let url = try #require(request.url)
             #expect(url.path == "/store/items/search")
-            let body = try #require(request.httpBody)
+            let bodyData = try requestBodyData(from: request)
+            let body = try #require(bodyData)
             let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
             let offset = try #require(json["offset"] as? Int)
             offsets.withValue { $0.append(offset) }
@@ -604,7 +697,8 @@ struct StorePaginationTests {
             switch request.httpMethod {
             case "POST":
                 #expect(url.path == "/store/items/search")
-                let body = try #require(request.httpBody)
+                let bodyData = try requestBodyData(from: request)
+                let body = try #require(bodyData)
                 let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
                 let offset = try #require(json["offset"] as? Int)
                 offsets.withValue { $0.append(offset) }
@@ -629,7 +723,8 @@ struct StorePaginationTests {
 
             case "DELETE":
                 #expect(url.path == "/store/items")
-                let body = try #require(request.httpBody)
+                let bodyData = try requestBodyData(from: request)
+                let body = try #require(bodyData)
                 let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
                 let namespace = try #require(json["namespace"] as? [String])
                 let key = try #require(json["key"] as? String)
