@@ -142,6 +142,28 @@ class TestCreateCoachAgent:
     @patch("voliti.agent.create_deep_agent")
     @patch("voliti.agent.PromptRegistry")
     @patch("voliti.agent.ModelRegistry")
+    def test_tools_include_conversation_archive_retrieval(
+        self,
+        mock_model_reg: MagicMock,
+        mock_prompt_reg: MagicMock,
+        mock_create: MagicMock,
+    ) -> None:
+        """tools 应包含 conversation archive retrieval。"""
+        from voliti.tools.conversation_archive import retrieve_conversation_archive
+
+        mock_model_reg.get.return_value = MagicMock()
+        mock_prompt_reg.get.return_value = "You are a coach."
+        mock_create.return_value = MagicMock()
+
+        create_coach_agent()
+
+        call_kwargs = mock_create.call_args
+        tools = call_kwargs.kwargs["tools"]
+        assert retrieve_conversation_archive in tools
+
+    @patch("voliti.agent.create_deep_agent")
+    @patch("voliti.agent.PromptRegistry")
+    @patch("voliti.agent.ModelRegistry")
     def test_no_interrupt_on(
         self,
         mock_model_reg: MagicMock,

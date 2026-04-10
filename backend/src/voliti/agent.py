@@ -16,10 +16,11 @@ from voliti.config.prompts import PromptRegistry
 from voliti.middleware.journey_analysis import JourneyAnalysisMiddleware
 from voliti.middleware.session_mode import SessionModeMiddleware
 from voliti.store_contract import InvalidUserIDError, resolve_user_namespace
+from voliti.tools.conversation_archive import retrieve_conversation_archive
 from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
 
-COACH_TOOLS = [fan_out]
+COACH_TOOLS = [fan_out, retrieve_conversation_archive]
 """Coach 直接调用的工具，通过 A2UI 组件组合实现动态交互。"""
 
 def _resolve_user_namespace(ctx: Any) -> tuple[str, ...]:

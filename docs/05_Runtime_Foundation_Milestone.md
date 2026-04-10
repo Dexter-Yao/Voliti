@@ -21,6 +21,14 @@
 
 本文不承担运行时真相定义。所有正式契约均以 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md) 为准。
 
+## 一点五、命名实施约束
+
+本轮实现必须优先使用供应商中立命名，避免把当前集成工具名称抬升为产品概念。
+
+1. 产品层与契约层优先使用 `Runtime Session History`、`Conversation Archive Access Layer`、`Conversation Record`、`Semantic Memory Store`、`Trace Provider` 等中立术语。
+2. `LangGraph`、`LangSmith` 等名称只出现在 adapter、client、integration 与运维说明中。
+3. 后续新增代码、测试夹具与文档标题不得把供应商名直接写入领域对象名称。
+
 ## 二、里程碑定位
 
 ### 2.1 问题本质
@@ -384,15 +392,15 @@ backend 生成 payload snapshot
 **主要任务**
 
 1. 定义四层记忆架构与访问边界。
-2. transcript archive 改为显式检索、摘要优先、小窗口读取。
-3. archive 写入与主对话成功解耦。
+2. 以 `Runtime Session History` 作为原始记录层的 canonical source，先落地 `Conversation Archive Access Layer`。
+3. transcript retrieval 改为显式检索、摘要优先、小窗口读取。
 4. `Coach` 作为语义记忆主写入者落地到实际存储边界。
 
 **完成标准**
 
 1. 原始记录默认不自动进入上下文。
 2. 语义记忆不再与日志、原始 transcript 混桶。
-3. archive 失败不会拖垮主对话，但必须可观测。
+3. 不引入 raw transcript 到长期 Store 的双写真相。
 
 ### 工作流 F：测试与验证链恢复
 
