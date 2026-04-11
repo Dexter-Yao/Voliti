@@ -1,5 +1,5 @@
-# ABOUTME: Prompt 注入 Middleware 基类 — 消除 sync/async 重复代码
-# ABOUTME: 子类只需实现 should_inject() 和 get_prompt()，基类处理 wrap_model_call 的双路径
+# ABOUTME: Voliti middleware 基础组件
+# ABOUTME: 提供 prompt 注入基类与记忆生命周期 policy middleware，作为现有 DeepAgent hooks 的最小落点
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from typing import Any
 from deepagents.middleware._utils import append_to_system_message
 from langchain.agents.middleware.types import AgentMiddleware, ModelRequest, ModelResponse
 
+from voliti.semantic_memory import is_authoritative_semantic_memory_path
 from voliti.session_type import DEFAULT_SESSION_TYPE, SessionType, coerce_session_type
 
 logger = logging.getLogger(__name__)
@@ -72,3 +73,58 @@ class PromptInjectionMiddleware(AgentMiddleware):
         handler: Callable[[ModelRequest], Any],
     ) -> Any:
         return await handler(self._inject(request))
+
+
+class MemoryLifecycleMiddleware(AgentMiddleware):
+    """记忆生命周期 policy middleware。
+
+    当前阶段只承担两类职责：
+    1. 占住 `wrap_tool_call` / `after_model` / `after_agent` 的正式落点；
+    2. 统一表达 promotion 禁止规则，避免 archive、runtime、observability
+       或单次 journey analysis 摘要被直接写入权威长期语义。
+    """
+
+    tools: list = []
+
+    def can_promote(
+        self,
+        *,
+        source_kind: str,
+        target_path: str,
+        source_name: str | None,
+        confirmed: bool,
+    ) -> bool:
+        """判断给定输入是否允许晋升为权威长期语义。"""
+        if not confirmed:
+            return False
+        if not is_authoritative_semantic_memory_path(target_path):
+            return False
+        if source_kind != "candidate_signal":
+            return False
+        if source_name == "journey_analysis":
+            return False
+        return True
+
+    def wrap_tool_call(self, request: Any, handler: Callable[[Any], Any]) -> Any:
+        """当前阶段只保留 tool capture 的正式 hook 落点。"""
+        return handler(request)
+
+    async def awrap_tool_call(self, request: Any, handler: Callable[[Any], Any]) -> Any:
+        """当前阶段只保留异步 tool capture 的正式 hook 落点。"""
+        return await handler(request)
+
+    def after_model(self, state: Any, runtime: Any) -> None:
+        """当前阶段不在 after_model 执行 promotion。"""
+        return None
+
+    async def aafter_model(self, state: Any, runtime: Any) -> None:
+        """当前阶段不在 after_model 执行 promotion。"""
+        return None
+
+    def after_agent(self, state: Any, runtime: Any) -> None:
+        """当前阶段占住 consolidation 落点，但不引入后台整理逻辑。"""
+        return None
+
+    async def aafter_agent(self, state: Any, runtime: Any) -> None:
+        """当前阶段占住 consolidation 落点，但不引入后台整理逻辑。"""
+        return None

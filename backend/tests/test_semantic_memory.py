@@ -17,6 +17,7 @@ from voliti.store_contract import (
     PROFILE_DASHBOARD_CONFIG_KEY,
     TIMELINE_MARKERS_KEY,
 )
+from voliti.middleware.base import MemoryLifecycleMiddleware
 
 
 def test_authoritative_semantic_memory_paths_are_stable() -> None:
@@ -68,3 +69,76 @@ def test_classify_semantic_memory_path_rejects_other_paths() -> None:
 def test_classify_semantic_memory_path_supports_user_prefixed_authoritative_paths() -> None:
     assert classify_semantic_memory_path("/user/profile/context.md") == "authoritative_semantic"
     assert classify_semantic_memory_path("/user/timeline/markers.json") == "authoritative_semantic"
+
+
+def test_memory_lifecycle_rejects_archive_source_promotion() -> None:
+    middleware = MemoryLifecycleMiddleware()
+    assert middleware.can_promote(
+        source_kind="archive_source",
+        target_path=PROFILE_CONTEXT_KEY,
+        source_name="conversation_archive",
+        confirmed=True,
+    ) is False
+
+
+def test_memory_lifecycle_rejects_journey_analysis_promotion() -> None:
+    middleware = MemoryLifecycleMiddleware()
+    assert middleware.can_promote(
+        source_kind="candidate_signal",
+        target_path=PROFILE_CONTEXT_KEY,
+        source_name="journey_analysis",
+        confirmed=True,
+    ) is False
+
+
+def test_memory_lifecycle_rejects_runtime_and_observability_promotion() -> None:
+    middleware = MemoryLifecycleMiddleware()
+    assert middleware.can_promote(
+        source_kind="runtime_only",
+        target_path=PROFILE_CONTEXT_KEY,
+        source_name="tool_capture",
+        confirmed=True,
+    ) is False
+    assert middleware.can_promote(
+        source_kind="observability_only",
+        target_path=PROFILE_CONTEXT_KEY,
+        source_name="trace",
+        confirmed=True,
+    ) is False
+
+
+def test_memory_lifecycle_requires_authoritative_target_and_confirmation() -> None:
+    middleware = MemoryLifecycleMiddleware()
+    assert middleware.can_promote(
+        source_kind="candidate_signal",
+        target_path=PROFILE_CONTEXT_KEY,
+        source_name="coach_confirmation",
+        confirmed=False,
+    ) is False
+    assert middleware.can_promote(
+        source_kind="candidate_signal",
+        target_path="/derived/pattern_index.md",
+        source_name="coach_confirmation",
+        confirmed=True,
+    ) is False
+    assert middleware.can_promote(
+        source_kind="candidate_signal",
+        target_path=PROFILE_CONTEXT_KEY,
+        source_name="coach_confirmation",
+        confirmed=True,
+    ) is True
+
+
+def test_memory_lifecycle_wrap_tool_call_is_passthrough() -> None:
+    middleware = MemoryLifecycleMiddleware()
+
+    result = middleware.wrap_tool_call("request", lambda request: {"request": request})
+
+    assert result == {"request": "request"}
+
+
+def test_memory_lifecycle_after_model_and_after_agent_are_noops() -> None:
+    middleware = MemoryLifecycleMiddleware()
+
+    assert middleware.after_model(state={}, runtime=None) is None
+    assert middleware.after_agent(state={}, runtime=None) is None

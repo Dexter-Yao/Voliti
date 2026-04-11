@@ -204,10 +204,11 @@ Store 在代码中只允许存在两个唯一收口点：
 最小形态至少暴露以下稳定字段：
 
 1. `session_type`
-2. prompt injection policy
-3. middleware set
-4. tool policy
-5. completion policy
+2. `system_prompt_name`
+3. `memory_paths`
+4. `enable_journey_analysis`
+
+当前 backend 实现已按上述最小形态收口，会话差异通过同一 profile 入口驱动 `system_prompt`、`memory` 与 middleware 装配。
 
 约束如下：
 
@@ -316,6 +317,7 @@ resume 同时校验以下两类约束：
 4. 当前显式检索至少支持 `window=recent|all`，并允许用 `time_hint` 作为时间前缀过滤提示。
 5. `excerpt` 必须返回围绕命中消息的有限片段，不得默认回传整段会话原文；当前实现以不超过 4 条消息为上限。
 6. 不预设 raw transcript 双写到长期 Store；如未来增加派生摘要层，必须明确其从属于原始记录层，而不是成为第二份权威真相。
+7. retrieval 返回值必须显式声明 `evidence_kind="archive_source"` 与 `usage="runtime_evidence"`，以保证其在运行时只作为当前 invocation 的证据输入，而不是长期语义来源。
 
 ### 10.3 语义记忆层
 
@@ -350,8 +352,30 @@ resume 同时校验以下两类约束：
 1. `Coach` 只能把跨会话仍有持续价值的结论写入权威语义记忆路径。
 2. 原始事件、候选信号与会话归档只能作为证据来源，不得直接等同于长期语义记忆。
 3. backend 的分析与中间件若产生候选信号，必须写入候选层，而不是直接覆盖权威语义记忆。
+4. 当前实现中，`journey_analysis` 产生的单次摘要只能作为 `candidate_signal` 使用，不得直接 promotion 到权威语义。
+5. 当前实现中，archive summary / excerpt、`runtime_only` 与 `observability_only` 内容一律不得直接 promotion 到权威语义。
 
-### 10.4 可观测性层
+### 10.4 语义边界分类
+
+为避免 archive、候选信号与长期语义混写，backend 必须通过同一 helper 对路径进行以下分类：
+
+1. `authoritative_semantic`
+2. `candidate_signal`
+3. `archive_source`
+4. `runtime_only`
+5. `observability_only`
+6. `non_memory`
+
+约束如下：
+
+1. `/profile/...`、`/chapter/...`、`/coach/AGENTS.md`、`/coping_plans...`、`/timeline/markers.json` 属于 `authoritative_semantic`。
+2. `/derived/...` 属于 `candidate_signal`。
+3. `/archive/...` 属于 `archive_source`。
+4. `/ledger/...` 属于 `runtime_only`。
+5. `/observability/...` 属于 `observability_only`。
+6. 该分类同时兼容 backend 视角路径与 `/user/...` 前缀路径，不允许调用方各自维护另一套归一化逻辑。
+
+### 10.5 可观测性层
 
 用于调试、排障、评估与回放，包括：
 
@@ -454,3 +478,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 |------|----------|
 | 2026-04-09 | 初始创建：建立 Voliti 运行时契约主文档，定义身份、Store、会话、A2UI、错误、记忆分层、用户态与可观测性边界 |
 | 2026-04-10 | 同步原始会话记录与观测契约：以 runtime history canonical source 与 retrieval 事件替代 archive 双写叙述 |
+| 2026-04-11 | 同步当前实现状态：补充 `SessionProfile` 最小字段、语义边界六分类、archive retrieval 的 `archive_source` / `runtime_evidence` 契约，以及当前已代码化的 promotion 禁止规则 |
