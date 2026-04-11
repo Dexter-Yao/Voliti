@@ -7,6 +7,7 @@ struct NorthStarMetric: View {
     let label: String
     let value: String?
     let unit: String
+    var showsEstimatedBadge = false
     let delta: Delta?
     let trendData: [Double?]
     var trendQualities: [MetricQuality?] = []
@@ -33,6 +34,12 @@ struct NorthStarMetric: View {
                 Text(unit)
                     .starpathMono()
                     .foregroundStyle(StarpathTokens.obsidian40)
+
+                if showsEstimatedBadge {
+                    Text("推断")
+                        .starpathMono(size: 10, uppercase: false)
+                        .foregroundStyle(StarpathTokens.copper)
+                }
 
                 if let delta {
                     deltaView(delta)

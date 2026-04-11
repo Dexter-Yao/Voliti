@@ -7,6 +7,10 @@ import SwiftData
 struct MetricHistoryView: View {
     let metricKey: String
     let metricLabel: String
+    let metricType: MetricType
+    let metricUnit: String?
+    let scaleMax: Int?
+    let ratioDenominator: Int?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -63,16 +67,29 @@ struct MetricHistoryView: View {
             Spacer()
 
             HStack(alignment: .firstTextBaseline, spacing: StarpathTokens.spacingXS) {
-                if let entry = event.metrics.first(where: { $0.key == metricKey }),
-                   let value = entry.value {
-                    let formatted = value.truncatingRemainder(dividingBy: 1) == 0
-                        ? String(format: "%.0f", value)
-                        : String(format: "%.1f", value)
-                    Text(formatted)
+                if let entry = event.metrics.first(where: { $0.key == metricKey }) {
+                    let display = MetricDisplay.record(
+                        entry: entry,
+                        type: metricType,
+                        unit: metricUnit,
+                        scaleMax: scaleMax,
+                        ratioDenominator: ratioDenominator
+                    )
+
+                    Text(display.value)
                         .starpathSerif(size: StarpathTokens.fontSizeXL)
-                    Text(metricKey.uppercased())
-                        .starpathMono()
-                        .foregroundStyle(StarpathTokens.obsidian40)
+
+                    if let unit = display.unit {
+                        Text(unit)
+                            .starpathMono()
+                            .foregroundStyle(StarpathTokens.obsidian40)
+                    }
+
+                    if display.showsEstimatedBadge {
+                        Text("推断")
+                            .starpathMono(size: 10, uppercase: false)
+                            .foregroundStyle(StarpathTokens.copper)
+                    }
                 }
             }
         }

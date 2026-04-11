@@ -13,6 +13,7 @@ struct VolitiApp: App {
     init() {
         do {
             modelContainer = try ModelContainerSetup.create()
+            UITestBootstrapper.bootstrapIfNeeded(modelContainer: modelContainer)
         } catch {
             fatalError("ModelContainer 创建失败: \(error)")
         }

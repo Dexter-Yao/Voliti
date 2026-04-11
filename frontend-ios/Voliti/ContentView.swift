@@ -67,6 +67,7 @@ private struct StarpathTabBar: View {
                     .padding(.top, StarpathTokens.spacingSM)
                     .padding(.bottom, StarpathTokens.spacingXS)
                 }
+                .accessibilityIdentifier(index == 0 ? "tab.coach" : "tab.mirror")
             }
         }
         .padding(.horizontal, StarpathTokens.spacingMD)

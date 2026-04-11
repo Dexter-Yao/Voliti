@@ -307,6 +307,228 @@ struct MetricComputerTests {
     }
 }
 
+// MARK: - Mirror Log Range Tests
+
+@Suite("MirrorLogRange")
+struct MirrorLogRangeTests {
+    private let calendar = Calendar.current
+
+    @Test func validatedCustomRejectsEndBeforeStart() {
+        let start = calendar.startOfDay(for: .now)
+        let end = calendar.date(byAdding: .day, value: -1, to: start)!
+
+        #expect(throws: MirrorLogRangeError.endBeforeStart) {
+            try MirrorLogRange.validatedCustom(startDate: start, endDate: end, today: .now, calendar: calendar)
+        }
+    }
+
+    @Test func validatedCustomRejectsFutureEndDate() {
+        let start = calendar.startOfDay(for: .now)
+        let end = calendar.date(byAdding: .day, value: 1, to: start)!
+
+        #expect(throws: MirrorLogRangeError.endAfterToday) {
+            try MirrorLogRange.validatedCustom(startDate: start, endDate: end, today: .now, calendar: calendar)
+        }
+    }
+
+    @Test func customTitleUsesFullDateFormat() throws {
+        let start = calendar.date(from: DateComponents(year: 2026, month: 4, day: 1))!
+        let end = calendar.date(from: DateComponents(year: 2026, month: 4, day: 11))!
+        let range = try MirrorLogRange.validatedCustom(startDate: start, endDate: end, today: end, calendar: calendar)
+
+        #expect(range.title(calendar: calendar) == "2026.04.01 - 2026.04.11")
+    }
+}
+
+// MARK: - Mirror ViewModel Tests
+
+@Suite("MirrorViewModel")
+@MainActor
+struct MirrorViewModelTests {
+    private let calendar = Calendar.current
+
+    private final class StubSyncService: StoreSyncing {
+        private let freshness: ProjectionFreshness
+
+        init(freshness: ProjectionFreshness) {
+            self.freshness = freshness
+        }
+
+        func syncAll() async -> ProjectionFreshness {
+            freshness
+        }
+
+        func checkOnboardingComplete() async -> Bool {
+            true
+        }
+    }
+
+    private func makeEvent(
+        kind: String = "observation",
+        timestamp: Date = .now,
+        summary: String? = nil,
+        metrics: [MetricEntry] = []
+    ) -> BehaviorEvent {
+        let event = BehaviorEvent(
+            id: UUID().uuidString,
+            timestamp: timestamp,
+            recordedAt: timestamp,
+            kind: kind,
+            evidence: "test",
+            summary: summary,
+            tags: []
+        )
+        if !metrics.isEmpty {
+            event.setMetrics(metrics)
+        }
+        return event
+    }
+
+    private func daysAgo(_ n: Int) -> Date {
+        calendar.date(byAdding: .day, value: -n, to: calendar.startOfDay(for: .now))!
+    }
+
+    @Test func defaultLogRangeIsLast30Days() throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let viewModel = MirrorViewModel()
+
+        viewModel.configure(modelContext: modelContext)
+
+        #expect(viewModel.logRange == .last30Days)
+    }
+
+    @Test func logDisplayStateIsEmptyInRangeWhenNoVisibleEventsExist() throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let viewModel = MirrorViewModel()
+
+        modelContext.insert(makeEvent(kind: "system", timestamp: .now))
+        try modelContext.save()
+
+        viewModel.configure(modelContext: modelContext)
+
+        #expect(viewModel.logDisplayState == .emptyInRange)
+        #expect(viewModel.filteredGroupedEvents.isEmpty)
+    }
+
+    @Test func selectedFilterProducesEmptyAfterFilterWhenRangeStillHasLogs() throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let viewModel = MirrorViewModel()
+
+        modelContext.insert(makeEvent(kind: "observation", timestamp: .now, summary: "today"))
+        modelContext.insert(makeEvent(kind: "state", timestamp: daysAgo(45), summary: "old state"))
+        try modelContext.save()
+
+        viewModel.configure(modelContext: modelContext)
+        viewModel.selectedFilterKind = "state"
+
+        #expect(viewModel.logDisplayState == .emptyAfterFilter)
+    }
+
+    @Test func selectedFilterRemainsVisibleWhenCountDropsToZero() throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let viewModel = MirrorViewModel()
+
+        modelContext.insert(makeEvent(kind: "observation", timestamp: .now, summary: "today"))
+        modelContext.insert(makeEvent(kind: "state", timestamp: daysAgo(45), summary: "old state"))
+        try modelContext.save()
+
+        viewModel.configure(modelContext: modelContext)
+        viewModel.selectedFilterKind = "state"
+
+        let stateCount = viewModel.kindCounts.first { $0.kind == "state" }?.count
+        #expect(stateCount == 0)
+        #expect(viewModel.shouldShowLogFilters == true)
+    }
+
+    @Test func applyingWiderLogRangeLoadsOlderEvents() throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let viewModel = MirrorViewModel()
+
+        modelContext.insert(makeEvent(kind: "observation", timestamp: .now, summary: "today"))
+        modelContext.insert(makeEvent(kind: "state", timestamp: daysAgo(45), summary: "old state"))
+        try modelContext.save()
+
+        viewModel.configure(modelContext: modelContext)
+        viewModel.applyLogRange(.last90Days)
+
+        #expect(viewModel.logRange == .last90Days)
+        #expect(viewModel.kindCounts.contains { $0.kind == "state" && $0.count == 1 })
+        #expect(viewModel.logDisplayState == .ready)
+    }
+
+    @Test func applyingChapterRangeWithoutChapterKeepsCurrentRange() throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let viewModel = MirrorViewModel()
+
+        modelContext.insert(makeEvent(kind: "observation", timestamp: .now, summary: "today"))
+        try modelContext.save()
+
+        viewModel.configure(modelContext: modelContext)
+        viewModel.applyLogRange(.chapter)
+
+        #expect(viewModel.logRange == .last30Days)
+        #expect(viewModel.logDisplayState == .ready)
+    }
+
+    @Test func refreshProjectionReloadsCurrentLogRangeAndStoresFreshness() async throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let viewModel = MirrorViewModel()
+        let syncService = StubSyncService(freshness: .fresh)
+
+        modelContext.insert(makeEvent(kind: "observation", timestamp: .now, summary: "today"))
+        try modelContext.save()
+
+        viewModel.configure(modelContext: modelContext)
+        viewModel.applyLogRange(.last90Days)
+
+        modelContext.insert(makeEvent(kind: "state", timestamp: daysAgo(45), summary: "older"))
+        try modelContext.save()
+
+        ProjectionFreshnessStore.current = .stale
+        defer {
+            ProjectionFreshnessStore.current = .fresh
+        }
+
+        let freshness = await viewModel.refreshProjection(using: syncService)
+
+        #expect(freshness == .fresh)
+        #expect(ProjectionFreshnessStore.current == .fresh)
+        #expect(viewModel.isRefreshingProjection == false)
+        #expect(viewModel.kindCounts.contains { $0.kind == "state" && $0.count == 1 })
+    }
+}
+
+// MARK: - Metric Display Tests
+
+@Suite("MetricDisplay")
+struct MetricDisplayTests {
+    @Test func recordUsesConfiguredUnitAndEstimatedMarker() {
+        let entry = MetricEntry(key: "weight", value: 72.3, quality: .estimated)
+        let config = NorthStarMetricConfig(
+            key: "weight",
+            label: "体重",
+            type: .numeric,
+            unit: "KG",
+            deltaDirection: .decrease,
+            scaleMax: nil,
+            ratioDenominator: nil
+        )
+
+        let display = MetricDisplay.record(entry: entry, config: config)
+
+        #expect(display.value == "72.3")
+        #expect(display.unit == "KG")
+        #expect(display.showsEstimatedBadge == true)
+    }
+}
+
 // MARK: - BehaviorEvent Tests
 
 @Suite("BehaviorEvent")

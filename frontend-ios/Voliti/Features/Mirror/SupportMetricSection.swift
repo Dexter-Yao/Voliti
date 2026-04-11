@@ -21,10 +21,18 @@ struct SupportMetricSection: View {
                     Text(metric.value ?? "—")
                         .starpathSerif(size: 20)
 
-                    if let sub = metric.subLabel {
-                        Text(sub)
-                            .starpathMono(size: 10)
-                            .foregroundStyle(StarpathTokens.obsidian40)
+                    HStack(spacing: StarpathTokens.spacingXS) {
+                        if let sub = metric.subLabel {
+                            Text(sub)
+                                .starpathMono(size: 10)
+                                .foregroundStyle(StarpathTokens.obsidian40)
+                        }
+
+                        if metric.showsEstimatedBadge {
+                            Text("推断")
+                                .starpathMono(size: 9, uppercase: false)
+                                .foregroundStyle(StarpathTokens.copper)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -40,6 +48,7 @@ struct SupportMetricItem: Identifiable {
     let label: String
     let value: String?
     let subLabel: String?
+    let showsEstimatedBadge: Bool
 
     var id: String { key }
 }

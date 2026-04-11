@@ -14,18 +14,23 @@ final class MirrorViewModel {
     var chapter: Chapter?
     var cards: [InterventionCard] = []
     var groupedEvents: [(date: Date, events: [BehaviorEvent])] = []
-    var selectedFilterKind: String?
+    var selectedFilterKind: String? {
+        didSet {
+            rebuildLogPresentation()
+        }
+    }
     var expandedDates: Set<Date> = []
     var selectedCard: InterventionCard?
     var lifeSignPlans: [LifeSignPlan] = []
     var dashboardConfig: DashboardConfig?
     var showLifeSignList = false
+    var logRange: MirrorLogRange = .defaultValue
+    var logDisplayState: LogDisplayState = .loading
+    var isRefreshingProjection = false
 
-    private var allEvents: [BehaviorEvent] = []
+    private var logEvents: [BehaviorEvent] = []
     private var metricEvents: [BehaviorEvent] = []
     private var modelContext: ModelContext?
-    private var timelinePageSize = 50
-    private var allTimelineLoaded = false
 
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -44,9 +49,39 @@ final class MirrorViewModel {
 
     var northStarDisplayValue: String? {
         guard let config = northStarConfig else { return nil }
-        let value = MetricComputer.currentValue(for: config.key, from: metricEvents)
-        guard value != nil else { return nil }
-        return MetricComputer.format(value: value, type: config.type, scaleMax: config.scaleMax, ratioDenominator: config.ratioDenominator)
+        guard let display = MetricDisplay.make(
+            value: MetricComputer.currentValue(for: config.key, from: metricEvents),
+            quality: MetricComputer.currentQuality(for: config.key, from: metricEvents),
+            type: config.type,
+            unit: config.unit,
+            scaleMax: config.scaleMax,
+            ratioDenominator: config.ratioDenominator
+        ) else { return nil }
+        return display.value
+    }
+
+    var northStarDisplayUnit: String? {
+        guard let config = northStarConfig else { return nil }
+        return MetricDisplay.make(
+            value: MetricComputer.currentValue(for: config.key, from: metricEvents),
+            quality: MetricComputer.currentQuality(for: config.key, from: metricEvents),
+            type: config.type,
+            unit: config.unit,
+            scaleMax: config.scaleMax,
+            ratioDenominator: config.ratioDenominator
+        )?.unit
+    }
+
+    var northStarShowsEstimatedBadge: Bool {
+        guard let config = northStarConfig else { return false }
+        return MetricDisplay.make(
+            value: MetricComputer.currentValue(for: config.key, from: metricEvents),
+            quality: MetricComputer.currentQuality(for: config.key, from: metricEvents),
+            type: config.type,
+            unit: config.unit,
+            scaleMax: config.scaleMax,
+            ratioDenominator: config.ratioDenominator
+        )?.showsEstimatedBadge ?? false
     }
 
     var northStarDelta: Delta? {
@@ -73,20 +108,30 @@ final class MirrorViewModel {
             .sorted { $0.order < $1.order }
             .map { config in
                 let value = MetricComputer.currentValue(for: config.key, from: metricEvents)
+                let quality = MetricComputer.currentQuality(for: config.key, from: metricEvents)
+                let display = MetricDisplay.make(
+                    value: value,
+                    quality: quality,
+                    type: config.type,
+                    unit: config.unit,
+                    scaleMax: config.scaleMax,
+                    ratioDenominator: config.ratioDenominator
+                )
                 return SupportMetricItem(
                     key: config.key,
                     label: config.label,
-                    value: MetricComputer.format(value: value, type: config.type, scaleMax: config.scaleMax, ratioDenominator: config.ratioDenominator),
-                    subLabel: config.unit.isEmpty ? nil : config.unit
+                    value: display?.value,
+                    subLabel: display?.unit,
+                    showsEstimatedBadge: display?.showsEstimatedBadge ?? false
                 )
             }
     }
 
     private var defaultSupportMetrics: [SupportMetricItem] {
         [
-            SupportMetricItem(key: "calories", label: "今日摄入", value: nil, subLabel: "KCAL"),
-            SupportMetricItem(key: "state", label: "今日状态", value: nil, subLabel: nil),
-            SupportMetricItem(key: "consistency", label: "本周一致性", value: nil, subLabel: nil),
+            SupportMetricItem(key: "calories", label: "今日摄入", value: nil, subLabel: "KCAL", showsEstimatedBadge: false),
+            SupportMetricItem(key: "state", label: "今日状态", value: nil, subLabel: nil, showsEstimatedBadge: false),
+            SupportMetricItem(key: "consistency", label: "本周一致性", value: nil, subLabel: nil, showsEstimatedBadge: false),
         ]
     }
 
@@ -94,8 +139,11 @@ final class MirrorViewModel {
 
     var kindCounts: [(kind: String, count: Int)] {
         var counts: [String: Int] = [:]
-        for event in allEvents where !BehaviorEvent.hiddenKinds.contains(event.kind) {
+        for event in logEvents where !BehaviorEvent.hiddenKinds.contains(event.kind) {
             counts[event.kind, default: 0] += 1
+        }
+        if let selectedFilterKind {
+            counts[selectedFilterKind, default: 0] += 0
         }
         return counts
             .sorted { $0.key < $1.key }
@@ -112,23 +160,71 @@ final class MirrorViewModel {
         }
     }
 
-    // MARK: - Timeline Pagination
-
-    func loadMoreEvents() {
-        guard let modelContext, !allTimelineLoaded else { return }
-        var descriptor = FetchDescriptor<BehaviorEvent>(
-            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
-        )
-        descriptor.fetchOffset = allEvents.count
-        descriptor.fetchLimit = timelinePageSize
-        do {
-            let more = try modelContext.fetch(descriptor)
-            if more.count < timelinePageSize { allTimelineLoaded = true }
-            allEvents.append(contentsOf: more)
-            rebuildGroupedEvents()
-        } catch {
-            logger.error("Failed to load more events: \(error.localizedDescription)")
+    var shouldShowLogFilters: Bool {
+        switch logDisplayState {
+        case .ready, .emptyAfterFilter:
+            return !kindCounts.isEmpty || selectedFilterKind != nil
+        case .loading, .emptyInRange, .failed:
+            return false
         }
+    }
+
+    // MARK: - Log Range
+
+    func applyLogRange(_ range: MirrorLogRange) {
+        guard let modelContext else { return }
+        guard range.isAvailable(chapter: chapter) else {
+            logger.error(
+                "Mirror log range apply rejected: target=\(range.storageValue, privacy: .public) reason=unavailable"
+            )
+            return
+        }
+
+        let previousRange = logRange
+        let previousEvents = logEvents
+        let previousGroups = groupedEvents
+        let previousState = logDisplayState
+
+        logger.info(
+            "Mirror log range apply started: current=\(previousRange.storageValue, privacy: .public) target=\(range.storageValue, privacy: .public)"
+        )
+        logDisplayState = .loading
+
+        do {
+            logEvents = try fetchLogEvents(for: range, modelContext: modelContext)
+            logRange = range
+            rebuildLogPresentation()
+            logger.info(
+                "Mirror log range apply succeeded: target=\(range.storageValue, privacy: .public) visible=\(self.visibleLogEventCount) filtered=\(self.filteredLogEventCount)"
+            )
+        } catch {
+            logRange = previousRange
+            logEvents = previousEvents
+            groupedEvents = previousGroups
+            logDisplayState = previousState == .loading ? .failed : previousState
+            logger.error(
+                "Mirror log range apply failed: current=\(previousRange.storageValue, privacy: .public) target=\(range.storageValue, privacy: .public) error=\(error.localizedDescription, privacy: .public)"
+            )
+        }
+    }
+
+    func refreshProjection(using syncService: StoreSyncing) async -> ProjectionFreshness {
+        guard !isRefreshingProjection else {
+            return ProjectionFreshnessStore.current
+        }
+
+        isRefreshingProjection = true
+        logger.info("Mirror stale refresh started: range=\(self.logRange.storageValue, privacy: .public)")
+        let freshness = await syncService.syncAll()
+        ProjectionFreshnessStore.current = freshness
+        loadData()
+        isRefreshingProjection = false
+        if freshness == .fresh {
+            logger.info("Mirror stale refresh succeeded: freshness=fresh range=\(self.logRange.storageValue, privacy: .public)")
+        } else {
+            logger.error("Mirror stale refresh failed: freshness=stale range=\(self.logRange.storageValue, privacy: .public)")
+        }
+        return freshness
     }
 
     // MARK: - Day Collapse
@@ -164,17 +260,50 @@ final class MirrorViewModel {
 
     // MARK: - Private
 
-    private func rebuildGroupedEvents() {
+    private var visibleLogEvents: [BehaviorEvent] {
+        logEvents.filter { !BehaviorEvent.hiddenKinds.contains($0.kind) }
+    }
+
+    private var visibleLogEventCount: Int {
+        visibleLogEvents.count
+    }
+
+    private var filteredLogEventCount: Int {
+        filteredGroupedEvents.reduce(0) { $0 + $1.events.count }
+    }
+
+    private func rebuildLogPresentation() {
         let calendar = Calendar.current
-        let displayEvents = allEvents.filter { !BehaviorEvent.hiddenKinds.contains($0.kind) }
         var grouped: [Date: [BehaviorEvent]] = [:]
-        for event in displayEvents {
+        for event in visibleLogEvents {
             let dayStart = calendar.startOfDay(for: event.timestamp)
             grouped[dayStart, default: []].append(event)
         }
         groupedEvents = grouped
             .sorted { $0.key > $1.key }
             .map { (date: $0.key, events: $0.value) }
+
+        if visibleLogEventCount == 0 {
+            logDisplayState = .emptyInRange
+        } else if selectedFilterKind != nil && filteredGroupedEvents.isEmpty {
+            logDisplayState = .emptyAfterFilter
+        } else {
+            logDisplayState = .ready
+        }
+    }
+
+    private func fetchLogEvents(for range: MirrorLogRange, modelContext: ModelContext) throws -> [BehaviorEvent] {
+        guard let interval = range.interval(chapter: chapter) else {
+            return []
+        }
+
+        let start = interval.start
+        let end = interval.end
+        let descriptor = FetchDescriptor<BehaviorEvent>(
+            predicate: #Predicate { $0.timestamp >= start && $0.timestamp < end },
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        return try modelContext.fetch(descriptor)
     }
 
     private func loadData() {
@@ -222,19 +351,6 @@ final class MirrorViewModel {
             logger.error("Failed to load dashboard config: \(error.localizedDescription)")
         }
 
-        // Timeline events (paginated)
-        allTimelineLoaded = false
-        var eventDescriptor = FetchDescriptor<BehaviorEvent>(
-            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
-        )
-        eventDescriptor.fetchLimit = timelinePageSize
-        do {
-            allEvents = try modelContext.fetch(eventDescriptor)
-            if allEvents.count < timelinePageSize { allTimelineLoaded = true }
-        } catch {
-            logger.error("Failed to load events: \(error.localizedDescription)")
-        }
-
         // Metric events (14 days for trend/delta calculation)
         let fourteenDaysAgo = calendar.date(byAdding: .day, value: -14, to: calendar.startOfDay(for: .now))!
         let metricDescriptor = FetchDescriptor<BehaviorEvent>(
@@ -247,6 +363,20 @@ final class MirrorViewModel {
             logger.error("Failed to load metric events: \(error.localizedDescription)")
         }
 
-        rebuildGroupedEvents()
+        do {
+            logEvents = try fetchLogEvents(for: logRange, modelContext: modelContext)
+            logger.info(
+                "Mirror projection loaded: range=\(self.logRange.storageValue, privacy: .public) total=\(self.logEvents.count) visible=\(self.visibleLogEventCount)"
+            )
+        } catch {
+            logEvents = []
+            logDisplayState = .failed
+            logger.error(
+                "Mirror projection load failed: range=\(self.logRange.storageValue, privacy: .public) error=\(error.localizedDescription, privacy: .public)"
+            )
+            return
+        }
+
+        rebuildLogPresentation()
     }
 }
