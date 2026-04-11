@@ -39,11 +39,15 @@ def _build_coach_memory_paths(profiles: tuple[SessionProfile, ...]) -> list[str]
     return memory_paths
 
 
-def _build_coach_middleware(profiles: tuple[SessionProfile, ...]) -> list[Any]:
+def _build_coach_middleware(
+    profiles: tuple[SessionProfile, ...],
+    *,
+    backend_factory: Callable[..., Any],
+) -> list[Any]:
     """从会话配置组装 middleware。"""
     middleware: list[Any] = [SessionTypeMiddleware(), MemoryLifecycleMiddleware()]
     if any(profile.enable_journey_analysis for profile in profiles):
-        middleware.append(JourneyAnalysisMiddleware())
+        middleware.append(JourneyAnalysisMiddleware(backend=backend_factory))
     return middleware
 
 def _resolve_user_namespace(ctx: Any) -> tuple[str, ...]:
@@ -120,15 +124,19 @@ def create_coach_agent(
     """
     profiles = list_session_profiles()
     coaching_profile = get_session_profile("coaching")
+    backend_factory = _create_backend_factory()
     kwargs = {
         "model": ModelRegistry.get(model_profile),
         "system_prompt": PromptRegistry.get(coaching_profile.system_prompt_name),
-        "backend": _create_backend_factory(),
+        "backend": backend_factory,
         "name": "coach",
         "memory": _build_coach_memory_paths(profiles),
         "tools": COACH_TOOLS,
         "subagents": [_create_witness_card_composer()],
-        "middleware": _build_coach_middleware(profiles),
+        "middleware": _build_coach_middleware(
+            profiles,
+            backend_factory=backend_factory,
+        ),
     }
     if store is not None:
         kwargs["store"] = store

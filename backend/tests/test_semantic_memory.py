@@ -1,6 +1,15 @@
 # ABOUTME: 语义记忆路径分类测试
 # ABOUTME: 验证 Coach 可直接写入的长期语义记忆范围与候选信号边界
 
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+
+from langchain.tools import ToolRuntime
+from langchain_core.messages import ToolMessage
+from langgraph.prebuilt.tool_node import ToolCallRequest
+import pytest
+
 from voliti.semantic_memory import (
     classify_semantic_memory_path,
     is_archive_source_path,
@@ -135,6 +144,137 @@ def test_memory_lifecycle_wrap_tool_call_is_passthrough() -> None:
     result = middleware.wrap_tool_call("request", lambda request: {"request": request})
 
     assert result == {"request": "request"}
+
+
+def test_memory_lifecycle_blocks_direct_authoritative_write_without_confirmation() -> None:
+    middleware = MemoryLifecycleMiddleware()
+    handler = MagicMock()
+    request = ToolCallRequest(
+        tool_call={
+            "id": "call_001",
+            "name": "write_file",
+            "args": {
+                "file_path": "/user/profile/context.md",
+                "content": "updated profile",
+            },
+        },
+        tool=None,
+        state={"messages": []},
+        runtime=ToolRuntime(
+            state={"messages": []},
+            context=None,
+            config={"configurable": {}},
+            stream_writer=lambda *_: None,
+            tool_call_id="call_001",
+            store=None,
+        ),
+    )
+
+    result = middleware.wrap_tool_call(request, handler)
+
+    assert isinstance(result, ToolMessage)
+    assert result.status == "error"
+    assert "not allowed" in result.text.lower()
+    handler.assert_not_called()
+
+
+def test_memory_lifecycle_allows_candidate_signal_write_without_confirmation() -> None:
+    middleware = MemoryLifecycleMiddleware()
+    handler = MagicMock(return_value="ok")
+    request = ToolCallRequest(
+        tool_call={
+            "id": "call_002",
+            "name": "write_file",
+            "args": {
+                "file_path": "/user/derived/last_journey_analysis.json",
+                "content": "{}",
+            },
+        },
+        tool=None,
+        state={"messages": []},
+        runtime=ToolRuntime(
+            state={"messages": []},
+            context=None,
+            config={"configurable": {}},
+            stream_writer=lambda *_: None,
+            tool_call_id="call_002",
+            store=None,
+        ),
+    )
+
+    result = middleware.wrap_tool_call(request, handler)
+
+    assert result == "ok"
+    handler.assert_called_once_with(request)
+
+
+def test_memory_lifecycle_allows_confirmed_authoritative_write() -> None:
+    middleware = MemoryLifecycleMiddleware()
+    handler = MagicMock(return_value="ok")
+    request = ToolCallRequest(
+        tool_call={
+            "id": "call_003",
+            "name": "write_file",
+            "args": {
+                "file_path": "/user/profile/context.md",
+                "content": "updated profile",
+            },
+        },
+        tool=None,
+        state={"messages": []},
+        runtime=ToolRuntime(
+            state={"messages": []},
+            context=None,
+            config={
+                "configurable": {
+                    "semantic_write_confirmed": True,
+                    "semantic_write_source_kind": "candidate_signal",
+                    "semantic_write_source_name": "coach_confirmation",
+                }
+            },
+            stream_writer=lambda *_: None,
+            tool_call_id="call_003",
+            store=None,
+        ),
+    )
+
+    result = middleware.wrap_tool_call(request, handler)
+
+    assert result == "ok"
+    handler.assert_called_once_with(request)
+
+
+@pytest.mark.asyncio
+async def test_memory_lifecycle_blocks_direct_authoritative_write_async() -> None:
+    middleware = MemoryLifecycleMiddleware()
+    handler = AsyncMock()
+    request = ToolCallRequest(
+        tool_call={
+            "id": "call_004",
+            "name": "edit_file",
+            "args": {
+                "file_path": "/user/chapter/current.json",
+                "old_string": "{}",
+                "new_string": "{\"title\":\"x\"}",
+            },
+        },
+        tool=None,
+        state={"messages": []},
+        runtime=ToolRuntime(
+            state={"messages": []},
+            context=None,
+            config={"configurable": {}},
+            stream_writer=lambda *_: None,
+            tool_call_id="call_004",
+            store=None,
+        ),
+    )
+
+    result = await middleware.awrap_tool_call(request, handler)
+
+    assert isinstance(result, ToolMessage)
+    assert result.status == "error"
+    handler.assert_not_called()
 
 
 def test_memory_lifecycle_after_model_and_after_agent_are_noops() -> None:

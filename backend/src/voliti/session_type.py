@@ -4,13 +4,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, TypeGuard
+from typing import Any, Literal, Mapping, TypeGuard
+
+from langgraph.config import get_config
 
 SessionType = Literal["coaching", "onboarding"]
 """Voliti 当前支持的会话类型。"""
 
 DEFAULT_SESSION_TYPE: SessionType = "coaching"
 """默认会话类型。"""
+
+
+class InvalidSessionTypeError(ValueError):
+    """session_type 不满足运行时契约。"""
 
 
 @dataclass(frozen=True)
@@ -56,6 +62,38 @@ def coerce_session_type(value: object) -> SessionType | None:
     if is_session_type(value):
         return value
     return None
+
+
+def require_session_type(value: object) -> SessionType:
+    """将任意值收敛为 SessionType，失败时直接报错。"""
+    session_type = coerce_session_type(value)
+    if session_type is None:
+        raise InvalidSessionTypeError(
+            "configurable.session_type is required and must be one of: coaching, onboarding"
+        )
+    return session_type
+
+
+def resolve_session_type(config: Mapping[str, Any] | None) -> SessionType:
+    """从运行时 config 中严格解析 session_type。"""
+    configurable = (config or {}).get("configurable", {})
+    if not isinstance(configurable, Mapping):
+        raise InvalidSessionTypeError(
+            "configurable.session_type is required and must be one of: coaching, onboarding"
+        )
+    return require_session_type(configurable.get("session_type"))
+
+
+def get_current_session_type() -> SessionType:
+    """从当前 LangGraph 运行时 config 严格读取 session_type。"""
+    try:
+        return resolve_session_type(get_config())
+    except InvalidSessionTypeError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise InvalidSessionTypeError(
+            "configurable.session_type is required and must be one of: coaching, onboarding"
+        ) from exc
 
 
 def get_session_profile(session_type: SessionType) -> SessionProfile:

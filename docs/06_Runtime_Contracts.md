@@ -180,6 +180,12 @@ Store 在代码中只允许存在两个唯一收口点：
 
 `session_type` 由 backend 持有并校验。客户端可以选择和消费会话类型，但不能重定义会话身份。
 
+当前实现采用 fail-closed 规则：
+
+1. `configurable.session_type` 缺失时，请求直接失败。
+2. `configurable.session_type` 非法时，请求直接失败。
+3. backend 不允许静默回退到 `coaching`。
+
 当前文档只对减脂场景负责，已定义的核心类型包括：
 
 1. `coaching`
@@ -354,6 +360,13 @@ resume 同时校验以下两类约束：
 3. backend 的分析与中间件若产生候选信号，必须写入候选层，而不是直接覆盖权威语义记忆。
 4. 当前实现中，`journey_analysis` 产生的单次摘要只能作为 `candidate_signal` 使用，不得直接 promotion 到权威语义。
 5. 当前实现中，archive summary / excerpt、`runtime_only` 与 `observability_only` 内容一律不得直接 promotion 到权威语义。
+6. 当前实现中，`authoritative_semantic` 路径的直接文件写入必须经过显式确认上下文，不允许未确认写入。
+
+当前实现使用以下运行时字段表达显式确认写入上下文：
+
+1. `configurable.semantic_write_confirmed`
+2. `configurable.semantic_write_source_kind`
+3. `configurable.semantic_write_source_name`
 
 ### 10.4 语义边界分类
 
@@ -479,3 +492,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 2026-04-09 | 初始创建：建立 Voliti 运行时契约主文档，定义身份、Store、会话、A2UI、错误、记忆分层、用户态与可观测性边界 |
 | 2026-04-10 | 同步原始会话记录与观测契约：以 runtime history canonical source 与 retrieval 事件替代 archive 双写叙述 |
 | 2026-04-11 | 同步当前实现状态：补充 `SessionProfile` 最小字段、语义边界六分类、archive retrieval 的 `archive_source` / `runtime_evidence` 契约，以及当前已代码化的 promotion 禁止规则 |
+| 2026-04-12 | 收紧当前实现状态：`session_type` 改为 fail-closed；Journey Analysis 改为通过共享 backend factory 解析真实 backend；权威语义写入边界改为在 `edit_file` / `write_file` 写入面执行 |

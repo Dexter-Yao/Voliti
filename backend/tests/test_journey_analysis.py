@@ -201,6 +201,52 @@ class TestPromptInjection:
         assert mw.get_candidate_signal() is None
 
 
+class TestRuntimePath:
+
+    @pytest.mark.asyncio
+    async def test_awrap_model_call_resolves_backend_and_runs_analysis(self) -> None:
+        backend = MagicMock()
+        request = MagicMock()
+        request.system_message = None
+        request.state = {"messages": []}
+        request.runtime = MagicMock()
+        request.override.side_effect = lambda **_: request
+        handler = AsyncMock(return_value={"ok": True})
+
+        mw = JourneyAnalysisMiddleware(backend=MagicMock())
+        mw._resolve_backend = MagicMock(return_value=backend)
+        mw._maybe_analyze = AsyncMock()
+
+        result = await mw.awrap_model_call(request, handler)
+
+        assert result == {"ok": True}
+        mw._resolve_backend.assert_called_once_with(
+            state=request.state,
+            runtime=request.runtime,
+        )
+        mw._maybe_analyze.assert_awaited_once_with(backend)
+        handler.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_awrap_model_call_skips_when_backend_unavailable(self) -> None:
+        request = MagicMock()
+        request.system_message = None
+        request.state = {"messages": []}
+        request.runtime = MagicMock()
+        request.override.side_effect = lambda **_: request
+        handler = AsyncMock(return_value={"ok": True})
+
+        mw = JourneyAnalysisMiddleware(backend=MagicMock())
+        mw._resolve_backend = MagicMock(return_value=None)
+        mw._maybe_analyze = AsyncMock()
+
+        result = await mw.awrap_model_call(request, handler)
+
+        assert result == {"ok": True}
+        mw._maybe_analyze.assert_not_called()
+        handler.assert_awaited_once()
+
+
 class TestMaybeAnalyze:
 
     @pytest.mark.asyncio
@@ -210,7 +256,8 @@ class TestMaybeAnalyze:
         recent_ts = (datetime.now(timezone.utc) - timedelta(hours=12)).isoformat()
         backend.read_file.return_value = json.dumps({"timestamp": recent_ts})
 
-        await mw._maybe_analyze(backend)
+        with patch("voliti.middleware.journey_analysis.get_session_type", return_value="coaching"):
+            await mw._maybe_analyze(backend)
         assert mw._summary is None
         assert mw._prepared is True
 
@@ -244,7 +291,8 @@ class TestMaybeAnalyze:
         backend.read_file.return_value = None
         mw._run_analysis = AsyncMock(return_value="## Journey Analysis Brief\n- Test finding")
 
-        await mw._maybe_analyze(backend)
+        with patch("voliti.middleware.journey_analysis.get_session_type", return_value="coaching"):
+            await mw._maybe_analyze(backend)
 
         backend.write_file.assert_called_once()
         write_path, write_content = backend.write_file.call_args.args

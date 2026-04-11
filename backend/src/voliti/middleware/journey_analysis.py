@@ -8,6 +8,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from deepagents.backends.protocol import BACKEND_TYPES, BackendProtocol
+from langchain.tools import ToolRuntime
+
 from voliti.middleware.base import PromptInjectionMiddleware, get_session_type
 
 logger = logging.getLogger(__name__)
@@ -34,8 +37,9 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
     Onboarding 会话跳过分析（新用户无数据可分析）。
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, backend: BACKEND_TYPES | None = None) -> None:
         super().__init__()
+        self._backend = backend
         self._summary: str | None = None
         self._prepared = False
         self._model: Any = None
@@ -56,15 +60,29 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
             "content": self._summary,
         }
 
-    def _get_backend(self) -> Any | None:
-        """从 LangGraph 运行时获取 backend。"""
+    def _resolve_backend(self, *, state: Any, runtime: Any) -> BackendProtocol | None:
+        """基于当前 runtime 解析 backend。"""
         try:
             from langgraph.config import get_config
 
-            cfg = get_config()
-            return cfg.get("backend")
+            config = get_config()
         except Exception:  # noqa: BLE001
             return None
+
+        if self._backend is None:
+            return None
+
+        if callable(self._backend):
+            tool_runtime = ToolRuntime(
+                state=state,
+                context=runtime.context,
+                config=config,
+                stream_writer=runtime.stream_writer,
+                tool_call_id=None,
+                store=runtime.store,
+            )
+            return self._backend(tool_runtime)  # type: ignore[call-arg]
+        return self._backend
 
     def _should_trigger(self, backend: Any) -> bool:
         """检查是否超过分析间隔。首次使用或数据损坏时触发。"""
@@ -289,7 +307,10 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
     async def awrap_model_call(self, request, handler):
         """异步路径：在首次调用时触发分析，然后注入摘要。"""
         if not self._prepared:
-            backend = self._get_backend()
+            backend = self._resolve_backend(
+                state=request.state,
+                runtime=request.runtime,
+            )
             if backend:
                 await self._maybe_analyze(backend)
 
