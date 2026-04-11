@@ -11,18 +11,21 @@ from typing import Any
 from deepagents.middleware._utils import append_to_system_message
 from langchain.agents.middleware.types import AgentMiddleware, ModelRequest, ModelResponse
 
+from voliti.session_type import DEFAULT_SESSION_TYPE, SessionType, coerce_session_type
+
 logger = logging.getLogger(__name__)
 
 
-def get_session_mode() -> str:
-    """从当前 LangGraph 运行时 config 读取 session_mode。"""
+def get_session_type() -> SessionType:
+    """从当前 LangGraph 运行时 config 读取 session_type。"""
     try:
         from langgraph.config import get_config
 
         cfg = get_config()
-        return cfg.get("configurable", {}).get("session_mode", "coaching")
+        value = cfg.get("configurable", {}).get("session_type")
+        return coerce_session_type(value) or DEFAULT_SESSION_TYPE
     except Exception:  # noqa: BLE001
-        return "coaching"
+        return DEFAULT_SESSION_TYPE
 
 
 class PromptInjectionMiddleware(AgentMiddleware):

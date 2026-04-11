@@ -397,12 +397,12 @@ struct RuntimeContractTests {
 
     @Test func requestContextInjectsUserAndCorrelation() {
         let configurable = RequestContext.configurable(
-            sessionMode: "onboarding",
+            sessionType: .onboarding,
             preferredLanguage: "zh-Hans",
             correlationID: "corr_test"
         )
 
-        #expect(configurable["session_mode"] as? String == "onboarding")
+        #expect(configurable["session_type"] as? String == SessionType.onboarding.rawValue)
         #expect(configurable["user_id"] as? String == APIConfiguration.userID)
         #expect(configurable["correlation_id"] as? String == "corr_test")
         #expect(configurable["preferred_language"] as? String == "zh-Hans")
@@ -471,7 +471,7 @@ struct RuntimeContractTests {
         let body = LangGraphAPI.makeResumeBody(
             action: "submit",
             data: ["energy": 7],
-            sessionMode: "onboarding",
+            sessionType: .onboarding,
             preferredLanguage: "zh-Hans",
             correlationID: "corr_test",
             interruptID: "interrupt_123"
@@ -484,7 +484,7 @@ struct RuntimeContractTests {
 
         #expect(resume["interrupt_id"] as? String == "interrupt_123")
         #expect(configurable["correlation_id"] as? String == "corr_test")
-        #expect(configurable["session_mode"] as? String == "onboarding")
+        #expect(configurable["session_type"] as? String == SessionType.onboarding.rawValue)
     }
 }
 
@@ -545,7 +545,7 @@ struct OnboardingIntegrationTests {
 
         viewModel.configure(
             modelContext: modelContext,
-            sessionMode: "onboarding",
+            sessionType: .onboarding,
             syncService: syncService
         )
 
@@ -581,7 +581,7 @@ struct BackendIntegrationTests {
             UserDefaults.standard.removeObject(forKey: "onboardingComplete")
         }
 
-        viewModel.configure(modelContext: modelContext, sessionMode: "onboarding")
+        viewModel.configure(modelContext: modelContext, sessionType: .onboarding)
 
         let threadID = try await viewModel.ensureCorrectThread()
         #expect(!threadID.isEmpty)
@@ -765,6 +765,7 @@ struct ResetServiceTests {
     @Test func resetAllClearsProductStateWithoutTouchingSystemPermissions() async throws {
         let container = try makeInMemoryContainer()
         let modelContext = ModelContext(container)
+        let previousUserID = APIConfiguration.userID
         modelContext.insert(ChatMessage(role: .assistant, textContent: "hello", threadID: "thread_1"))
         modelContext.insert(BehaviorEvent(timestamp: .now, kind: "state", evidence: "test"))
         try modelContext.save()
@@ -794,6 +795,7 @@ struct ResetServiceTests {
                 remoteClearCalled = true
             }
         )
+        let regeneratedUserID = APIConfiguration.userID
 
         let remainingMessages = try modelContext.fetch(FetchDescriptor<ChatMessage>())
         let remainingEvents = try modelContext.fetch(FetchDescriptor<BehaviorEvent>())
@@ -802,6 +804,7 @@ struct ResetServiceTests {
         #expect(remoteClearCalled == true)
         #expect(APIConfiguration.threadID == nil)
         #expect(APIConfiguration.onboardingThreadID == nil)
+        #expect(regeneratedUserID != previousUserID)
         #expect(UserDefaults.standard.bool(forKey: "onboardingComplete") == false)
         #expect(UserDefaults.standard.object(forKey: "preferredLanguage") == nil)
         #expect(UserDefaults.standard.object(forKey: "checkinReminderEnabled") == nil)
@@ -809,6 +812,33 @@ struct ResetServiceTests {
         #expect(UserDefaults.standard.bool(forKey: "notificationsAuthorized") == true)
         #expect(remainingMessages.isEmpty)
         #expect(remainingEvents.isEmpty)
+    }
+
+    @Test func resetAllRotatesLocalUserIdentityEvenWhenRemoteStoreClearFails() async throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let previousUserID = APIConfiguration.userID
+
+        APIConfiguration.threadID = "coach-thread"
+        APIConfiguration.onboardingThreadID = "onboarding-thread"
+
+        defer {
+            APIConfiguration.threadID = nil
+            APIConfiguration.onboardingThreadID = nil
+        }
+
+        let warning = await ResetService.resetAll(
+            modelContext: modelContext,
+            clearRemoteStore: {
+                throw URLError(.cannotConnectToHost)
+            }
+        )
+        let regeneratedUserID = APIConfiguration.userID
+
+        #expect(warning == "部分云端数据可能未完全清除")
+        #expect(APIConfiguration.threadID == nil)
+        #expect(APIConfiguration.onboardingThreadID == nil)
+        #expect(regeneratedUserID != previousUserID)
     }
 }
 
@@ -847,7 +877,7 @@ struct ProjectionFreshnessTests {
 
         viewModel.configure(
             modelContext: modelContext,
-            sessionMode: "onboarding",
+            sessionType: .onboarding,
             syncService: staleSync
         )
 
@@ -871,7 +901,7 @@ struct ProjectionFreshnessTests {
 
         viewModel.configure(
             modelContext: modelContext,
-            sessionMode: "onboarding",
+            sessionType: .onboarding,
             syncService: freshSync
         )
 

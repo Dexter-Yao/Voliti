@@ -55,7 +55,7 @@ struct OnboardingView: View {
             }
         }
         .onAppear {
-            viewModel.configure(modelContext: modelContext, sessionMode: "onboarding")
+            viewModel.configure(modelContext: modelContext, sessionType: .onboarding)
             injectGreetingIfNeeded()
             // 上次 session 已有对话记录，跳过 welcome 居中阶段
             if !isReEntry && viewModel.messages.count > 1 && phase == .welcome {
@@ -190,7 +190,7 @@ struct OnboardingView: View {
         let greeting = ChatMessage(
             role: .assistant,
             textContent: OnboardingGreeting.text,
-            threadID: "onboarding"
+            threadID: SessionType.onboarding.rawValue
         )
         viewModel.messages.append(greeting)
     }

@@ -305,9 +305,9 @@ async def _run_single_seed(
     )
     client.with_user_id(user_id)
 
-    # Onboarding seed（无 pre_state）使用 onboarding session_mode
+    # Onboarding seed（无 pre_state）使用 onboarding session_type
     if seed.pre_state is None:
-        client.with_session_mode("onboarding")
+        client.with_session_type("onboarding")
 
     transcript: Transcript | None = None
     score_card = ScoreCard(seed_id=seed.id)

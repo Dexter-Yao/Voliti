@@ -59,7 +59,7 @@ class _FakeArchiveProvider(RuntimeSessionHistoryProvider):
             "updated_at": record.updated_at,
             "metadata": {
                 "user_id": record.user_id,
-                "session_mode": record.session_type,
+                "session_type": record.session_type,
                 "correlation_id": record.correlation_id,
             },
         }

@@ -47,10 +47,11 @@ enum ResetService {
             logger.error("Reset step 3: SwiftData clear failed — \(error.localizedDescription)")
         }
 
-        // 4. 重置 thread IDs
+        // 4. 重置 thread IDs 与本地身份
         APIConfiguration.threadID = nil
         APIConfiguration.onboardingThreadID = nil
-        logger.info("Reset step 4: thread IDs cleared")
+        APIConfiguration.clearLocalIdentity()
+        logger.info("Reset step 4: thread IDs and local identity cleared")
 
         // 5. 清除其他 AppStorage 值
         let keysToRemove = [

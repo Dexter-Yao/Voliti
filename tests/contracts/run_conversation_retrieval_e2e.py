@@ -101,7 +101,7 @@ def run_assertions(port: int) -> None:
         thread = await client.threads.create(
             metadata={
                 "user_id": user_id,
-                "session_mode": "coaching",
+                "session_type": "coaching",
                 "correlation_id": correlation_id,
             }
         )
@@ -115,7 +115,7 @@ def run_assertions(port: int) -> None:
                 "configurable": {
                     "user_id": user_id,
                     "correlation_id": correlation_id,
-                    "session_mode": "coaching",
+                    "session_type": "coaching",
                 }
             },
             raise_error=True,

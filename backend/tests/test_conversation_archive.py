@@ -20,7 +20,7 @@ def test_normalize_conversation_record_builds_stable_record() -> None:
         "updated_at": "2026-04-10T02:32:13.797897+00:00",
         "metadata": {
             "user_id": "user-123",
-            "session_mode": "coaching",
+            "session_type": "coaching",
             "correlation_id": "corr-123",
         },
     }
@@ -95,7 +95,7 @@ def test_normalize_conversation_record_filters_runtime_noise_and_deduplicates() 
         "updated_at": "2026-04-10T02:40:05.000000+00:00",
         "metadata": {
             "user_id": "user-456",
-            "session_mode": "onboarding",
+            "session_type": "onboarding",
             "correlation_id": "corr-456",
         },
     }
@@ -155,6 +155,25 @@ def test_normalize_conversation_record_requires_user_identity_and_session_type()
         raise AssertionError("normalize_conversation_record should reject missing metadata")
 
 
+def test_normalize_conversation_record_rejects_legacy_session_mode_metadata() -> None:
+    thread = {
+        "thread_id": "thread-790",
+        "created_at": "2026-04-10T02:50:00.000000+00:00",
+        "updated_at": "2026-04-10T02:50:05.000000+00:00",
+        "metadata": {
+            "user_id": "user-790",
+            "session_mode": "coaching",
+        },
+    }
+
+    try:
+        normalize_conversation_record(thread=thread, history=[])
+    except ValueError as exc:
+        assert str(exc) == "runtime session history is missing required metadata"
+    else:
+        raise AssertionError("normalize_conversation_record should reject legacy session_mode metadata")
+
+
 class _FakeRuntimeSessionHistoryProvider(RuntimeSessionHistoryProvider):
     def __init__(self) -> None:
         self.thread = {
@@ -163,7 +182,7 @@ class _FakeRuntimeSessionHistoryProvider(RuntimeSessionHistoryProvider):
             "updated_at": "2026-04-10T03:00:06.000000+00:00",
             "metadata": {
                 "user_id": "user-999",
-                "session_mode": "coaching",
+                "session_type": "coaching",
                 "correlation_id": "corr-999",
             },
         }

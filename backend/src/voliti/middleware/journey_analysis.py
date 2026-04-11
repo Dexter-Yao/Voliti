@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from voliti.middleware.base import PromptInjectionMiddleware, get_session_mode
+from voliti.middleware.base import PromptInjectionMiddleware, get_session_type
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +258,7 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
 
         self._prepared = True
 
-        if get_session_mode() == "onboarding":
+        if get_session_type() == "onboarding":
             logger.debug("JourneyAnalysisMW: onboarding session, skipping")
             return
 

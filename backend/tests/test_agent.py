@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from langgraph.store.memory import InMemoryStore
 
 from voliti.agent import create_coach_agent
+from voliti.middleware.session_type import SessionTypeMiddleware
 
 
 class TestCreateCoachAgent:
@@ -222,3 +223,22 @@ class TestCreateCoachAgent:
             "/user/coping_plans_index.md",
             "/user/timeline/markers.json",
         ]
+
+    @patch("voliti.agent.create_deep_agent")
+    @patch("voliti.agent.PromptRegistry")
+    @patch("voliti.agent.ModelRegistry")
+    def test_registers_session_type_middleware(
+        self,
+        mock_model_reg: MagicMock,
+        mock_prompt_reg: MagicMock,
+        mock_create: MagicMock,
+    ) -> None:
+        """应注册 SessionTypeMiddleware。"""
+        mock_model_reg.get.return_value = MagicMock()
+        mock_prompt_reg.get.return_value = "You are a coach."
+        mock_create.return_value = MagicMock()
+
+        create_coach_agent()
+
+        call_kwargs = mock_create.call_args
+        assert any(isinstance(item, SessionTypeMiddleware) for item in call_kwargs.kwargs["middleware"])

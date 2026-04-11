@@ -212,7 +212,7 @@ class TestMaybeAnalyze:
         mw = JourneyAnalysisMiddleware()
         backend = MagicMock()
 
-        with patch("voliti.middleware.journey_analysis.get_session_mode", return_value="onboarding"):
+        with patch("voliti.middleware.journey_analysis.get_session_type", return_value="onboarding"):
             await mw._maybe_analyze(backend)
 
         assert mw._prepared is True

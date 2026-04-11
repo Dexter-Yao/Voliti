@@ -14,7 +14,7 @@ from deepagents.middleware.subagents import SubAgent
 from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
 from voliti.middleware.journey_analysis import JourneyAnalysisMiddleware
-from voliti.middleware.session_mode import SessionModeMiddleware
+from voliti.middleware.session_type import SessionTypeMiddleware
 from voliti.store_contract import InvalidUserIDError, resolve_user_namespace
 from voliti.tools.conversation_archive import retrieve_conversation_archive
 from voliti.tools.experiential import compose_witness_card
@@ -108,7 +108,7 @@ def create_coach_agent(
         ],
         "tools": COACH_TOOLS,
         "subagents": [_create_witness_card_composer()],
-        "middleware": [SessionModeMiddleware(), JourneyAnalysisMiddleware()],
+        "middleware": [SessionTypeMiddleware(), JourneyAnalysisMiddleware()],
     }
     if store is not None:
         kwargs["store"] = store
