@@ -461,6 +461,21 @@ struct MirrorViewModelTests {
         #expect(viewModel.logDisplayState == .ready)
     }
 
+    @Test func applyingChapterRangeWithoutChapterKeepsCurrentRange() throws {
+        let container = try makeInMemoryContainer()
+        let modelContext = ModelContext(container)
+        let viewModel = MirrorViewModel()
+
+        modelContext.insert(makeEvent(kind: "observation", timestamp: .now, summary: "today"))
+        try modelContext.save()
+
+        viewModel.configure(modelContext: modelContext)
+        viewModel.applyLogRange(.chapter)
+
+        #expect(viewModel.logRange == .last30Days)
+        #expect(viewModel.logDisplayState == .ready)
+    }
+
     @Test func refreshProjectionReloadsCurrentLogRangeAndStoresFreshness() async throws {
         let container = try makeInMemoryContainer()
         let modelContext = ModelContext(container)

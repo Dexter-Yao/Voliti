@@ -71,6 +71,15 @@ enum MirrorLogRange: Equatable {
         }
     }
 
+    func isAvailable(chapter: Chapter?) -> Bool {
+        switch self {
+        case .chapter:
+            return chapter != nil
+        case .last7Days, .last30Days, .last90Days, .custom:
+            return true
+        }
+    }
+
     static func validatedCustom(
         startDate: Date,
         endDate: Date,

@@ -173,6 +173,12 @@ final class MirrorViewModel {
 
     func applyLogRange(_ range: MirrorLogRange) {
         guard let modelContext else { return }
+        guard range.isAvailable(chapter: chapter) else {
+            logger.error(
+                "Mirror log range apply rejected: target=\(range.storageValue, privacy: .public) reason=unavailable"
+            )
+            return
+        }
 
         let previousRange = logRange
         let previousEvents = logEvents
