@@ -1,5 +1,5 @@
 # ABOUTME: 运行 conversation archive retrieval tool 的最小 live integration 验证
-# ABOUTME: 启动本地 LangGraph dev server，先生成真实对话，再直接调用 tool wrapper 验证统一 envelope
+# ABOUTME: time_hint 使用运行当天日期，确保 all-window 检索持续匹配真实会话记录
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import socket
 import subprocess
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
@@ -95,6 +96,8 @@ def run_assertions(port: int) -> None:
     async def _run() -> None:
         user_id = f"tool_e2e_{uuid4().hex[:8]}"
         correlation_id = f"corr_{uuid4().hex[:8]}"
+        # 使用运行当天日期验证 time_hint 过滤语义，避免固定日期导致脚本自然失效。
+        time_hint = datetime.now(UTC).date().isoformat()
         os.environ["VOLITI_RUNTIME_API_URL"] = f"http://127.0.0.1:{port}"
 
         client = get_client(url=f"http://127.0.0.1:{port}")
@@ -136,7 +139,7 @@ def run_assertions(port: int) -> None:
                 "window": "all",
                 "limit": 3,
                 "detail_level": "summary",
-                "time_hint": "2026-04-10",
+                "time_hint": time_hint,
             },
             config={"configurable": {"user_id": user_id}},
         )
