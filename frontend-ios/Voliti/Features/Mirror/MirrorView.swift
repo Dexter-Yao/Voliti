@@ -156,10 +156,12 @@ struct MirrorView: View {
                 currentRange: viewModel.logRange,
                 hasChapter: viewModel.chapter != nil,
                 onSelectRange: { range in
-                    storedLogRangeSelection = range.storageValue
                     viewModel.applyLogRange(range)
                 }
             )
+        }
+        .onChange(of: viewModel.logRange) { _, newRange in
+            storedLogRangeSelection = newRange.storageValue
         }
         .navigationDestination(isPresented: $showWeightHistory) {
             MetricHistoryView(
