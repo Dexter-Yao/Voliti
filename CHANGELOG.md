@@ -2,6 +2,20 @@
 
 All notable changes to Voliti will be documented in this file.
 
+## [0.1.3.0] - 2026-04-12
+
+### Fixed
+- `session_type` 运行时契约改为 fail-closed，缺失或非法值不再静默回退到 `coaching`
+- Journey Analysis 在真实 `awrap_model_call()` 路径中复用 DeepAgent backend factory，避免分析慢路径因拿不到 backend 而失效
+- `MemoryLifecycleMiddleware` 改为在 `edit_file` / `write_file` 的真实写入面阻止未确认的权威语义写入
+- conversation archive / retrieval 的 live integration 脚本改为使用运行当天日期作为 `time_hint`，避免 `all` 窗口检索因固定日期自然失效
+
+### Added
+- `backend/tests/test_session_type.py`，覆盖严格 `session_type` 解析与失败路径
+
+### Changed
+- 权威语义写入现在需要显式确认上下文：`semantic_write_confirmed`、`semantic_write_source_kind`、`semantic_write_source_name`
+
 ## [0.1.2.0] - 2026-04-09
 
 ### Fixed

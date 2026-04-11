@@ -1,12 +1,12 @@
-# ABOUTME: SessionModeMiddleware — 按 configurable.session_mode 动态注入 prompt 段落
-# ABOUTME: onboarding 模式下追加完整 Onboarding 指令（首次用户流程 + profile 补采），coaching 模式不注入
+# ABOUTME: SessionTypeMiddleware — 按 configurable.session_type 动态注入 prompt 段落
+# ABOUTME: onboarding 类型下追加完整 Onboarding 指令，coaching 类型保持默认教练流程
 
 from __future__ import annotations
 
-from voliti.middleware.base import PromptInjectionMiddleware, get_session_mode
+from voliti.middleware.base import PromptInjectionMiddleware, get_session_type
 
 _ONBOARDING_PROMPT = """
-## Session Mode: Onboarding
+## Session Type: Onboarding
 
 You are in onboarding mode. You speak first. The iOS client shows a focused full-screen interface.
 
@@ -41,15 +41,11 @@ If the user is brief or disengaged, steps 4-5 become follow-up material for late
 """.strip()
 
 
-class SessionModeMiddleware(PromptInjectionMiddleware):
-    """按 session_mode 动态追加 prompt 段落到 system message。
-
-    coaching 模式：不注入任何内容（默认行为）
-    onboarding 模式：追加完整 Onboarding 指令
-    """
+class SessionTypeMiddleware(PromptInjectionMiddleware):
+    """按 session_type 动态追加 prompt 段落到 system message。"""
 
     def should_inject(self) -> bool:
-        return get_session_mode() == "onboarding"
+        return get_session_type() == "onboarding"
 
     def get_prompt(self) -> str:
         return _ONBOARDING_PROMPT

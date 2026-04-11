@@ -45,6 +45,10 @@ enum APIConfiguration {
         return generated
     }
 
+    static func clearLocalIdentity() {
+        UserDefaults.standard.removeObject(forKey: userIDKey)
+    }
+
     static func makeCorrelationID() -> String {
         "corr_" + UUID().uuidString.lowercased()
     }

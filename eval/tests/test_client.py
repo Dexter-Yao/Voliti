@@ -54,3 +54,38 @@ def test_decorate_interrupt_payload_adds_interrupt_id() -> None:
 
     assert decorated["metadata"]["card_id"] == "card_123"
     assert decorated["metadata"]["interrupt_id"] == "interrupt_123"
+
+
+def test_coach_client_builds_session_type_config_and_thread_metadata(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeThreads:
+        async def create(self, metadata: dict[str, str]):
+            captured["metadata"] = metadata
+            return {"thread_id": "thread_123"}
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.threads = FakeThreads()
+
+    monkeypatch.setattr(client_module, "get_client", lambda **_: FakeClient())
+
+    client = CoachClient("http://localhost:2025", assistant_id="coach", turn_timeout_seconds=180)
+    client.with_user_id("user_123").with_session_type("onboarding")
+
+    config = client._build_config()
+    assert config == {
+        "configurable": {
+            "user_id": "user_123",
+            "session_type": "onboarding",
+        }
+    }
+
+    import asyncio
+
+    thread_id = asyncio.run(client.create_thread())
+    assert thread_id == "thread_123"
+    assert captured["metadata"] == {
+        "user_id": "user_123",
+        "session_type": "onboarding",
+    }

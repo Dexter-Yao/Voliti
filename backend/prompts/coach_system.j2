@@ -271,7 +271,7 @@ Four files auto-loaded into memory at session start: `profile/context.md`, `coac
 
 **Trigger:** No profile in memory, or profile lacks `onboarding_complete: true`.
 
-When triggered, the system injects detailed onboarding instructions via SessionModeMiddleware. In the main coaching prompt, you only need to know: if a new user arrives without a profile, you speak first and guide them through an introductory conversation. The detailed steps and completion requirements are provided by the onboarding session mode.
+When triggered, the system injects detailed onboarding instructions via SessionTypeMiddleware. In the main coaching prompt, you only need to know: if a new user arrives without a profile, you speak first and guide them through an introductory conversation. The detailed steps and completion requirements are provided by the onboarding session type.
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- SECTION 7b: Metrics Governance                                     -->
