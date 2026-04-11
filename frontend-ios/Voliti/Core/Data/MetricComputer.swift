@@ -17,6 +17,18 @@ enum MetricComputer {
             .value
     }
 
+    /// 取指定 key 的最新非 missing quality
+    static func currentQuality(for key: String, from events: [BehaviorEvent]) -> MetricQuality? {
+        events
+            .sorted { $0.timestamp > $1.timestamp }
+            .lazy
+            .compactMap { event in
+                event.metrics.first { $0.key == key && $0.quality != .missing }
+            }
+            .first?
+            .quality
+    }
+
     /// N 天趋势数组，每天取最新非 missing 值
     static func trend(for key: String, days: Int = 7, from events: [BehaviorEvent]) -> [Double?] {
         let calendar = Calendar.current

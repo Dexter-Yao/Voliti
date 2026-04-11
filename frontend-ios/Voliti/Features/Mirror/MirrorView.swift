@@ -9,7 +9,9 @@ struct MirrorView: View {
     @State private var viewModel = MirrorViewModel()
     @AppStorage("onboardingComplete") private var onboardingComplete = false
     @AppStorage(ProjectionFreshness.userDefaultsKey) private var storeProjectionIsStale = false
+    @AppStorage("mirrorLogRangeSelection") private var storedLogRangeSelection = MirrorLogRange.defaultValue.storageValue
     @State private var showWeightHistory = false
+    @State private var showLogRangeSheet = false
 
     var body: some View {
         NavigationStack {
@@ -39,7 +41,8 @@ struct MirrorView: View {
                 NorthStarMetric(
                     label: viewModel.northStarConfig?.label ?? "北极星",
                     value: viewModel.northStarDisplayValue,
-                    unit: viewModel.northStarConfig?.unit ?? "KG",
+                    unit: viewModel.northStarDisplayUnit ?? viewModel.northStarConfig?.unit ?? "KG",
+                    showsEstimatedBadge: viewModel.northStarShowsEstimatedBadge,
                     delta: viewModel.northStarDelta,
                     trendData: viewModel.northStarTrend,
                     trendQualities: viewModel.northStarTrendQualities,
@@ -68,16 +71,50 @@ struct MirrorView: View {
 
                 // Event Stream
                 VStack(alignment: .leading, spacing: StarpathTokens.spacingMD) {
-                    FilterBar(
-                        kindCounts: viewModel.kindCounts,
-                        selectedKind: $viewModel.selectedFilterKind
-                    )
+                    HStack(alignment: .center, spacing: StarpathTokens.spacingMD) {
+                        Text("LOG / 日志")
+                            .starpathMono(size: 10)
+                            .foregroundStyle(StarpathTokens.copper)
+
+                        Spacer()
+
+                        Button {
+                            showLogRangeSheet = true
+                        } label: {
+                            HStack(spacing: StarpathTokens.spacingXS) {
+                                Text(viewModel.logRange.title())
+                                    .starpathMono(size: 10, uppercase: false)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: StarpathTokens.fontSizeXS))
+                            }
+                            .foregroundStyle(
+                                canChooseLogRange
+                                    ? StarpathTokens.obsidian
+                                    : StarpathTokens.obsidian40
+                            )
+                        }
+                        .accessibilityIdentifier("mirror.logRangeButton")
+                        .disabled(!canChooseLogRange)
+                    }
                     .padding(.horizontal, StarpathTokens.spacingMD)
                     .padding(.top, StarpathTokens.spacingLG)
 
-                    if viewModel.filteredGroupedEvents.isEmpty {
-                        emptyState
-                    } else {
+                    if viewModel.shouldShowLogFilters {
+                        FilterBar(
+                            kindCounts: viewModel.kindCounts,
+                            selectedKind: $viewModel.selectedFilterKind
+                        )
+                        .padding(.horizontal, StarpathTokens.spacingMD)
+                    }
+
+                    switch viewModel.logDisplayState {
+                    case .loading:
+                        logLoadingState
+                    case .emptyInRange:
+                        emptyInRangeState
+                    case .emptyAfterFilter:
+                        emptyAfterFilterState
+                    case .ready:
                         EventStreamSection(
                             groups: viewModel.filteredGroupedEvents,
                             isExpanded: viewModel.isExpanded,
@@ -87,6 +124,8 @@ struct MirrorView: View {
                                 viewModel.selectedCard = card
                             }
                         )
+                    case .failed:
+                        logFailedState
                     }
                 }
             }
@@ -95,6 +134,10 @@ struct MirrorView: View {
         .background(StarpathTokens.parchment)
         .onAppear {
             viewModel.configure(modelContext: modelContext)
+            if let restoredRange = MirrorLogRange.fromStorageValue(storedLogRangeSelection),
+               restoredRange != viewModel.logRange {
+                viewModel.applyLogRange(restoredRange)
+            }
         }
         .fullScreenCover(item: $viewModel.selectedCard) { card in
             NavigationStack {
@@ -108,10 +151,24 @@ struct MirrorView: View {
                 LifeSignListView(plans: viewModel.lifeSignPlans)
             }
         }
+        .sheet(isPresented: $showLogRangeSheet) {
+            MirrorLogRangeSheet(
+                currentRange: viewModel.logRange,
+                hasChapter: viewModel.chapter != nil,
+                onSelectRange: { range in
+                    storedLogRangeSelection = range.storageValue
+                    viewModel.applyLogRange(range)
+                }
+            )
+        }
         .navigationDestination(isPresented: $showWeightHistory) {
             MetricHistoryView(
                 metricKey: viewModel.northStarConfig?.key ?? "weight",
-                metricLabel: viewModel.northStarConfig?.label ?? "体重记录"
+                metricLabel: viewModel.northStarConfig?.label ?? "体重记录",
+                metricType: viewModel.northStarConfig?.type ?? .numeric,
+                metricUnit: viewModel.northStarConfig?.unit,
+                scaleMax: viewModel.northStarConfig?.scaleMax,
+                ratioDenominator: viewModel.northStarConfig?.ratioDenominator
             )
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -122,11 +179,16 @@ struct MirrorView: View {
 
     // MARK: - Empty State
 
-    private var emptyState: some View {
+    private var canChooseLogRange: Bool {
+        !storeProjectionIsStale && !viewModel.isRefreshingProjection
+    }
+
+    private var logLoadingState: some View {
         VStack(spacing: StarpathTokens.spacingMD) {
-            Text("尚无行为记录")
+            ProgressView()
+            Text("正在更新日志")
                 .starpathSerif(size: StarpathTokens.fontSizeLG)
-            Text("与 Coach 对话后，行为事件将自动记录在此")
+            Text("请稍候，正在切换当前日志范围")
                 .starpathSans()
                 .foregroundStyle(StarpathTokens.obsidian40)
                 .multilineTextAlignment(.center)
@@ -134,6 +196,54 @@ struct MirrorView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, StarpathTokens.spacingXL)
         .padding(.horizontal, StarpathTokens.spacingXL)
+        .accessibilityIdentifier("mirror.log.loading")
+    }
+
+    private var emptyInRangeState: some View {
+        VStack(spacing: StarpathTokens.spacingMD) {
+            Text("当前范围内暂无记录")
+                .starpathSerif(size: StarpathTokens.fontSizeLG)
+            Text("换一个日志范围，或继续与 Coach 对话后再回来查看")
+                .starpathSans()
+                .foregroundStyle(StarpathTokens.obsidian40)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, StarpathTokens.spacingXL)
+        .padding(.horizontal, StarpathTokens.spacingXL)
+        .accessibilityIdentifier("mirror.log.emptyInRange")
+    }
+
+    private var emptyAfterFilterState: some View {
+        VStack(spacing: StarpathTokens.spacingMD) {
+            Text("当前筛选条件下暂无记录")
+                .starpathSerif(size: StarpathTokens.fontSizeLG)
+            Button("查看全部") {
+                viewModel.selectedFilterKind = nil
+            }
+            .buttonStyle(.plain)
+            .starpathSans()
+            .foregroundStyle(StarpathTokens.copper)
+            .accessibilityIdentifier("mirror.log.showAll")
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, StarpathTokens.spacingXL)
+        .padding(.horizontal, StarpathTokens.spacingXL)
+        .accessibilityIdentifier("mirror.log.emptyAfterFilter")
+    }
+
+    private var logFailedState: some View {
+        VStack(spacing: StarpathTokens.spacingMD) {
+            Text("日志范围切换失败")
+                .starpathSerif(size: StarpathTokens.fontSizeLG)
+            Text("请稍后重试")
+                .starpathSans()
+                .foregroundStyle(StarpathTokens.obsidian40)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, StarpathTokens.spacingXL)
+        .padding(.horizontal, StarpathTokens.spacingXL)
+        .accessibilityIdentifier("mirror.log.failed")
     }
 
     private var onboardingGuide: some View {
@@ -151,13 +261,31 @@ struct MirrorView: View {
         HStack(spacing: StarpathTokens.spacingSM) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: StarpathTokens.fontSizeXS))
-            Text(ProjectionFreshness.bannerText)
-                .starpathSans(size: StarpathTokens.fontSizeSM)
+            VStack(alignment: .leading, spacing: StarpathTokens.spacingXS) {
+                Text("当前数据暂未更新到最新状态")
+                    .starpathSans(size: StarpathTokens.fontSizeSM)
+                Text("请刷新数据后再切换日志范围")
+                    .starpathSans(size: StarpathTokens.fontSizeSM)
+                    .foregroundStyle(StarpathTokens.obsidian40)
+            }
+            Spacer()
+            Button(viewModel.isRefreshingProjection ? "刷新中..." : "刷新数据") {
+                Task {
+                    let service = StoreSyncService(modelContext: modelContext)
+                    let freshness = await viewModel.refreshProjection(using: service)
+                    storeProjectionIsStale = freshness == .stale
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.isRefreshingProjection)
+            .starpathSans(size: StarpathTokens.fontSizeSM)
+            .accessibilityIdentifier("mirror.stale.refresh")
         }
         .foregroundStyle(StarpathTokens.copper)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, StarpathTokens.spacingMD)
         .padding(.vertical, StarpathTokens.spacingSM)
         .background(StarpathTokens.obsidian05)
+        .accessibilityIdentifier("mirror.stale.banner")
     }
 }

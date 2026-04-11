@@ -1,5 +1,5 @@
-// ABOUTME: MIRROR 页事件流动态过滤器，只显示有记录的事件类型
-// ABOUTME: 每个 pill 带计数，零记录类型不渲染
+// ABOUTME: MIRROR 页事件流动态过滤器，承载日志类型切换与计数呈现
+// ABOUTME: 已选类型在零计数时仍需保留，避免当前筛选条件被静默丢失
 
 import SwiftUI
 
@@ -13,7 +13,8 @@ struct FilterBar: View {
             filterPill(
                 label: "全部",
                 count: kindCounts.reduce(0) { $0 + $1.count },
-                isSelected: selectedKind == nil
+                isSelected: selectedKind == nil,
+                identifier: "mirror.filter.all"
             ) {
                 selectedKind = nil
             }
@@ -23,7 +24,8 @@ struct FilterBar: View {
                 filterPill(
                     label: BehaviorEvent.kindLabels[item.kind] ?? item.kind,
                     count: item.count,
-                    isSelected: selectedKind == item.kind
+                    isSelected: selectedKind == item.kind,
+                    identifier: "mirror.filter.\(item.kind)"
                 ) {
                     selectedKind = item.kind
                 }
@@ -33,7 +35,13 @@ struct FilterBar: View {
         }
     }
 
-    private func filterPill(label: String, count: Int, isSelected: Bool, action: @escaping () -> Void) -> some View {
+    private func filterPill(
+        label: String,
+        count: Int,
+        isSelected: Bool,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             HStack(spacing: StarpathTokens.spacingXS) {
                 Text(label)
@@ -61,5 +69,6 @@ struct FilterBar: View {
                 }
             }
         }
+        .accessibilityIdentifier(identifier)
     }
 }

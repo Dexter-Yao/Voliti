@@ -55,6 +55,28 @@
 - **Depends on:** 仓库一致性整改 Phase 0/1 完成，协议基本稳定
 - **Source:** /plan-ceo-review 2026-04-09, repository remediation cherry-pick ceremony
 
+## P2: Mirror 日志区日期锚点跳转
+- **What:** 为 Mirror 日志区增加“跳到某一天 / 某个月份”的快速定位能力
+- **Why:** 当前方案允许较大时间范围浏览，但仍以滚动和按天折叠为主；当日志跨度变大后，定位特定时间段会逐步变慢
+- **Pros:** 提升长范围日志浏览效率，减少纯滚动查找成本
+- **Cons:** 会增加日志区交互复杂度，若过早实现容易把当前轻量浏览器做重
+- **Context:** `codex/mirror-reliability` 的 Mirror 收口方案已明确支持日志区日期范围，但本次只做稳定浏览，不做额外定位控件
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** 当前 Mirror 日志范围浏览稳定落地，并观察真实用户是否出现长范围查找需求
+- **Source:** /plan-eng-review 2026-04-11, mirror-reliability
+
+## P2: Mirror 与 Journal 的长期职责边界
+- **What:** 明确 Mirror 与 Journal 是否应长期统一为单一事件浏览体系，或继续保持不同职责下的共享底座
+- **Why:** 当前实现继续复用 `EventRow` 是正确的最小路径，但若长期缺少边界定义，两个页面的事件展示逻辑容易逐步分叉
+- **Pros:** 为未来事件展示演进提供清晰入口，减少 Mirror 与 Journal 各自生长造成的重复逻辑
+- **Cons:** 该问题短期不直接提升用户价值，过早处理会把本次稳定性收口扩成结构重构
+- **Context:** `codex/mirror-reliability` 分支本次明确不做 Journal/Mirror 重构，只做 Mirror 稳定性收口与最小复用
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** 当前 Mirror 收口完成并验证实际使用模式后，再判断是否值得统一
+- **Source:** /plan-eng-review 2026-04-11, mirror-reliability
+
 ## P3: "你不是一个人"时刻
 - **What:** Onboarding 场景认领后 Coach 回应"这是 XX% 用户都会遇到的场景，你不是一个人"
 - **Why:** 调研数据显示"孤独感/陪伴需求"是跨平台一致痛点，正常化可在 Onboarding 建立信任
