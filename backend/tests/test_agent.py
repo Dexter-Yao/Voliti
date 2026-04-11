@@ -7,6 +7,7 @@ from langgraph.store.memory import InMemoryStore
 
 from voliti.agent import create_coach_agent
 from voliti.middleware.session_type import SessionTypeMiddleware
+from voliti.session_type import get_session_profile
 
 
 class TestCreateCoachAgent:
@@ -217,12 +218,9 @@ class TestCreateCoachAgent:
         create_coach_agent()
 
         call_kwargs = mock_create.call_args
-        assert call_kwargs.kwargs["memory"] == [
-            "/user/coach/AGENTS.md",
-            "/user/profile/context.md",
-            "/user/coping_plans_index.md",
-            "/user/timeline/markers.json",
-        ]
+        assert call_kwargs.kwargs["memory"] == list(
+            get_session_profile("coaching").memory_paths
+        )
 
     @patch("voliti.agent.create_deep_agent")
     @patch("voliti.agent.PromptRegistry")
@@ -242,3 +240,34 @@ class TestCreateCoachAgent:
 
         call_kwargs = mock_create.call_args
         assert any(isinstance(item, SessionTypeMiddleware) for item in call_kwargs.kwargs["middleware"])
+
+    @patch("voliti.agent.create_deep_agent")
+    @patch("voliti.agent.PromptRegistry")
+    @patch("voliti.agent.ModelRegistry")
+    def test_uses_prompt_name_from_coaching_profile(
+        self,
+        mock_model_reg: MagicMock,
+        mock_prompt_reg: MagicMock,
+        mock_create: MagicMock,
+    ) -> None:
+        """应从 coaching profile 读取系统提示词名称。"""
+        mock_model_reg.get.return_value = MagicMock()
+        mock_prompt_reg.get.return_value = "You are a coach."
+        mock_create.return_value = MagicMock()
+
+        create_coach_agent()
+
+        coaching_profile = get_session_profile("coaching")
+        mock_prompt_reg.get.assert_any_call(coaching_profile.system_prompt_name)
+
+
+class TestSessionProfile:
+    """SessionProfile 配置测试。"""
+
+    def test_onboarding_profile_disables_journey_analysis(self) -> None:
+        """onboarding profile 不启用 journey analysis。"""
+        assert get_session_profile("onboarding").enable_journey_analysis is False
+
+    def test_coaching_profile_enables_journey_analysis(self) -> None:
+        """coaching profile 启用 journey analysis。"""
+        assert get_session_profile("coaching").enable_journey_analysis is True

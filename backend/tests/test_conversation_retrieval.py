@@ -111,7 +111,10 @@ def test_retrieve_returns_summary_results_by_default() -> None:
     )
 
     assert result["detail_level"] == "summary"
+    assert result["evidence_kind"] == "archive_source"
+    assert result["usage"] == "runtime_evidence"
     assert result["results"][0]["conversation_ref"] == "conv-2"
+    assert result["results"][0]["source"] == "runtime_session_history"
     assert "聚餐" in result["results"][0]["summary"]
     assert provider.last_user_id == "user-1"
     assert provider.last_limit == 2
@@ -136,7 +139,10 @@ def test_retrieve_excerpt_requires_conversation_ref_and_returns_message_slice() 
     )
 
     assert result["detail_level"] == "excerpt"
+    assert result["evidence_kind"] == "archive_source"
+    assert result["usage"] == "runtime_evidence"
     assert result["conversation_ref"] == "conv-2"
+    assert result["source"] == "runtime_session_history"
     assert [item["message_ref"] for item in result["excerpt"]] == ["u2", "a2", "u3", "a3"]
     assert result["excerpt"][2]["role"] == "user"
     assert "聚餐" in result["excerpt"][2]["content"]
@@ -293,6 +299,8 @@ def test_retrieve_returns_empty_summary_results_when_no_match() -> None:
 
     assert result == {
         "detail_level": "summary",
+        "evidence_kind": "archive_source",
+        "usage": "runtime_evidence",
         "results": [],
     }
 
@@ -315,6 +323,8 @@ def test_retrieve_supports_all_window_with_wider_scan_limit() -> None:
     )
 
     assert result["detail_level"] == "summary"
+    assert result["evidence_kind"] == "archive_source"
+    assert result["usage"] == "runtime_evidence"
     assert len(result["results"]) == 2
     assert provider.last_limit == 50
 
@@ -339,11 +349,14 @@ def test_retrieve_filters_summary_results_by_time_hint() -> None:
 
     assert result == {
         "detail_level": "summary",
+        "evidence_kind": "archive_source",
+        "usage": "runtime_evidence",
         "results": [
             {
                 "conversation_ref": "conv-1",
                 "session_type": "onboarding",
                 "updated_at": "2026-04-09T09:05:00.000000+00:00",
+                "source": "runtime_session_history",
                 "summary": "我是第一次来，希望减脂。 / 我们先从你的作息开始。",
             }
         ],

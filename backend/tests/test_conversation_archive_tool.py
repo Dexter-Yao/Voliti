@@ -73,6 +73,8 @@ def test_retrieve_conversation_archive_returns_summary_envelope(monkeypatch) -> 
     assert result["status"] == "ok"
     assert result["error_code"] is None
     assert result["payload"]["detail_level"] == "summary"
+    assert result["payload"]["evidence_kind"] == "archive_source"
+    assert result["payload"]["usage"] == "runtime_evidence"
     assert "找到" in result["coach_message"]
 
 

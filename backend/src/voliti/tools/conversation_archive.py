@@ -9,7 +9,11 @@ from langchain_core.tools import tool
 from langgraph.config import get_config
 
 from voliti.conversation_archive import ConversationArchiveAccessError
-from voliti.conversation_retrieval import ConversationRetrievalEngine
+from voliti.conversation_retrieval import (
+    ARCHIVE_EVIDENCE_KIND,
+    ARCHIVE_USAGE,
+    ConversationRetrievalEngine,
+)
 from voliti.runtime_session_history_langgraph import (
     create_conversation_archive_access_layer,
 )
@@ -74,6 +78,14 @@ def _build_error_envelope(exc: Exception) -> dict:
     }
 
 
+def _normalize_payload(payload: dict) -> dict:
+    """补齐 retrieval payload 的稳定 evidence 语义。"""
+    normalized = dict(payload)
+    normalized.setdefault("evidence_kind", ARCHIVE_EVIDENCE_KIND)
+    normalized.setdefault("usage", ARCHIVE_USAGE)
+    return normalized
+
+
 @tool
 async def retrieve_conversation_archive(
     query: str,
@@ -103,6 +115,7 @@ async def retrieve_conversation_archive(
             conversation_ref=conversation_ref,
             time_hint=time_hint,
         )
+        payload = _normalize_payload(payload)
         if detail_level == "summary":
             coach_message = f"找到 {len(payload.get('results', []))} 条相关会话摘要。"
         else:
