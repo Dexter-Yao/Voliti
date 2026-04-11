@@ -29,7 +29,7 @@ final class CoachViewModel {
     private var streamTask: Task<Void, Never>?
     private var syncTask: Task<Void, Never>?
     private var syncService: (any StoreSyncing)?
-    private var sessionMode: String = "coaching"
+    private var sessionType: SessionType = .coaching
 
     private func trace(_ message: String) {
 #if DEBUG
@@ -45,21 +45,18 @@ final class CoachViewModel {
 
     func configure(
         modelContext: ModelContext,
-        sessionMode: String = "coaching",
+        sessionType: SessionType = .coaching,
         syncService: (any StoreSyncing)? = nil
     ) {
         self.modelContext = modelContext
-        self.sessionMode = sessionMode
+        self.sessionType = sessionType
         self.syncService = syncService ?? StoreSyncService(modelContext: modelContext)
         loadMessages()
     }
 
-    /// 根据 sessionMode 确保正确的 thread
+    /// 根据 sessionType 确保正确的 thread
     func ensureCorrectThread() async throws -> String {
-        if sessionMode == "onboarding" {
-            return try await api.ensureOnboardingThread()
-        }
-        return try await api.ensureThread()
+        try await api.ensureThread(for: sessionType)
     }
 
     // MARK: - Daily Check-in
@@ -131,7 +128,7 @@ final class CoachViewModel {
                     threadID: threadID,
                     message: tag,
                     imageData: nil,
-                    sessionMode: self.sessionMode
+                    sessionType: self.sessionType
                 )
 
                 await processStream(stream, assistantMessage: msg)
@@ -163,7 +160,7 @@ final class CoachViewModel {
             var pendingAssistantMessage: ChatMessage?
             do {
                 let threadID = try await ensureCorrectThread()
-                trace("ensureThread ok, threadID=\(threadID), mode=\(self.sessionMode)")
+                trace("ensureThread ok, threadID=\(threadID), type=\(self.sessionType.rawValue)")
 
                 let userMessage = ChatMessage(
                     role: .user,
@@ -186,7 +183,7 @@ final class CoachViewModel {
 
                 // Onboarding 首条用户消息：prepend 硬编码问候语，让 LLM 看到完整对话历史
                 let priorGreeting: String? = {
-                    guard self.sessionMode == "onboarding" else { return nil }
+                    guard self.sessionType == .onboarding else { return nil }
                     let userCount = self.messages.lazy.filter({ $0.role == .user }).prefix(2).count
                     return userCount == 1 ? OnboardingGreeting.text : nil
                 }()
@@ -195,7 +192,7 @@ final class CoachViewModel {
                     threadID: threadID,
                     message: text,
                     imageData: imageData,
-                    sessionMode: self.sessionMode,
+                    sessionType: self.sessionType,
                     priorAssistantMessage: priorGreeting
                 )
                 trace("streamRun created, entering processStream, prependedGreeting=\(priorGreeting != nil)")
@@ -244,7 +241,7 @@ final class CoachViewModel {
         data: [String: Any] = [:],
         interruptID: String? = nil
     ) {
-        let threadID: String? = sessionMode == "onboarding"
+        let threadID: String? = sessionType == .onboarding
             ? APIConfiguration.onboardingThreadID
             : APIConfiguration.threadID
         guard let threadID else {
@@ -268,7 +265,7 @@ final class CoachViewModel {
                     action: action,
                     data: data,
                     interruptID: interruptID,
-                    sessionMode: self.sessionMode
+                    sessionType: self.sessionType
                 )
                 await processStream(stream, assistantMessage: assistantMessage)
             } catch {

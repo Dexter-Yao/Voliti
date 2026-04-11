@@ -12,6 +12,8 @@ from voliti.conversation_archive import (
 )
 
 EXCERPT_MESSAGE_LIMIT = 4
+ARCHIVE_EVIDENCE_KIND = "archive_source"
+ARCHIVE_USAGE = "runtime_evidence"
 
 
 @dataclass(frozen=True)
@@ -42,7 +44,10 @@ class ConversationRetrievalEngine:
             record = await self.archive.read_conversation_record(conversation_ref)
             return {
                 "detail_level": "excerpt",
+                "evidence_kind": ARCHIVE_EVIDENCE_KIND,
+                "usage": ARCHIVE_USAGE,
                 "conversation_ref": conversation_ref,
+                "source": record.source,
                 "excerpt": [
                     {
                         "message_ref": message.message_ref,
@@ -65,6 +70,8 @@ class ConversationRetrievalEngine:
 
         return {
             "detail_level": "summary",
+            "evidence_kind": ARCHIVE_EVIDENCE_KIND,
+            "usage": ARCHIVE_USAGE,
             "results": summaries[:limit],
         }
 
@@ -89,6 +96,7 @@ class ConversationRetrievalEngine:
             "conversation_ref": record.conversation_ref,
             "session_type": record.session_type,
             "updated_at": record.updated_at,
+            "source": record.source,
             "summary": summary if query.strip() else summary,
         }
 

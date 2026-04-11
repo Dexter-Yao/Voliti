@@ -13,8 +13,10 @@ from deepagents.middleware.subagents import SubAgent
 
 from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
+from voliti.middleware.base import MemoryLifecycleMiddleware
 from voliti.middleware.journey_analysis import JourneyAnalysisMiddleware
-from voliti.middleware.session_mode import SessionModeMiddleware
+from voliti.middleware.session_type import SessionTypeMiddleware
+from voliti.session_type import SessionProfile, get_session_profile, list_session_profiles
 from voliti.store_contract import InvalidUserIDError, resolve_user_namespace
 from voliti.tools.conversation_archive import retrieve_conversation_archive
 from voliti.tools.experiential import compose_witness_card
@@ -22,6 +24,31 @@ from voliti.tools.fan_out import fan_out
 
 COACH_TOOLS = [fan_out, retrieve_conversation_archive]
 """Coach 直接调用的工具，通过 A2UI 组件组合实现动态交互。"""
+
+
+def _build_coach_memory_paths(profiles: tuple[SessionProfile, ...]) -> list[str]:
+    """从会话配置合并 memory 路径。"""
+    seen: set[str] = set()
+    memory_paths: list[str] = []
+    for profile in profiles:
+        for path in profile.memory_paths:
+            if path in seen:
+                continue
+            seen.add(path)
+            memory_paths.append(path)
+    return memory_paths
+
+
+def _build_coach_middleware(
+    profiles: tuple[SessionProfile, ...],
+    *,
+    backend_factory: Callable[..., Any],
+) -> list[Any]:
+    """从会话配置组装 middleware。"""
+    middleware: list[Any] = [SessionTypeMiddleware(), MemoryLifecycleMiddleware()]
+    if any(profile.enable_journey_analysis for profile in profiles):
+        middleware.append(JourneyAnalysisMiddleware(backend=backend_factory))
+    return middleware
 
 def _resolve_user_namespace(ctx: Any) -> tuple[str, ...]:
     """从运行时 config 解析用户 namespace。
@@ -95,20 +122,21 @@ def create_coach_agent(
         model_profile: 模型 profile 名称，对应 models.toml 中的配置段。
         store: 持久化存储后端。默认为 None，由 LangGraph API 自动注入。
     """
+    profiles = list_session_profiles()
+    coaching_profile = get_session_profile("coaching")
+    backend_factory = _create_backend_factory()
     kwargs = {
         "model": ModelRegistry.get(model_profile),
-        "system_prompt": PromptRegistry.get("coach_system"),
-        "backend": _create_backend_factory(),
+        "system_prompt": PromptRegistry.get(coaching_profile.system_prompt_name),
+        "backend": backend_factory,
         "name": "coach",
-        "memory": [
-            "/user/coach/AGENTS.md",
-            "/user/profile/context.md",
-            "/user/coping_plans_index.md",
-            "/user/timeline/markers.json",
-        ],
+        "memory": _build_coach_memory_paths(profiles),
         "tools": COACH_TOOLS,
         "subagents": [_create_witness_card_composer()],
-        "middleware": [SessionModeMiddleware(), JourneyAnalysisMiddleware()],
+        "middleware": _build_coach_middleware(
+            profiles,
+            backend_factory=backend_factory,
+        ),
     }
     if store is not None:
         kwargs["store"] = store

@@ -49,38 +49,37 @@ struct LangGraphAPI: Sendable {
     }
 
     /// 确保有可用的 Coaching Thread ID
-    func ensureThread() async throws -> String {
-        try await ensureThread(
-            existing: APIConfiguration.threadID,
-            sessionMode: "coaching",
-            save: { APIConfiguration.threadID = $0 }
-        )
-    }
+    func ensureThread(for sessionType: SessionType) async throws -> String {
+        let existing: String? = switch sessionType {
+        case .coaching:
+            APIConfiguration.threadID
+        case .onboarding:
+            APIConfiguration.onboardingThreadID
+        }
 
-    /// 确保有可用的 Onboarding Thread ID
-    func ensureOnboardingThread() async throws -> String {
-        try await ensureThread(
-            existing: APIConfiguration.onboardingThreadID,
-            sessionMode: "onboarding",
-            save: { APIConfiguration.onboardingThreadID = $0 }
-        )
-    }
+        let save: @Sendable (String) -> Void = { threadID in
+            switch sessionType {
+            case .coaching:
+                APIConfiguration.threadID = threadID
+            case .onboarding:
+                APIConfiguration.onboardingThreadID = threadID
+            }
+        }
 
-    private func ensureThread(
-        existing: String?,
-        sessionMode: String,
-        save: @Sendable (String) -> Void
-    ) async throws -> String {
         if let existing { return existing }
-        let threadID = try await createThread(metadata: ["session_mode": sessionMode])
+        let threadID = try await createThread(metadata: ["session_type": sessionType.rawValue])
         save(threadID)
         return threadID
     }
 
-    // MARK: - Streaming
-
     /// 发送消息并获取流式响应
-    func streamRun(threadID: String, message: String, imageData: Data? = nil, sessionMode: String = "coaching", priorAssistantMessage: String? = nil) throws -> AsyncStream<SSEEvent> {
+    func streamRun(
+        threadID: String,
+        message: String,
+        imageData: Data? = nil,
+        sessionType: SessionType = .coaching,
+        priorAssistantMessage: String? = nil
+    ) throws -> AsyncStream<SSEEvent> {
         var content: [[String: Any]] = [
             ["type": "text", "text": message]
         ]
@@ -98,7 +97,7 @@ struct LangGraphAPI: Sendable {
 
         let preferredLanguage = UserDefaults.standard.string(forKey: "preferredLanguage") ?? "system"
         let configurable = RequestContext.configurable(
-            sessionMode: sessionMode,
+            sessionType: sessionType,
             preferredLanguage: preferredLanguage,
             correlationID: APIConfiguration.makeCorrelationID()
         )
@@ -130,13 +129,13 @@ struct LangGraphAPI: Sendable {
         action: String,
         data: [String: Any] = [:],
         interruptID: String? = nil,
-        sessionMode: String = "coaching"
+        sessionType: SessionType = .coaching
     ) throws -> AsyncStream<SSEEvent> {
         let preferredLanguage = UserDefaults.standard.string(forKey: "preferredLanguage") ?? "system"
         let body = Self.makeResumeBody(
             action: action,
             data: data,
-            sessionMode: sessionMode,
+            sessionType: sessionType,
             preferredLanguage: preferredLanguage,
             correlationID: APIConfiguration.makeCorrelationID(),
             interruptID: interruptID
@@ -150,7 +149,7 @@ struct LangGraphAPI: Sendable {
     static func makeResumeBody(
         action: String,
         data: [String: Any],
-        sessionMode: String,
+        sessionType: SessionType,
         preferredLanguage: String,
         correlationID: String,
         interruptID: String?
@@ -167,7 +166,7 @@ struct LangGraphAPI: Sendable {
             "assistant_id": APIConfiguration.assistantID,
             "command": ["resume": resumeBody],
             "config": ["configurable": RequestContext.configurable(
-                sessionMode: sessionMode,
+                sessionType: sessionType,
                 preferredLanguage: preferredLanguage,
                 correlationID: correlationID
             )],

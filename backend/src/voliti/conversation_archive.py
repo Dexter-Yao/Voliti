@@ -6,6 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
+from voliti.session_type import SessionType, coerce_session_type
+
 
 class ConversationArchiveAccessError(RuntimeError):
     """Conversation Archive Access Layer 的稳定失败类型。"""
@@ -29,7 +31,7 @@ class ConversationRecord:
     runtime_thread_ref: str
     runtime_checkpoint_ref: str | None
     user_id: str
-    session_type: str
+    session_type: SessionType
     correlation_id: str | None
     started_at: str | None
     updated_at: str | None
@@ -97,10 +99,10 @@ def normalize_conversation_record(
         raise ValueError("runtime session history is missing required metadata")
 
     user_id = metadata.get("user_id")
-    session_type = metadata.get("session_mode")
+    session_type = coerce_session_type(metadata.get("session_type"))
     if not isinstance(user_id, str) or not user_id:
         raise ValueError("runtime session history is missing required metadata")
-    if not isinstance(session_type, str) or not session_type:
+    if session_type is None:
         raise ValueError("runtime session history is missing required metadata")
 
     thread_ref = _require_str(thread, "thread_id")

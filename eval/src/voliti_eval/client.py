@@ -106,21 +106,24 @@ class CoachClient:
         )
         self._assistant_id = assistant_id
         self._user_id: str | None = None
-        self._session_mode: str = "coaching"
+        self._session_type: str = "coaching"
 
     def with_user_id(self, user_id: str) -> "CoachClient":
         """设置当前会话的 user_id，用于 Store namespace 隔离。"""
         self._user_id = user_id
         return self
 
-    def with_session_mode(self, mode: str) -> "CoachClient":
-        """设置 session_mode（coaching / onboarding）。"""
-        self._session_mode = mode
+    def with_session_type(self, session_type: str) -> "CoachClient":
+        """设置 session_type（coaching / onboarding）。"""
+        self._session_type = session_type
         return self
 
     async def create_thread(self) -> str:
         """创建新对话线程，返回 thread_id。"""
-        thread = await self._client.threads.create()
+        metadata: dict[str, Any] = {"session_type": self._session_type}
+        if self._user_id:
+            metadata["user_id"] = self._user_id
+        thread = await self._client.threads.create(metadata=metadata)
         thread_id = thread["thread_id"]
         logger.info("Created thread: %s", thread_id)
         return thread_id
@@ -145,12 +148,10 @@ class CoachClient:
         return self._client.store
 
     def _build_config(self) -> dict[str, Any] | None:
-        """构造 run config，注入 user_id 和 session_mode。"""
-        configurable: dict[str, Any] = {}
+        """构造 run config，注入 user_id 和 session_type。"""
+        configurable: dict[str, Any] = {"session_type": self._session_type}
         if self._user_id:
             configurable["user_id"] = self._user_id
-        if self._session_mode != "coaching":
-            configurable["session_mode"] = self._session_mode
         return {"configurable": configurable} if configurable else None
 
     async def _stream_and_collect(
