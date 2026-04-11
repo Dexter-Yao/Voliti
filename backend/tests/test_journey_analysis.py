@@ -13,7 +13,9 @@ from voliti.middleware.journey_analysis import (
     JourneyAnalysisMiddleware,
     _ANALYSIS_INTERVAL_DAYS,
     _LAST_ANALYSIS_KEY,
+    _PATTERN_INDEX_KEY,
 )
+from voliti.semantic_memory import classify_semantic_memory_path
 
 
 class TestShouldTrigger:
@@ -183,6 +185,21 @@ class TestPromptInjection:
         assert mw.should_inject() is True
         assert "Journey Analysis Brief" in mw.get_prompt()
 
+    def test_exposes_candidate_signal_view(self) -> None:
+        """Journey analysis 输出应暴露为 candidate signal，而非长期语义。"""
+        mw = JourneyAnalysisMiddleware()
+        mw._summary = "## Journey Analysis Brief\n- Test finding"
+
+        assert mw.get_candidate_signal() == {
+            "kind": "candidate_signal",
+            "source": "journey_analysis",
+            "content": "## Journey Analysis Brief\n- Test finding",
+        }
+
+    def test_candidate_signal_view_is_empty_without_summary(self) -> None:
+        mw = JourneyAnalysisMiddleware()
+        assert mw.get_candidate_signal() is None
+
 
 class TestMaybeAnalyze:
 
@@ -218,3 +235,24 @@ class TestMaybeAnalyze:
         assert mw._prepared is True
         assert mw._summary is None
         backend.read_file.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_successful_analysis_only_writes_freshness_marker(self) -> None:
+        """成功分析后只允许写 freshness marker，不写其他长期路径。"""
+        mw = JourneyAnalysisMiddleware()
+        backend = MagicMock()
+        backend.read_file.return_value = None
+        mw._run_analysis = AsyncMock(return_value="## Journey Analysis Brief\n- Test finding")
+
+        await mw._maybe_analyze(backend)
+
+        backend.write_file.assert_called_once()
+        write_path, write_content = backend.write_file.call_args.args
+        assert write_path == _LAST_ANALYSIS_KEY
+        assert "timestamp" in write_content
+        assert classify_semantic_memory_path(write_path) == "candidate_signal"
+
+
+def test_journey_analysis_paths_are_candidate_signals() -> None:
+    assert classify_semantic_memory_path(_LAST_ANALYSIS_KEY) == "candidate_signal"
+    assert classify_semantic_memory_path(_PATTERN_INDEX_KEY) == "candidate_signal"

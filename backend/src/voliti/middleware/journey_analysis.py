@@ -20,6 +20,8 @@ _MARKERS_KEY = "/user/timeline/markers.json"
 _AGENTS_KEY = "/user/coach/AGENTS.md"
 _LAST_ANALYSIS_KEY = "/user/derived/last_journey_analysis.json"
 _PATTERN_INDEX_KEY = "/user/derived/pattern_index.md"
+_SIGNAL_KIND = "candidate_signal"
+_SIGNAL_SOURCE = "journey_analysis"
 
 
 class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
@@ -43,6 +45,16 @@ class JourneyAnalysisMiddleware(PromptInjectionMiddleware):
 
     def get_prompt(self) -> str:
         return self._summary or ""
+
+    def get_candidate_signal(self) -> dict[str, str] | None:
+        """返回当前分析摘要的候选信号视图。"""
+        if self._summary is None:
+            return None
+        return {
+            "kind": _SIGNAL_KIND,
+            "source": _SIGNAL_SOURCE,
+            "content": self._summary,
+        }
 
     def _get_backend(self) -> Any | None:
         """从 LangGraph 运行时获取 backend。"""
