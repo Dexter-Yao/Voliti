@@ -22,6 +22,7 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Settings,
   SquarePen,
   XIcon,
   Plus,
@@ -54,6 +55,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "../ui/sheet";
+import { MirrorPanel } from "../mirror/MirrorPanel";
+import { SettingsDrawer } from "../settings/SettingsDrawer";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -120,6 +123,7 @@ export function Thread() {
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Panel refs for programmatic collapse/expand
   const historyPanelRef = usePanelRef();
@@ -324,6 +328,13 @@ export function Thread() {
           onClick={() => setThreadId(null)}
         >
           <SquarePen className="size-5" />
+        </TooltipIconButton>
+        <TooltipIconButton
+          tooltip="Settings"
+          variant="ghost"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <Settings className="size-5" />
         </TooltipIconButton>
       </div>
     </div>
@@ -535,9 +546,7 @@ export function Thread() {
           <ArtifactContent className="relative flex-grow" />
         </>
       ) : (
-        <div className="flex h-full items-center justify-center p-8 text-center text-sm text-[#1A1816]/40">
-          <p>Mirror panel — coming soon</p>
-        </div>
+        <MirrorPanel />
       )}
     </div>
   );
@@ -549,6 +558,7 @@ export function Thread() {
         {chatHeader}
         {chatContent}
         {mobileHistorySheet}
+        <SettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />
       </div>
     );
   }
@@ -556,6 +566,7 @@ export function Thread() {
   // Desktop layout: three resizable panels
   return (
     <div className="flex h-screen w-full overflow-hidden">
+      <SettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />
       <Group
         orientation="horizontal"
         id="voliti-layout"
