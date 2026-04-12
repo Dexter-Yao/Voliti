@@ -100,6 +100,28 @@
 - **Depends on:** Onboarding prompt 重写完成
 - **Source:** /plan-ceo-review 2026-04-12, cherry-pick ceremony deferred
 
+## P2: Jinja2 PromptRegistry 改用 SandboxedEnvironment
+- **What:** `backend/src/voliti/config/prompts.py` 的 `Environment` 替换为 `SandboxedEnvironment`
+- **Why:** 防止未来 prompt kwargs 混���用户输入时的 SSTI 风险
+- **Pros:** 1 行改动，零破坏性
+- **Cons:** 当前模板均为开发者编写，实际风险低
+- **Context:** 全库审查 2026-03-20 发现。当前无用户输入流入模板，但作为安全最佳实践应修复
+- **Effort:** S (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** 无
+- **Source:** 代码审计 2026-03-20
+
+## P2: 图片生成 API 错误处理
+- **What:** `backend/src/voliti/experiential.py` 的图片生成调用添加错误处理
+- **Why:** API 返回异常时零防护，IndexError/AttributeError 导致进程崩溃
+- **Pros:** ~10 行改动，防止生产崩溃
+- **Cons:** 无
+- **Context:** 全库审查 2026-03-20 发现。当前使用 Azure OpenAI 生成图片，需对 response.data[0] 空值做防御性检查
+- **Effort:** S (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** 无
+- **Source:** 代码审计 2026-03-20
+
 ## P3: 智能签到提醒（已合并至时间感知实现）
 - **What:** ~~Coach 根据用户习惯自动调整签到提醒时间~~ → 已升级为"智能签到进化"，纳入时间感知 P1 scope 并已实现
 - **Why:** 原 P3 项已被 CEO Review 2026-04-07 升级为时间感知的自然组成部分
