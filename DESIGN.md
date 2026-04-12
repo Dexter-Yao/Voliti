@@ -8,7 +8,7 @@
 - **产品定义：** AI 减脂领导力教练，训练用户在真实生活场景中的决策能力
 - **目标用户：** 理性、上进的知识工作者/管理者。信息储备充足，但压力/疲劳/社交持续打断节奏
 - **支持语言：** 中文、英文
-- **产品类型：** iOS 原生 App（SwiftUI），2-Tab 架构（COACH + MIRROR）
+- **产品类型：** iOS 原生 App（SwiftUI）+ Web 端 MVP（Next.js），三栏可折叠布局
 
 ## 美学方向
 
@@ -410,6 +410,109 @@ Onboarding 使用独立的 `onboardingThreadID`，与日常 coaching 的 `thread
 | ProfileInfoSection | Settings | Store profile 只读 KV 展示 |
 | CopperBreathingLine | Onboarding | 顶部 copper 渐变呼吸线 |
 
+## Web 端适配
+
+### 平台定位
+
+Web 端是 iOS 的补充验证渠道，不是替代。核心设计语言（Starpath Protocol v2）跨平台保持一致，以下仅记录 Web 特有的适配规格。
+
+### 布局：三栏可折叠
+
+```
+┌──────────┬───────────────────────────┬──────────────────┐
+│ 对话历史  │         Coach 对话         │   Mirror 面板    │
+│ (可折叠)  │          (始终)           │   (可折叠)       │
+│  15-25%  │     ← 自动填充 →          │    15-30%        │
+└──────────┴───────────────────────────┴──────────────────┘
+```
+
+- 分隔线：2px obsidian-10 竖线，hover 变 copper，`cursor: col-resize`
+- 折叠态：只显示 icon 按钮（左：汉堡菜单，右：网格图标），宽度 36px
+- 尺寸持久化：`localStorage` 自动保存
+
+### 响应式断点
+
+| 断点 | 布局 |
+|------|------|
+| < 768px（移动） | 两侧折叠，左侧覆盖层（overlay + backdrop）展开，右侧底部抽屉展开 |
+| ≥ 768px（桌面） | 三栏全部可见可拖拽 |
+
+### 交互状态（Web 特有）
+
+iOS 只有 tap/no-tap。Web 端需要完整的交互状态链：
+
+| 组件 | Default | Hover | Active | Focus | Disabled |
+|------|---------|-------|--------|-------|----------|
+| Pill 按钮 | obsidian-20 边框 | obsidian 背景 · parchment 文字 | 同 hover | 2px copper outline | obsidian-10 边框 · obsidian-40 文字 |
+| 主按钮 (btn-primary) | obsidian 背景 | opacity 0.9 | opacity 0.8 | 2px copper outline | obsidian-40 背景 |
+| 次按钮 (btn-secondary) | obsidian-10 边框 | obsidian-05 背景 | obsidian-10 背景 | 2px copper outline | obsidian-10 边框 · obsidian-40 文字 |
+| 输入框 | obsidian-10 边框 | 同 default | 同 default | copper 边框 | obsidian-05 背景 |
+| Thread 项 | 透明 | obsidian-05 背景 | obsidian-10 背景 | — | — |
+| Coach 消息 👍/👎 | 隐藏 | 显示 obsidian-40 | copper | — | — |
+| 拖拽手柄 | obsidian-10 竖线 | copper 竖线 | copper 竖线 3px | — | — |
+| 链接 | copper · 无下划线 | copper · 下划线 | — | 2px copper outline | — |
+
+### 光标样式
+
+| 元素 | 光标 |
+|------|------|
+| 拖拽手柄 | `col-resize` |
+| 可点击按钮/Pill | `pointer` |
+| 输入框 | `text` |
+| Coach 消息文本 | `default`（可选中复制） |
+| 不可交互区域 | `default` |
+
+### 滚动条
+
+```css
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--obsidian-10); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--obsidian-20); }
+```
+
+### 键盘导航
+
+| 快捷键 | 功能 |
+|--------|------|
+| Enter | 发送消息 |
+| Shift+Enter | 消息换行 |
+| Escape | 关闭 A2UI 抽屉 / 折叠侧边栏 |
+
+### 字体加载策略
+
+- LXGW WenKai：`next/font/local`，自托管 WOFF2，`font-display: swap`
+- DM Sans / JetBrains Mono：Google Fonts，`font-display: swap`
+- Fallback 链：`LXGW WenKai` → `KaiTi` → `STKaiti` → `serif`
+- 图标库：Lucide React（替代 iOS SF Symbols）
+
+### A2UI 抽屉（Web 适配）
+
+- 形态：底部抽屉（shadcn Sheet），`max-width: 480px`，居中
+- 背景遮罩：`rgba(26, 24, 22, 0.4)`
+- 尺寸映射：`half` → 50vh, `three-quarter` → 75vh, `full` → 100vh
+- 关闭手势：Escape 键、点击遮罩
+- 容错：网络失败时显示横幅 + 重试，无法 resume 时发送带 `_network_failure` 标记的 fallback resume
+
+### Web 特有组件
+
+| 组件 | 位置 | 关键规则 |
+|------|------|---------|
+| ResizableLayout | 全局 | 三栏 PanelGroup + 两个 PanelResizeHandle |
+| HistorySidebar | 左侧栏 | 按天分组 · 今天 copper 标题 · Chapter 分界线 |
+| DragHandle | 分隔线 | 2px obsidian-10 · hover copper · col-resize |
+| FeedbackButton | 右下浮动 | 固定定位 · obsidian-20 边框 · hover obsidian 背景 |
+| MessageFeedback | Coach 消息 | hover 显示 👍/👎 · 点击 copper · LangSmith API |
+
+### 线框图索引
+
+| 文件 | 内容 |
+|------|------|
+| `~/.gstack/projects/Dexter-Yao-Voliti/designs/voliti-web-mvp-20260412/finalized.html` | 3 种方案对比（A/B/C） |
+| `~/.gstack/projects/Dexter-Yao-Voliti/designs/voliti-web-mvp-20260412/option-b-plus.html` | 方案 B+（选定）：三栏展开/折叠/移动端/Thread 架构 |
+
+---
+
 ## 待办事项
 
 | 编号 | 事项 | 优先级 | 状态 |
@@ -456,3 +559,8 @@ Onboarding 使用独立的 `onboardingThreadID`，与日常 coaching 的 `thread
 | 2026-04-06 | 北极星指标 1 + 支持性指标 3 | 固定层级，Coach 治理 |
 | 2026-04-06 | Filter 标签动态化 | 零记录不显示，减少噪音 |
 | 2026-04-06 | 时间戳 5 级规则 | 参考微信/iMessage/WhatsApp 实践 |
+| 2026-04-12 | Web 端适配章节加入 DESIGN.md | Web MVP 验证需要跨平台设计一致性 |
+| 2026-04-12 | 三栏可折叠布局（替代 iOS 2-Tab） | Web 端利用宽屏优势，对话 + Mirror 并排 |
+| 2026-04-12 | 响应式断点 768px（移动/桌面两档） | MVP 阶段简化，避免过度断点 |
+| 2026-04-12 | A2UI 底部抽屉 max-width 480px | 桌面端居中避免过宽，手机端全宽 |
+| 2026-04-12 | Web 交互状态表（hover/focus/active/disabled） | iOS 无 hover，Web 必须定义 |
