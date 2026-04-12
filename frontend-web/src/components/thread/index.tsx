@@ -17,6 +17,7 @@ import {
 import { TooltipIconButton } from "./tooltip-icon-button";
 import {
   ArrowDown,
+  ArrowUp,
   LoaderCircle,
   PanelLeftClose,
   PanelLeftOpen,
@@ -25,17 +26,12 @@ import {
   Settings,
   SquarePen,
   XIcon,
-  Plus,
 } from "lucide-react";
-import { useQueryState, parseAsBoolean } from "nuqs";
+import { useQueryState } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import ThreadHistory from "./history";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { Label } from "../ui/label";
-import { Switch } from "../ui/switch";
-import { useFileUpload } from "@/hooks/use-file-upload";
-import { ContentBlocksPreview } from "./ContentBlocksPreview";
 import {
   useArtifactOpen,
   ArtifactContent,
@@ -104,21 +100,7 @@ export function Thread() {
   const [artifactOpen, closeArtifact] = useArtifactOpen();
 
   const [threadId, _setThreadId] = useQueryState("threadId");
-  const [hideToolCalls, setHideToolCalls] = useQueryState(
-    "hideToolCalls",
-    parseAsBoolean.withDefault(false),
-  );
   const [input, setInput] = useState("");
-  const {
-    contentBlocks,
-    setContentBlocks,
-    handleFileUpload,
-    dropRef,
-    removeBlock,
-    resetBlocks: _resetBlocks,
-    dragOver,
-    handlePaste,
-  } = useFileUpload();
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -128,7 +110,7 @@ export function Thread() {
   // Panel refs for programmatic collapse/expand
   const historyPanelRef = usePanelRef();
   const mirrorPanelRef = usePanelRef();
-  const [historyCollapsed, setHistoryCollapsed] = useState(false);
+  const [historyCollapsed, setHistoryCollapsed] = useState(true);
   const [mirrorCollapsed, setMirrorCollapsed] = useState(true);
 
   const stream = useStreamContext();
@@ -198,17 +180,13 @@ export function Thread() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if ((input.trim().length === 0 && contentBlocks.length === 0) || isLoading)
-      return;
+    if (input.trim().length === 0 || isLoading) return;
     setFirstTokenReceived(false);
 
     const newHumanMessage: Message = {
       id: uuidv4(),
       type: "human",
-      content: [
-        ...(input.trim().length > 0 ? [{ type: "text", text: input }] : []),
-        ...contentBlocks,
-      ] as Message["content"],
+      content: [{ type: "text", text: input }] as Message["content"],
     };
 
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
@@ -234,7 +212,6 @@ export function Thread() {
     );
 
     setInput("");
-    setContentBlocks([]);
   };
 
   const handleRegenerate = (
@@ -250,7 +227,7 @@ export function Thread() {
     });
   };
 
-  const chatStarted = !!threadId || !!messages.length;
+  const chatStarted = messages.length > 0;
   const hasNoAIOrToolMessages = !messages.find(
     (m) => m.type === "ai" || m.type === "tool",
   );
@@ -296,16 +273,14 @@ export function Thread() {
           )}
         </TooltipIconButton>
 
-        {chatStarted && (
-          <button
-            className="flex cursor-pointer items-center gap-2"
-            onClick={() => setThreadId(null)}
-          >
-            <span className="text-xl font-semibold tracking-tight">
-              Voliti
-            </span>
-          </button>
-        )}
+        <button
+          className="flex cursor-pointer items-center gap-2"
+          onClick={() => setThreadId(null)}
+        >
+          <span className="text-xl font-semibold tracking-tight">
+            Voliti
+          </span>
+        </button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -388,12 +363,16 @@ export function Thread() {
           </>
         }
         footer={
-          <div className="sticky bottom-0 flex flex-col items-center gap-8 bg-white">
+          <div className="sticky bottom-0 flex flex-col items-center gap-4 bg-[#F4F0E8]">
+            {/* Empty state welcome */}
             {!chatStarted && (
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold tracking-tight">
+              <div className="flex flex-col items-center gap-2 pb-4">
+                <h1 className="font-serif-coach text-2xl text-[#1A1816]">
                   Voliti
                 </h1>
+                <p className="text-sm text-[#1A1816]/40">
+                  What would you like to talk about today?
+                </p>
               </div>
             )}
 
@@ -417,27 +396,15 @@ export function Thread() {
               </div>
             )}
 
-            <div
-              ref={dropRef}
-              className={cn(
-                "bg-muted relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl shadow-xs transition-all",
-                dragOver
-                  ? "border-primary border-2 border-dotted"
-                  : "border border-solid",
-              )}
-            >
+            {/* Input area */}
+            <div className="relative z-10 mx-auto mb-6 w-full max-w-3xl">
               <form
                 onSubmit={handleSubmit}
-                className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2"
+                className="flex items-end gap-2 rounded-2xl border border-[#1A1816]/10 bg-white px-4 py-3 shadow-sm"
               >
-                <ContentBlocksPreview
-                  blocks={contentBlocks}
-                  onRemove={removeBlock}
-                />
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onPaste={handlePaste}
                   onKeyDown={(e) => {
                     if (
                       e.key === "Enter" &&
@@ -452,64 +419,27 @@ export function Thread() {
                     }
                   }}
                   placeholder="Type your message..."
-                  className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
+                  rows={1}
+                  className="field-sizing-content max-h-32 flex-1 resize-none border-none bg-transparent text-sm text-[#1A1816] shadow-none ring-0 outline-none placeholder:text-[#1A1816]/30 focus:ring-0 focus:outline-none"
                 />
 
-                <div className="flex items-center gap-6 p-2 pt-4">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="render-tool-calls"
-                        checked={hideToolCalls ?? false}
-                        onCheckedChange={setHideToolCalls}
-                      />
-                      <Label
-                        htmlFor="render-tool-calls"
-                        className="text-sm text-gray-600"
-                      >
-                        Hide Tool Calls
-                      </Label>
-                    </div>
-                  </div>
-                  <Label
-                    htmlFor="file-input"
-                    className="flex cursor-pointer items-center gap-2"
+                {stream.isLoading ? (
+                  <button
+                    type="button"
+                    onClick={() => stream.stop()}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1816] text-[#F4F0E8]"
                   >
-                    <Plus className="size-5 text-gray-600" />
-                    <span className="text-sm text-gray-600">
-                      Upload PDF or Image
-                    </span>
-                  </Label>
-                  <input
-                    id="file-input"
-                    type="file"
-                    onChange={handleFileUpload}
-                    multiple
-                    accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
-                    className="hidden"
-                  />
-                  {stream.isLoading ? (
-                    <Button
-                      key="stop"
-                      onClick={() => stream.stop()}
-                      className="ml-auto"
-                    >
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                      Cancel
-                    </Button>
-                  ) : (
-                    <Button
-                      type="submit"
-                      className="ml-auto shadow-md transition-all"
-                      disabled={
-                        isLoading ||
-                        (!input.trim() && contentBlocks.length === 0)
-                      }
-                    >
-                      Send
-                    </Button>
-                  )}
-                </div>
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isLoading || !input.trim()}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1816] text-[#F4F0E8] transition-opacity disabled:opacity-20"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
+                )}
               </form>
             </div>
           </div>
@@ -581,15 +511,20 @@ export function Thread() {
           collapsedSize={0}
           minSize={15}
           maxSize={25}
-          defaultSize={18}
+          defaultSize={0}
         >
-          <div className="flex h-full flex-col border-r border-[#1A1816]/5">
+          <div className="flex h-full flex-col overflow-hidden">
             <ThreadHistory />
           </div>
         </Panel>
 
-        <Separator className="group relative w-1 transition-all hover:w-1.5">
-          <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#1A1816]/10 transition-colors group-hover:bg-[#B87333] group-active:bg-[#B87333]" />
+        <Separator className={cn(
+          "group relative transition-all",
+          historyCollapsed ? "w-0" : "w-1 hover:w-1.5",
+        )}>
+          {!historyCollapsed && (
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#1A1816]/10 transition-colors group-hover:bg-[#B87333] group-active:bg-[#B87333]" />
+          )}
         </Separator>
 
         {/* Center: Chat */}
@@ -603,8 +538,13 @@ export function Thread() {
           </div>
         </Panel>
 
-        <Separator className="group relative w-1 transition-all hover:w-1.5">
-          <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#1A1816]/10 transition-colors group-hover:bg-[#B87333] group-active:bg-[#B87333]" />
+        <Separator className={cn(
+          "group relative transition-all",
+          mirrorCollapsed ? "w-0" : "w-1 hover:w-1.5",
+        )}>
+          {!mirrorCollapsed && (
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#1A1816]/10 transition-colors group-hover:bg-[#B87333] group-active:bg-[#B87333]" />
+          )}
         </Separator>
 
         {/* Right: Mirror / Artifact */}
@@ -617,7 +557,7 @@ export function Thread() {
           maxSize={30}
           defaultSize={0}
         >
-          <div className="h-full border-l border-[#1A1816]/5">
+          <div className="h-full overflow-hidden">
             {rightPanelContent}
           </div>
         </Panel>
