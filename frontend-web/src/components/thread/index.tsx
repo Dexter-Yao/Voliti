@@ -110,7 +110,7 @@ export function Thread() {
   // Panel refs for programmatic collapse/expand
   const historyPanelRef = usePanelRef();
   const mirrorPanelRef = usePanelRef();
-  const [historyCollapsed, setHistoryCollapsed] = useState(true);
+  const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [mirrorCollapsed, setMirrorCollapsed] = useState(true);
 
   const stream = useStreamContext();
@@ -138,7 +138,7 @@ export function Thread() {
   // Expand mirror panel when artifact opens
   useEffect(() => {
     if (artifactOpen && mirrorPanelRef.current) {
-      mirrorPanelRef.current.expand();
+      mirrorPanelRef.current.resize("22%");
       setMirrorCollapsed(false);
     }
   }, [artifactOpen, mirrorPanelRef]);
@@ -239,11 +239,10 @@ export function Thread() {
       const panel = historyPanelRef.current;
       if (!panel) return;
       if (panel.isCollapsed()) {
-        panel.expand();
+        panel.resize("18%");
       } else {
         panel.collapse();
       }
-      // State will be synced via onResize
     }
   };
 
@@ -251,7 +250,7 @@ export function Thread() {
     const panel = mirrorPanelRef.current;
     if (!panel) return;
     if (panel.isCollapsed()) {
-      panel.expand();
+      panel.resize("22%");
     } else {
       panel.collapse();
     }
@@ -508,10 +507,10 @@ export function Thread() {
           panelRef={historyPanelRef}
           id="history"
           collapsible
-          collapsedSize={0}
-          minSize={15}
-          maxSize={25}
-          defaultSize={0}
+          collapsedSize="0%"
+          minSize="15%"
+          maxSize="25%"
+          defaultSize="18%"
         >
           <div className="flex h-full flex-col overflow-hidden">
             <ThreadHistory />
@@ -530,7 +529,7 @@ export function Thread() {
         {/* Center: Chat */}
         <Panel
           id="chat"
-          minSize={35}
+          minSize="35%"
         >
           <div className="flex h-full flex-col">
             {chatHeader}
@@ -552,10 +551,10 @@ export function Thread() {
           panelRef={mirrorPanelRef}
           id="mirror"
           collapsible
-          collapsedSize={0}
-          minSize={15}
-          maxSize={30}
-          defaultSize={0}
+          collapsedSize="0%"
+          minSize="15%"
+          maxSize="30%"
+          defaultSize="22%"
         >
           <div className="h-full overflow-hidden">
             {rightPanelContent}
