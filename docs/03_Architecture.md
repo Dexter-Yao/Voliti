@@ -7,12 +7,12 @@
 > 产品定位见 [`01_Product_Foundation.md`](01_Product_Foundation.md)。
 > 设计理念见 [`02_Design_Philosophy.md`](02_Design_Philosophy.md)。
 > 设计规格见项目根目录 [`DESIGN.md`](/Users/dexter/DexterOS/products/Voliti/DESIGN.md)。
-> 运行时契约见 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md)。
-> 基础设施实施路径见 [`05_Runtime_Foundation_Milestone.md`](05_Runtime_Foundation_Milestone.md)。
+> 运行时契约见 [`05_Runtime_Contracts.md`](05_Runtime_Contracts.md)。
+
 
 ## 一、文档职责
 
-本文描述 Voliti 当前系统的结构关系、主要组件、关键数据流与部署形态。凡涉及以下内容，均以 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md) 为准：
+本文描述 Voliti 当前系统的结构关系、主要组件、关键数据流与部署形态。凡涉及以下内容，均以 [`05_Runtime_Contracts.md`](05_Runtime_Contracts.md) 为准：
 
 1. Store 正式结构。
 2. session type、A2UI、错误封装的正式语义。
@@ -82,7 +82,7 @@ backend 同时承载两类后端状态：
 
 当前原始会话记录的 canonical source 附着于运行时会话历史。产品层通过 `Conversation Archive Access Layer` 将其规范化为稳定的 `Conversation Record` 视图，再供显式检索消费。
 
-正式边界以 [`06_Runtime_Contracts.md`](06_Runtime_Contracts.md) 为准。
+正式边界以 [`05_Runtime_Contracts.md`](05_Runtime_Contracts.md) 为准。
 
 ### 3.4 Eval 模块
 
@@ -160,6 +160,32 @@ Runtime Session History
 2. 原始记录默认不应污染上下文。
 3. 语义记忆需要由 `Coach` 主导写入，而不是简单堆积原始数据。
 
+### 5.4 DeepAgent 复用边界
+
+Voliti 以 DeepAgent 作为唯一运行时底座。以下能力直接复用，不另造轮子：
+
+1. 执行循环（模型调用、tool calling、middleware 调度、subagent 集成）。
+2. backend 与持久化机制（thread-scoped 运行时状态、Store-backed 长期持久化、checkpoint / history、backend route 分流）。
+3. context management（system_prompt、memory files、summarization / compaction、middleware 运行时注入）。
+4. tool 与 subagent 面（自定义 tools、自定义 subagents、tool-level middleware、human-in-the-loop interrupt）。
+
+Voliti 在此基础上仅补四类最小产品语义定制：
+
+1. `SessionProfile`：轻量配置对象，定义会话类型的 prompt、middleware、memory 差异。
+2. Prompt Layering Policy：五层提示词结构的分层与优先级规则。
+3. Semantic Boundary Policy：权威语义、候选信号、archive 证据、运行时状态、可观测性的统一分类。
+4. Memory Lifecycle Policy：记忆的捕获、蒸馏、注入、整理与观测规则。
+
+### 5.5 架构守护清单
+
+以下方向已被明确排除，防止长期技术负债：
+
+1. 不新增第二套 harness framework 或平行执行器。
+2. 不新增厚重会话管理层（SessionRegistry / SessionManager / 多层 profile service）。
+3. 不新增平行 memory / archive 系统（不自建 semantic memory backend、不做 transcript 双写到长期 Store）。
+4. 不新增独立 prompt framework 或新的 runtime phase taxonomy。
+5. 当前阶段不引入独立 consolidation agent；仅当后台任务需要跨会话、跨时间窗口运行时才考虑升级。
+
 ## 六、部署视图
 
 ### 6.1 Backend
@@ -225,5 +251,6 @@ cd backend && uv run langgraph dev --port 2025
 | 日期 | 变更内容 |
 |------|----------|
 | 2026-02-12 | 初始创建：系统架构总览、核心组件、数据流程、技术选型与部署视图 |
-| 2026-04-09 | 重写文档职责：移除失真的运行时细节，将 Store、session、A2UI、错误与记忆边界统一指向 `06_Runtime_Contracts.md` |
+| 2026-04-09 | 重写文档职责：移除失真的运行时细节，将 Store、session、A2UI、错误与记忆边界统一指向 `05_Runtime_Contracts.md` |
 | 2026-04-10 | 同步原始会话记录主线：以 `Runtime Session History` 与 `Conversation Archive Access Layer` 取代 archive 双写叙述，并补充 live integration 验证入口 |
+| 2026-04-12 | 合并原 `08_Runtime_Harness_Control_Plane.md` 的 DeepAgent 复用边界与守护清单到技术选型章节；交叉引用更新为 `05_Runtime_Contracts.md` |

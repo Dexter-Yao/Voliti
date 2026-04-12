@@ -7,7 +7,6 @@
 > 产品定位见 [`01_Product_Foundation.md`](01_Product_Foundation.md)。
 > 设计理念见 [`02_Design_Philosophy.md`](02_Design_Philosophy.md)。
 > 系统结构见 [`03_Architecture.md`](03_Architecture.md)。
-> 基础设施实施路径见 [`05_Runtime_Foundation_Milestone.md`](05_Runtime_Foundation_Milestone.md)。
 
 ## 一、文档职责
 
@@ -50,8 +49,7 @@
 
 | 文档 | 职责 |
 |------|------|
-| [`03_Architecture.md`](03_Architecture.md) | 系统结构、组件关系、数据流、部署与测试视图 |
-| [`05_Runtime_Foundation_Milestone.md`](05_Runtime_Foundation_Milestone.md) | 基础设施里程碑的目标状态、实施工作流、验证矩阵与风险控制 |
+| [`03_Architecture.md`](03_Architecture.md) | 系统结构、组件关系、数据流、部署与测试视图、技术选型与守护边界 |
 | `AGENTS.md` / `CLAUDE.md` | 代理协作入口、工具链与仓库级工作约束 |
 | 本文 | 运行时契约、权威边界与跨端统一语义 |
 
@@ -129,9 +127,10 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 
 ```text
 /profile/context.md
-/profile/dashboard-config.json
+/profile/dashboardConfig
 /chapter/current.json
-/coping-plans/{plan_id}.json
+/coping_plans_index.md
+/coping_plans/{id}.json
 /ledger/{yyyy-mm-dd}/{hhmmss}_{kind}.json
 /timeline/markers.json
 /coach/AGENTS.md
@@ -493,3 +492,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 2026-04-10 | 同步原始会话记录与观测契约：以 runtime history canonical source 与 retrieval 事件替代 archive 双写叙述 |
 | 2026-04-11 | 同步当前实现状态：补充 `SessionProfile` 最小字段、语义边界六分类、archive retrieval 的 `archive_source` / `runtime_evidence` 契约，以及当前已代码化的 promotion 禁止规则 |
 | 2026-04-12 | 收紧当前实现状态：`session_type` 改为 fail-closed；Journey Analysis 改为通过共享 backend factory 解析真实 backend；权威语义写入边界改为在 `edit_file` / `write_file` 写入面执行 |
+| 2026-04-12 | 编号调整 06 → 05；修正 Store key 示例（dashboardConfig、coping_plans）；移除已删除文档的交叉引用 |
