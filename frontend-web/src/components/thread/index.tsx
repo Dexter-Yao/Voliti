@@ -352,9 +352,9 @@ export function Thread() {
         contentClassName="pt-8 pb-16 max-w-3xl mx-auto flex flex-col gap-4 w-full"
         content={
           <>
-            {messages
-              .filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX))
-              .map((message, index) =>
+            {(() => {
+              const visible = messages.filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX));
+              return visible.map((message, index) =>
                 message.type === "human" ? (
                   <HumanMessage
                     key={message.id || `${message.type}-${index}`}
@@ -368,13 +368,14 @@ export function Thread() {
                     isLoading={isLoading}
                     handleRegenerate={handleRegenerate}
                     onSuggestedReplies={
-                      index === messages.filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX)).length - 1
+                      index === visible.length - 1
                         ? setSuggestedReplies
                         : undefined
                     }
                   />
                 ),
-              )}
+              );
+            })()}
             {hasNoAIOrToolMessages && !!stream.interrupt && (
               <AssistantMessage
                 key="interrupt-msg"

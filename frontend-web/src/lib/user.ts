@@ -6,7 +6,9 @@ export function getUserId(): string | null {
   const match = document.cookie
     .split("; ")
     .find((row) => row.startsWith("voliti_user_id="));
-  return match ? decodeURIComponent(match.split("=")[1]) : null;
+  if (!match) return null;
+  const eqIdx = match.indexOf("=");
+  return decodeURIComponent(match.slice(eqIdx + 1));
 }
 
 export function getTodayDateString(): string {
