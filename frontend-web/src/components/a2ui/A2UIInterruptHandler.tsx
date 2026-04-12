@@ -1,9 +1,9 @@
 // ABOUTME: A2UI 中断处理器，检测 LangGraph interrupt 并渲染 Drawer
-// ABOUTME: 处理 submit/reject/skip 三种 action 的 resume 和网络错误恢复
+// ABOUTME: 处理 submit/reject/skip 三种 action 的 resume；监听 stream.error 做错误恢复
 
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useStreamContext } from "@/providers/Stream";
 import { isA2UIPayload, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
 import { A2UIDrawer } from "./A2UIDrawer";
@@ -12,13 +12,14 @@ import { toast } from "sonner";
 export function A2UIInterruptHandler() {
   const stream = useStreamContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // 追踪是否正在等待 A2UI resume 完成
+  const pendingResumeRef = useRef(false);
 
   // 从 stream.interrupt 中提取 A2UI payload
   const a2uiPayload = useMemo((): A2UIPayload | null => {
     const interrupt = stream.interrupt;
     if (!interrupt) return null;
 
-    // interrupt 可能是数组或 {value} 包装
     const rawValue = Array.isArray(interrupt)
       ? interrupt[0]?.value ?? interrupt[0]
       : (interrupt as { value?: unknown })?.value ?? interrupt;
@@ -36,51 +37,50 @@ export function A2UIInterruptHandler() {
     return (interrupt as { id?: string })?.id ?? null;
   }, [stream.interrupt]);
 
+  // 监听 stream.error：如果 resume 发出后遇到错误，尝试 fallback
+  useEffect(() => {
+    if (!stream.error || !pendingResumeRef.current) return;
+    pendingResumeRef.current = false;
+    setIsSubmitting(false);
+
+    toast.error("Network error. Coach has been notified.", {
+      richColors: true,
+      closeButton: true,
+    });
+
+    // Fallback: skip with _network_failure context
+    const fallbackResponse: A2UIResponse = {
+      action: "skip",
+      interrupt_id: interruptId,
+      data: { _network_failure: true },
+    };
+    stream.submit(undefined, {
+      command: { resume: fallbackResponse },
+    });
+  }, [stream.error, stream, interruptId]);
+
+  // interrupt 消失说明 resume 成功
+  useEffect(() => {
+    if (!stream.interrupt && pendingResumeRef.current) {
+      pendingResumeRef.current = false;
+      setIsSubmitting(false);
+    }
+  }, [stream.interrupt]);
+
   const resumeWithAction = useCallback(
-    async (action: A2UIResponse["action"], data: Record<string, unknown> = {}) => {
+    (action: A2UIResponse["action"], data: Record<string, unknown> = {}) => {
       setIsSubmitting(true);
-      try {
-        const response: A2UIResponse = {
-          action,
-          interrupt_id: interruptId,
-          data: action === "submit" ? data : {},
-        };
+      pendingResumeRef.current = true;
 
-        stream.submit(undefined, {
-          command: {
-            resume: response,
-          },
-        });
-      } catch (error) {
-        console.error("A2UI resume failed:", error);
+      const response: A2UIResponse = {
+        action,
+        interrupt_id: interruptId,
+        data: action === "submit" ? data : {},
+      };
 
-        // 网络失败：显示 banner，fallback resume 让 Coach 知道数据没收到
-        toast.error("Network error. Coach has been notified.", {
-          richColors: true,
-          closeButton: true,
-        });
-
-        try {
-          const fallbackResponse: A2UIResponse = {
-            action: "skip",
-            interrupt_id: interruptId,
-            data: { _network_failure: true },
-          };
-          stream.submit(undefined, {
-            command: {
-              resume: fallbackResponse,
-            },
-          });
-        } catch {
-          // 连 fallback 也失败了，Thread 可能卡住
-          toast.error("Connection lost. Please refresh the page.", {
-            richColors: true,
-            closeButton: true,
-          });
-        }
-      } finally {
-        setIsSubmitting(false);
-      }
+      stream.submit(undefined, {
+        command: { resume: response },
+      });
     },
     [stream, interruptId],
   );
@@ -101,8 +101,6 @@ export function A2UIInterruptHandler() {
   );
 
   const handleClose = useCallback(() => {
-    // 不能直接关闭 Drawer，必须先 resume 否则 Thread 卡死
-    // 关闭等同于 skip
     if (!isSubmitting) {
       resumeWithAction("skip");
     }

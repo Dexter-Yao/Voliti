@@ -1,4 +1,4 @@
-// ABOUTME: 登录 server action，验证密码并设置 voliti_access cookie
+// ABOUTME: 登录/登出 server actions，验证密码并管理 cookies
 // ABOUTME: 密码映射从 VOLITI_USER_MAP 环境变量读取（password:user_id 格式）
 
 "use server";
@@ -57,4 +57,11 @@ export async function loginAction(
   });
 
   redirect("/");
+}
+
+export async function logoutAction(): Promise<never> {
+  const cookieStore = await cookies();
+  cookieStore.delete("voliti_access");
+  cookieStore.delete("voliti_user_id");
+  redirect("/login");
 }

@@ -121,7 +121,7 @@ export default function ThreadHistory({
       .then(setThreads)
       .catch(console.error)
       .finally(() => setThreadsLoading(false));
-  }, []);
+  }, [getThreads, setThreads, setThreadsLoading]);
 
   const dateGroups = useMemo(() => groupThreadsByDate(threads), [threads]);
 

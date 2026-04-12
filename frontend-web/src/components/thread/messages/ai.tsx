@@ -127,7 +127,7 @@ export function AssistantMessage({
   // 流式内容清洗：移除 fenced blocks，提取 thinking 和 suggested replies
   const { contentString, thinking, suggestedReplies } = useMemo(() => {
     const cleaned = stripFencedBlocks(rawContentString);
-    const [afterThinking, thinkingData] = extractCoachThinking(rawContentString);
+    const [, thinkingData] = extractCoachThinking(rawContentString);
     const [, replies] = extractSuggestedReplies(rawContentString);
     return {
       contentString: cleaned,
@@ -144,8 +144,8 @@ export function AssistantMessage({
   }, [suggestedReplies, onSuggestedReplies]);
 
   const thread = useStreamContext();
-  const isLastMessage =
-    thread.messages[thread.messages.length - 1].id === message?.id;
+  const lastMsg = thread.messages[thread.messages.length - 1];
+  const isLastMessage = lastMsg?.id != null && lastMsg.id === message?.id;
   const hasNoAIOrToolMessages = !thread.messages.find(
     (m) => m.type === "ai" || m.type === "tool",
   );

@@ -6,6 +6,7 @@ import React, {
   useContext,
   ReactNode,
   useEffect,
+  useRef,
 } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import { type Message } from "@langchain/langgraph-sdk";
@@ -92,27 +93,41 @@ async function ensureTodayThread(
   }
 }
 
+function resolveApiUrl(url: string): string {
+  if (url.startsWith("/") && typeof window !== "undefined") {
+    return `${window.location.origin}${url}`;
+  }
+  return url;
+}
+
 const StreamSession = ({
   children,
-  apiUrl,
+  apiUrl: rawApiUrl,
   assistantId,
 }: {
   children: ReactNode;
   apiUrl: string;
   assistantId: string;
 }) => {
+  const apiUrl = resolveApiUrl(rawApiUrl);
   const [threadId, setThreadId] = useQueryState("threadId");
   const { getThreads, setThreads } = useThreads();
 
   // 首次加载时，若无 threadId，尝试复用/创建今日 Thread
+  const ensureInFlight = useRef(false);
   useEffect(() => {
-    if (threadId) return;
+    if (threadId || ensureInFlight.current) return;
     const userId = getUserId();
     if (!userId) return;
 
-    ensureTodayThread(apiUrl, userId, assistantId).then((id) => {
-      if (id) setThreadId(id);
-    });
+    ensureInFlight.current = true;
+    ensureTodayThread(apiUrl, userId, assistantId)
+      .then((id) => {
+        if (id) setThreadId(id);
+      })
+      .finally(() => {
+        ensureInFlight.current = false;
+      });
   }, [threadId, apiUrl, assistantId, setThreadId]);
 
   const streamValue = useTypedStream({

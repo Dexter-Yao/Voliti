@@ -1,5 +1,5 @@
 // ABOUTME: 设置抽屉面板，包含 Thinking 开关、重置 Onboarding、登出
-// ABOUTME: 从 chat header 的齿轮图标触发
+// ABOUTME: 登出通过 server action 正确清除 httpOnly cookie
 
 "use client";
 
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useQueryState, parseAsBoolean } from "nuqs";
+import { logoutAction } from "@/app/login/actions";
 
 interface SettingsDrawerProps {
   open: boolean;
@@ -29,12 +30,6 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
   const handleResetOnboarding = () => {
     localStorage.removeItem("voliti_onboarding_complete");
     window.location.reload();
-  };
-
-  const handleLogout = () => {
-    document.cookie = "voliti_access=; path=/; max-age=0";
-    document.cookie = "voliti_user_id=; path=/; max-age=0";
-    window.location.href = "/login";
   };
 
   return (
@@ -75,13 +70,15 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
             >
               Reset Onboarding
             </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-sm text-red-500 hover:text-red-600"
-              onClick={handleLogout}
-            >
-              Log Out
-            </Button>
+            <form action={logoutAction}>
+              <Button
+                type="submit"
+                variant="ghost"
+                className="w-full justify-start text-sm text-red-500 hover:text-red-600"
+              >
+                Log Out
+              </Button>
+            </form>
           </div>
         </div>
       </SheetContent>

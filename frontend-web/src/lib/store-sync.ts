@@ -53,8 +53,12 @@ function unwrapFileValue(value: Record<string, unknown>): string {
   return "";
 }
 
-function parseJsonFileValue(value: Record<string, unknown>): unknown {
-  return JSON.parse(unwrapFileValue(value));
+function parseJsonFileValue(value: Record<string, unknown>): unknown | null {
+  try {
+    return JSON.parse(unwrapFileValue(value));
+  } catch {
+    return null;
+  }
 }
 
 // --- Coping plans markdown parser ---
