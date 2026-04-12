@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Voliti 是基于教练协议的长期行为对齐系统，减脂为首个落地场景。核心方法论：**S-PDCA（State → Plan → Do → Check → Act）**。
 
-本仓库为 Monorepo，包含 iOS 原生客户端和 Python/LangGraph 云端后端。
+本仓库为 Monorepo，包含 Web MVP、iOS 原生客户端和 Python/LangGraph 云端后端。
 
 关键参考文档：
 
@@ -107,8 +107,8 @@ Voliti/
 ## 架构约定
 
 - 用户只面对单一 Coach Agent，后台分析对用户透明
-- iOS 客户端通过 SSE 与 LangGraph 后端通信，A2UI 协议处理结构化交互
-- 共享持久化真相由 LangGraph Store 持有；SwiftData 只承载设备本地状态、缓存与投影视图
+- iOS / Web 客户端通过 SSE 与 LangGraph 后端通信，A2UI 协议处理结构化交互
+- 共享持久化真相由 LangGraph Store 持有；客户端只承载设备本地状态、缓存与投影视图
 - 单一事实原则贯穿数据链各层
 - **简单可组合模式优先**：不引入无消费者的抽象分组，不预设分类体系
 
@@ -156,3 +156,4 @@ Key routing rules:
 | 2026-04-10 | 同步跨端契约验证入口与 conversation archive / retrieval live integration 入口 |
 | 2026-04-12 | 文档体系精简 8 → 6：删除已完成的里程碑（05）和 Harness 方案（08），合并 DeepAgent 边界到架构文档；编号顺延；修正 Store key 示例；AGENTS.md 同步维护 |
 | 2026-04-12 | 新增 frontend-web/ Web MVP（Next.js 15），项目结构、工具链、验证入口同步更新 |
+| 2026-04-13 | 删除已完成的方案文档（docs/plans/）；架构约定修正为 iOS/Web 双端；AGENTS.md 同步 |

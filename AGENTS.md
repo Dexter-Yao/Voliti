@@ -154,3 +154,4 @@ Key routing rules:
 | 2026-04-10 | 同步跨端契约验证入口与 conversation archive / retrieval live integration 入口 |
 | 2026-04-12 | 文档体系精简 8 → 6：删除已完成的里程碑（05）和 Harness 方案（08），合并 DeepAgent 边界到架构文档；编号顺延；修正 Store key 示例；AGENTS.md 同步维护 |
 | 2026-04-12 | 新增 frontend-web/ Web MVP（Next.js 15），项目结构、工具链、验证入口、架构约定同步更新 |
+| 2026-04-13 | 删除已完成的方案文档（docs/plans/）；CLAUDE.md 同步 |
