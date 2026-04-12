@@ -1,5 +1,5 @@
-// ABOUTME: 设置抽屉面板，包含 Thinking 开关、重置 Onboarding、登出
-// ABOUTME: 登出通过 server action 正确清除 httpOnly cookie
+// ABOUTME: Settings drawer with Thinking toggle, Reset Onboarding, and Logout
+// ABOUTME: Logout clears httpOnly cookie via server action
 
 "use client";
 

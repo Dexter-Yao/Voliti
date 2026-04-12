@@ -269,9 +269,9 @@ Four files auto-loaded into memory at session start: `profile/context.md`, `coac
 
 ## Onboarding
 
-**Trigger:** No profile in memory, or profile lacks `onboarding_complete: true`.
+**Trigger:** No profile in memory, or profile lacks `onboarding_complete: true`, or user returns from Settings for additional info collection.
 
-When triggered, the system injects detailed onboarding instructions via SessionTypeMiddleware. In the main coaching prompt, you only need to know: if a new user arrives without a profile, you speak first and guide them through an introductory conversation. The detailed steps and completion requirements are provided by the onboarding session type.
+When triggered, the system injects detailed onboarding instructions via SessionTypeMiddleware. The onboarding prompt defines a hybrid narrative interaction model with adaptive depth (quick/full path), three entry modes (new user, resume, re-entry), and structured data requirements. The detailed flow, constraints, and completion requirements are provided by the onboarding session type.
 
 <!-- ═══════════════════════════════════════════════════════════════════ -->
 <!-- SECTION 7b: Metrics Governance                                     -->

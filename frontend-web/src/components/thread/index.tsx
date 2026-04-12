@@ -95,7 +95,13 @@ function ScrollToBottom(props: { className?: string }) {
   );
 }
 
-export function Thread() {
+export function Thread({
+  initialMessage,
+  onInitialMessageSent,
+}: {
+  initialMessage?: string | null;
+  onInitialMessageSent?: () => void;
+} = {}) {
   const [artifactContext, setArtifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
 
@@ -165,6 +171,25 @@ export function Thread() {
       // no-op
     }
   }, [stream.error]);
+
+  // Auto-send initial message (e.g. user name from onboarding welcome)
+  const initialSent = useRef(false);
+  useEffect(() => {
+    if (!initialMessage || initialSent.current || isLoading) return;
+    if (!threadId) return;
+    initialSent.current = true;
+
+    const msg: Message = {
+      id: uuidv4(),
+      type: "human",
+      content: [{ type: "text", text: initialMessage }] as Message["content"],
+    };
+    stream.submit(
+      { messages: [msg] },
+      { streamMode: ["values"], streamSubgraphs: true, streamResumable: true },
+    );
+    onInitialMessageSent?.();
+  }, [initialMessage, threadId, isLoading]);
 
   const prevMessageLength = useRef(0);
   useEffect(() => {

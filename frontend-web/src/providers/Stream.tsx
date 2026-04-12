@@ -62,13 +62,14 @@ async function ensureTodayThread(
   apiUrl: string,
   userId: string,
   assistantId: string,
+  sessionType: "coaching" | "onboarding" = "coaching",
 ): Promise<string | null> {
   const client = createClient(apiUrl, undefined, undefined);
   const today = getTodayDateString();
 
   try {
     const existing = await client.threads.search({
-      metadata: { user_id: userId, date: today },
+      metadata: { user_id: userId, date: today, session_type: sessionType },
       limit: 1,
     });
 
@@ -76,12 +77,11 @@ async function ensureTodayThread(
       return existing[0].thread_id;
     }
 
-    // 新建 Thread，注入 metadata
     const thread = await client.threads.create({
       metadata: {
         user_id: userId,
         date: today,
-        session_type: "coaching",
+        session_type: sessionType,
         graph_id: assistantId,
       },
     });
@@ -91,6 +91,17 @@ async function ensureTodayThread(
     console.error("Failed to ensure today thread:", e);
     return null;
   }
+}
+
+/**
+ * 创建 onboarding thread 并发送用户名字作为第一条消息。
+ */
+export async function startOnboardingThread(
+  apiUrl: string,
+  userId: string,
+  assistantId: string,
+): Promise<string | null> {
+  return ensureTodayThread(apiUrl, userId, assistantId, "onboarding");
 }
 
 function resolveApiUrl(url: string): string {
