@@ -1,0 +1,186 @@
+// ABOUTME: A2UI 组件类型目录，精确镜像 backend/src/voliti/a2ui.py
+// ABOUTME: 8 种 UI 原语 + Payload/Response 交互协议
+
+import { z } from "zod";
+
+// ---------------------------------------------------------------------------
+// Shared primitives
+// ---------------------------------------------------------------------------
+
+export interface SelectOption {
+  label: string;
+  value: string;
+}
+
+// ---------------------------------------------------------------------------
+// Display components
+// ---------------------------------------------------------------------------
+
+export interface TextComponent {
+  kind: "text";
+  text: string;
+}
+
+export interface ImageComponent {
+  kind: "image";
+  src: string;
+  alt: string;
+}
+
+export interface ProtocolPromptComponent {
+  kind: "protocol_prompt";
+  observation: string;
+  question: string;
+}
+
+// ---------------------------------------------------------------------------
+// Input components
+// ---------------------------------------------------------------------------
+
+export interface SliderComponent {
+  kind: "slider";
+  key: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number | null;
+}
+
+export interface TextInputComponent {
+  kind: "text_input";
+  key: string;
+  label: string;
+  placeholder: string;
+  value: string;
+}
+
+export interface NumberInputComponent {
+  kind: "number_input";
+  key: string;
+  label: string;
+  unit: string;
+  value: number | null;
+}
+
+export interface SelectComponent {
+  kind: "select";
+  key: string;
+  label: string;
+  options: SelectOption[];
+  value: string;
+}
+
+export interface MultiSelectComponent {
+  kind: "multi_select";
+  key: string;
+  label: string;
+  options: SelectOption[];
+  value: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Discriminated union of all components
+// ---------------------------------------------------------------------------
+
+export type Component =
+  | TextComponent
+  | ImageComponent
+  | ProtocolPromptComponent
+  | SliderComponent
+  | TextInputComponent
+  | NumberInputComponent
+  | SelectComponent
+  | MultiSelectComponent;
+
+// ---------------------------------------------------------------------------
+// Payload and Response
+// ---------------------------------------------------------------------------
+
+export interface A2UIPayload {
+  type: "a2ui";
+  components: Component[];
+  layout: "half" | "three-quarter" | "full";
+  metadata: Record<string, string>;
+}
+
+export interface A2UIResponse {
+  action: "submit" | "reject" | "skip";
+  interrupt_id: string | null;
+  data: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// Zod schemas — used only for the runtime type guard
+// ---------------------------------------------------------------------------
+
+const SelectOptionSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+});
+
+const ComponentSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("text"), text: z.string() }),
+  z.object({ kind: z.literal("image"), src: z.string(), alt: z.string() }),
+  z.object({
+    kind: z.literal("protocol_prompt"),
+    observation: z.string(),
+    question: z.string(),
+  }),
+  z.object({
+    kind: z.literal("slider"),
+    key: z.string(),
+    label: z.string(),
+    min: z.number(),
+    max: z.number(),
+    step: z.number(),
+    value: z.number().nullable(),
+  }),
+  z.object({
+    kind: z.literal("text_input"),
+    key: z.string(),
+    label: z.string(),
+    placeholder: z.string(),
+    value: z.string(),
+  }),
+  z.object({
+    kind: z.literal("number_input"),
+    key: z.string(),
+    label: z.string(),
+    unit: z.string(),
+    value: z.number().nullable(),
+  }),
+  z.object({
+    kind: z.literal("select"),
+    key: z.string(),
+    label: z.string(),
+    options: z.array(SelectOptionSchema),
+    value: z.string(),
+  }),
+  z.object({
+    kind: z.literal("multi_select"),
+    key: z.string(),
+    label: z.string(),
+    options: z.array(SelectOptionSchema),
+    value: z.array(z.string()),
+  }),
+]);
+
+const A2UIPayloadSchema = z.object({
+  type: z.literal("a2ui"),
+  components: z.array(ComponentSchema),
+  layout: z.union([
+    z.literal("half"),
+    z.literal("three-quarter"),
+    z.literal("full"),
+  ]),
+  metadata: z.record(z.string(), z.string()),
+});
+
+// ---------------------------------------------------------------------------
+// Type guard
+// ---------------------------------------------------------------------------
+
+export function isA2UIPayload(value: unknown): value is A2UIPayload {
+  return A2UIPayloadSchema.safeParse(value).success;
+}
