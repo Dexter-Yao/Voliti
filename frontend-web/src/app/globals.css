@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+/*
+ * Starpath v2 Design Tokens for Voliti Web
+ * 色彩：obsidian (#1A1816) / parchment (#F4F0E8) / copper (#B87333)
+ * 字体：LXGW WenKai (Serif) / DM Sans (Sans) / JetBrains Mono (Mono)
+ * 圆角：容器 0px / 药丸 999px
+ */
+
+:root {
+  /* Starpath 核心色 */
+  --obsidian: #1A1816;
+  --parchment: #F4F0E8;
+  --copper: #B87333;
+
+  /* shadcn/ui 语义映射 → Starpath */
+  --background: #F4F0E8;
+  --foreground: #1A1816;
+  --card: #FFFFFF;
+  --card-foreground: #1A1816;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1816;
+  --primary: #1A1816;
+  --primary-foreground: #F4F0E8;
+  --secondary: #F4F0E8;
+  --secondary-foreground: #1A1816;
+  --muted: #F4F0E8;
+  --muted-foreground: rgba(26, 24, 22, 0.5);
+  --accent: #B87333;
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(26, 24, 22, 0.1);
+  --input: rgba(26, 24, 22, 0.1);
+  --ring: #B87333;
+  --radius: 0px;
+
+  /* 侧边栏 */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1A1816;
+  --sidebar-primary: #1A1816;
+  --sidebar-primary-foreground: #F4F0E8;
+  --sidebar-accent: rgba(26, 24, 22, 0.05);
+  --sidebar-accent-foreground: #1A1816;
+  --sidebar-border: rgba(26, 24, 22, 0.1);
+  --sidebar-ring: #B87333;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Starpath 额外色 */
+  --color-obsidian: #1A1816;
+  --color-parchment: #F4F0E8;
+  --color-copper: #B87333;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "DM Sans", system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-serif-coach {
+    font-family: "LXGW WenKai", "Noto Serif SC", serif;
+  }
+
+  .font-sans-user {
+    font-family: "DM Sans", system-ui, sans-serif;
+  }
+
+  .font-mono-system {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  .rounded-pill {
+    border-radius: 999px;
+  }
+}
