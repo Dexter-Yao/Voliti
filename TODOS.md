@@ -88,6 +88,18 @@
 - **Depends on:** Onboarding 场景认领功能完成（P1）+ 更多用户调研数据
 - **Source:** /plan-ceo-review 2026-04-07, cherry-pick ceremony deferred
 
+## P2: Onboarding Eval Seed 场景
+
+- **What:** 为新版 onboarding 流程新增 4 个 eval seed 场景：快速路径推断验证、完整路径三任务覆盖、中断恢复断点续接、深度选择尊重验证
+- **Why:** 当前 eval 的 seed 场景针对旧版 5 步流程设计，新版混合叙事式流程需要对应的行为合规性验证
+- **Pros:** 确保 prompt 重写后的行为符合预期，特别是快速路径的推断质量和深度选择的遵守
+- **Cons:** 需要针对两条路径分别设计 seed，seed 数量增加
+- **Context:** Onboarding 重设计 CEO Review 2026-04-12 deferred。新 prompt 采用框架式设计，模型自由度更大，eval 验证更关键
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Onboarding prompt 重写完成
+- **Source:** /plan-ceo-review 2026-04-12, cherry-pick ceremony deferred
+
 ## P3: 智能签到提醒（已合并至时间感知实现）
 - **What:** ~~Coach 根据用户习惯自动调整签到提醒时间~~ → 已升级为"智能签到进化"，纳入时间感知 P1 scope 并已实现
 - **Why:** 原 P3 项已被 CEO Review 2026-04-07 升级为时间感知的自然组成部分
