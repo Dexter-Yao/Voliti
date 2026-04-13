@@ -14,7 +14,7 @@ const STORE_KEYS = {
 
 export interface ChapterData {
   chapter_number: number;
-  identity_declaration: string;
+  identity_statement: string;
   goal: string;
   start_date: string;
   north_star: {

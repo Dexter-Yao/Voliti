@@ -102,9 +102,9 @@ export function MirrorPanel() {
               </span>
             )}
           </div>
-          {chapter.identity_declaration && (
+          {chapter.identity_statement && (
             <p className="font-serif-coach text-sm italic text-[#1A1816]/70">
-              &ldquo;{chapter.identity_declaration}&rdquo;
+              &ldquo;{chapter.identity_statement}&rdquo;
             </p>
           )}
           {chapter.goal && (
