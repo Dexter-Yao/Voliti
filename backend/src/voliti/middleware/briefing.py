@@ -1,4 +1,4 @@
-# ABOUTME: BriefingMiddleware — 会话开始时注入预计算的 Coach Briefing
+# ABOUTME: BriefingMiddleware — 每次请求重新加载预计算的 Coach Briefing
 # ABOUTME: 从 Store 读取 /user/derived/briefing.md，fail-open 设计，onboarding 跳过
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ class BriefingMiddleware(PromptInjectionMiddleware):
     """预计算 Briefing 注入 Middleware。
 
     从 Store 读取由 briefing 脚本预生成的 briefing 文件，注入到 Coach system prompt。
-    遵循 DeepAgent MemoryMiddleware 的 download_files/adownload_files 模式。
+    每次请求重新加载，避免实例级状态在多用户间污染。
 
     fail-open：读取失败时跳过注入，Coach 正常运行。
     Onboarding 会话跳过（新用户无历史数据）。
@@ -29,7 +29,6 @@ class BriefingMiddleware(PromptInjectionMiddleware):
         super().__init__()
         self._backend = backend
         self._briefing: str | None = None
-        self._loaded = False
 
     def should_inject(self) -> bool:
         return self._briefing is not None
@@ -83,44 +82,26 @@ class BriefingMiddleware(PromptInjectionMiddleware):
             logger.debug("BriefingMW: failed to download briefing, skipping")
         return None
 
-    def _maybe_load_sync(self, *, state: Any, runtime: Any) -> None:
-        """同步加载 briefing（仅一次）。"""
-        if self._loaded:
-            return
-        self._loaded = True
-
-        if get_session_type() == "onboarding":
-            return
-
-        backend = self._resolve_backend(state=state, runtime=runtime)
-        if backend is None:
-            return
-
-        self._briefing = self._download_briefing(backend)
-        if self._briefing:
-            logger.debug("BriefingMW: briefing loaded (%d chars)", len(self._briefing))
-
-    async def _maybe_load_async(self, *, state: Any, runtime: Any) -> None:
-        """异步加载 briefing（仅一次）。"""
-        if self._loaded:
-            return
-        self._loaded = True
-
-        if get_session_type() == "onboarding":
-            return
-
-        backend = self._resolve_backend(state=state, runtime=runtime)
-        if backend is None:
-            return
-
-        self._briefing = await self._adownload_briefing(backend)
-        if self._briefing:
-            logger.debug("BriefingMW: briefing loaded (%d chars)", len(self._briefing))
-
     def wrap_model_call(self, request: Any, handler: Any) -> Any:
-        self._maybe_load_sync(state=request.state, runtime=request.runtime)
+        self._briefing = None
+
+        if get_session_type() != "onboarding":
+            backend = self._resolve_backend(state=request.state, runtime=request.runtime)
+            if backend is not None:
+                self._briefing = self._download_briefing(backend)
+                if self._briefing:
+                    logger.debug("BriefingMW: briefing loaded (%d chars)", len(self._briefing))
+
         return super().wrap_model_call(request, handler)
 
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
-        await self._maybe_load_async(state=request.state, runtime=request.runtime)
+        self._briefing = None
+
+        if get_session_type() != "onboarding":
+            backend = self._resolve_backend(state=request.state, runtime=request.runtime)
+            if backend is not None:
+                self._briefing = await self._adownload_briefing(backend)
+                if self._briefing:
+                    logger.debug("BriefingMW: briefing loaded (%d chars)", len(self._briefing))
+
         return await super().awrap_model_call(request, handler)
