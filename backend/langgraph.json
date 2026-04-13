@@ -4,7 +4,8 @@
   ],
   "graphs": {
     "coach": "./src/voliti/graph.py:graph",
-    "coach_qwen": "./src/voliti/graph.py:graph_qwen"
+    "coach_qwen": "./src/voliti/graph.py:graph_qwen",
+    "day_end_pipeline": "./src/voliti/pipeline/graph.py:graph"
   },
   "env": ".env"
 }

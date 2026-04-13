@@ -1,2 +1,2 @@
-# ABOUTME: 离线 Pipeline 模块
-# ABOUTME: 日终封存、日摘要生成、briefing 更新等非实时处理
+# ABOUTME: 日终 Pipeline 模块
+# ABOUTME: 包含 Pipeline 执行逻辑和 LangGraph Graph 包装

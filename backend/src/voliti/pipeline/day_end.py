@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -176,6 +177,7 @@ async def run_day_end_pipeline(
     namespace: tuple[str, ...],
     today: str | None = None,
     now: datetime | None = None,
+    user_timezone: str | None = None,
 ) -> dict[str, Any]:
     """为一个用户执行日终 Pipeline。
 
@@ -185,7 +187,15 @@ async def run_day_end_pipeline(
     3. 更新 briefing
     """
     now = now or datetime.now(timezone.utc)
-    today = today or now.strftime("%Y-%m-%d")
+    if today is None:
+        if user_timezone:
+            try:
+                today = now.astimezone(ZoneInfo(user_timezone)).strftime("%Y-%m-%d")
+            except Exception:  # noqa: BLE001
+                logger.warning("Pipeline: invalid timezone %r, falling back to UTC", user_timezone)
+                today = now.strftime("%Y-%m-%d")
+        else:
+            today = now.strftime("%Y-%m-%d")
 
     result: dict[str, Any] = {
         "user_id": user_id,
@@ -233,6 +243,7 @@ async def run_day_end_pipeline(
             namespace=namespace,
             threads=all_threads,
             now=now,
+            user_timezone=user_timezone,
         )
         result["briefing_updated"] = briefing is not None
     except Exception:  # noqa: BLE001
