@@ -22,6 +22,7 @@ import { useThreads } from "./Thread";
 import { toast } from "sonner";
 import { getUserId, getTodayDateString } from "@/lib/user";
 import { createClient } from "./client";
+import { SessionType, SESSION_TYPE_COACHING, SEGMENT_STATUS_ACTIVE } from "@/lib/thread-utils";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -62,7 +63,7 @@ async function ensureTodayThread(
   apiUrl: string,
   userId: string,
   assistantId: string,
-  sessionType: "coaching" | "onboarding" = "coaching",
+  sessionType: SessionType = SESSION_TYPE_COACHING,
 ): Promise<string | null> {
   const client = createClient(apiUrl, undefined, undefined);
   const today = getTodayDateString();
@@ -83,7 +84,7 @@ async function ensureTodayThread(
         date: today,
         session_type: sessionType,
         graph_id: assistantId,
-        segment_status: "active",
+        segment_status: SEGMENT_STATUS_ACTIVE,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       },
     });
