@@ -1,5 +1,5 @@
-// ABOUTME: Settings drawer with Thinking toggle, Reset Onboarding, and Logout
-// ABOUTME: Logout clears httpOnly cookie via server action
+// ABOUTME: 设置抽屉，包含重置引导流程和退出登录操作
+// ABOUTME: 退出登录通过 server action 清除 httpOnly cookie
 
 "use client";
 
@@ -9,11 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { useQueryState, parseAsBoolean } from "nuqs";
 import { logoutAction } from "@/app/login/actions";
 
 interface SettingsDrawerProps {
@@ -22,11 +18,6 @@ interface SettingsDrawerProps {
 }
 
 export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
-  const [hideToolCalls, setHideToolCalls] = useQueryState(
-    "hideToolCalls",
-    parseAsBoolean.withDefault(false),
-  );
-
   const handleResetOnboarding = () => {
     localStorage.removeItem("voliti_onboarding_complete");
     window.location.reload();
@@ -36,39 +27,19 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[320px]">
         <SheetHeader>
-          <SheetTitle>Settings</SheetTitle>
+          <SheetTitle>设置</SheetTitle>
         </SheetHeader>
 
         <div className="mt-6 flex flex-col gap-6">
-          {/* Display settings */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-[#1A1816]/60">Display</h3>
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="hide-tool-calls"
-                className="text-sm text-[#1A1816]"
-              >
-                Hide Tool Calls
-              </Label>
-              <Switch
-                id="hide-tool-calls"
-                checked={hideToolCalls ?? false}
-                onCheckedChange={setHideToolCalls}
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Account actions */}
+          {/* 账户操作 */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-[#1A1816]/60">Account</h3>
+            <h3 className="text-sm font-medium text-[#1A1816]/60">账户</h3>
             <Button
               variant="ghost"
               className="w-full justify-start text-sm text-[#1A1816]/60"
               onClick={handleResetOnboarding}
             >
-              Reset Onboarding
+              重置引导流程
             </Button>
             <form action={logoutAction}>
               <Button
@@ -76,7 +47,7 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
                 variant="ghost"
                 className="w-full justify-start text-sm text-red-500 hover:text-red-600"
               >
-                Log Out
+                退出登录
               </Button>
             </form>
           </div>

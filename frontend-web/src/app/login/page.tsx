@@ -14,7 +14,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm px-6">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold text-[#1A1816]">Voliti</h1>
-          <p className="mt-2 text-sm text-[#1A1816]/60">
+          <p className="mt-1 font-serif-coach text-sm text-[#1A1816]/60">AI 减脂教练</p>
+          <p className="mt-3 text-xs text-[#1A1816]/40">
             早期体验，请输入访问密码
           </p>
         </div>

@@ -10,6 +10,8 @@ import { useQueryState } from "nuqs";
 import { constructOpenInStudioURL, buildDecisionFromState } from "../utils";
 import { Decision, HITLRequest, DecisionType, ActionRequest } from "../types";
 import { useStreamContext } from "@/providers/Stream";
+import { getUserId } from "@/lib/user";
+import { SESSION_TYPE_COACHING } from "@/lib/thread-utils";
 
 interface ThreadActionsViewProps {
   interrupt: Interrupt<HITLRequest>;
@@ -178,6 +180,7 @@ export function ThreadActionsView({
       stream.submit(
         {},
         {
+          config: { configurable: { user_id: getUserId() ?? "", session_type: SESSION_TYPE_COACHING } },
           command: {
             resume: { decisions: allDecisions },
           },
@@ -225,6 +228,7 @@ export function ThreadActionsView({
       stream.submit(
         {},
         {
+          config: { configurable: { user_id: getUserId() ?? "", session_type: SESSION_TYPE_COACHING } },
           command: {
             resume: { decisions: allDecisions },
           },

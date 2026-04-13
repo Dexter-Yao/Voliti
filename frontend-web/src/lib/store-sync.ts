@@ -124,3 +124,19 @@ export async function fetchMirrorData(): Promise<MirrorData> {
 
   return { chapter, copingPlans };
 }
+
+export async function fetchOnboardingComplete(): Promise<boolean> {
+  const userId = getUserId();
+  if (!userId) return false;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return false;
+  const client = createClient(apiUrl, undefined, undefined);
+  try {
+    const item = await client.store.getItem(["voliti", userId], "/profile/context.md");
+    if (!item?.value) return false;
+    const text = unwrapFileValue(item.value as Record<string, unknown>);
+    return text.includes("onboarding_complete: true");
+  } catch {
+    return false;
+  }
+}

@@ -24,7 +24,6 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Settings,
-  SquarePen,
   XIcon,
 } from "lucide-react";
 import { useQueryState } from "nuqs";
@@ -43,7 +42,6 @@ import {
   Panel,
   Separator,
   usePanelRef,
-  type PanelImperativeHandle,
 } from "react-resizable-panels";
 import {
   Sheet,
@@ -53,8 +51,9 @@ import {
 } from "../ui/sheet";
 import { MirrorPanel } from "../mirror/MirrorPanel";
 import { SettingsDrawer } from "../settings/SettingsDrawer";
-import { isThreadSealed } from "@/lib/thread-utils";
+import { isThreadSealed, SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
 import { useThreads } from "@/providers/Thread";
+import { getUserId } from "@/lib/user";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -92,7 +91,7 @@ function ScrollToBottom(props: { className?: string }) {
       onClick={() => scrollToBottom()}
     >
       <ArrowDown className="h-4 w-4" />
-      <span>Scroll to bottom</span>
+      <span>滚动到底部</span>
     </Button>
   );
 }
@@ -104,21 +103,34 @@ export function Thread({
   initialMessage?: string | null;
   onInitialMessageSent?: () => void;
 } = {}) {
-  const [artifactContext, setArtifactContext] = useArtifactContext();
+  const [artifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
 
-  const [threadId, _setThreadId] = useQueryState("threadId");
+  const [threadId] = useQueryState("threadId");
   const { threads } = useThreads();
   const isSealed = useMemo(() => {
     if (!threadId) return false;
     const thread = threads.find((t) => t.thread_id === threadId);
     return thread ? isThreadSealed(thread) : false;
   }, [threadId, threads]);
+  const sessionType = useMemo(() => {
+    if (!threadId) return SESSION_TYPE_COACHING;
+    const thread = threads.find((t) => t.thread_id === threadId);
+    const meta = thread?.metadata as Record<string, unknown> | undefined;
+    return (meta?.session_type as SessionType) ?? SESSION_TYPE_COACHING;
+  }, [threadId, threads]);
+  const submitConfig = useMemo(() => ({
+    configurable: {
+      user_id: getUserId() ?? "",
+      session_type: sessionType,
+    },
+  }), [sessionType]);
   const [input, setInput] = useState("");
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+  const [mobileMirrorOpen, setMobileMirrorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Panel refs for programmatic collapse/expand
@@ -132,12 +144,6 @@ export function Thread({
   const isLoading = stream.isLoading;
 
   const lastError = useRef<string | undefined>(undefined);
-
-  const setThreadId = (id: string | null) => {
-    _setThreadId(id);
-    closeArtifact();
-    setArtifactContext({});
-  };
 
   // Sync collapsed state from panel resize events
   const syncCollapsedState = useCallback(() => {
@@ -157,6 +163,11 @@ export function Thread({
     }
   }, [artifactOpen, mirrorPanelRef]);
 
+  // Mirror 默认折叠（无数据时不占空间）
+  useEffect(() => {
+    mirrorPanelRef.current?.collapse();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!stream.error) {
       lastError.current = undefined;
@@ -166,7 +177,7 @@ export function Thread({
       const message = (stream.error as any).message;
       if (!message || lastError.current === message) return;
       lastError.current = message;
-      toast.error("An error occurred. Please try again.", {
+      toast.error("发生错误，请重试", {
         description: (
           <p>
             <strong>Error:</strong> <code>{message}</code>
@@ -194,10 +205,10 @@ export function Thread({
     };
     stream.submit(
       { messages: [msg] },
-      { streamMode: ["values"], streamSubgraphs: true, streamResumable: true },
+      { config: submitConfig, streamMode: ["values"], streamSubgraphs: true, streamResumable: true },
     );
     onInitialMessageSent?.();
-  }, [initialMessage, threadId, isLoading]);
+  }, [initialMessage, threadId, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prevMessageLength = useRef(0);
   useEffect(() => {
@@ -229,6 +240,7 @@ export function Thread({
     stream.submit(
       { messages: [...toolMessages, newHumanMessage], context },
       {
+        config: submitConfig,
         streamMode: ["values"],
         streamSubgraphs: true,
         streamResumable: true,
@@ -254,6 +266,7 @@ export function Thread({
     prevMessageLength.current = prevMessageLength.current - 1;
     setFirstTokenReceived(false);
     stream.submit(undefined, {
+      config: submitConfig,
       checkpoint: parentCheckpoint,
       streamMode: ["values"],
       streamSubgraphs: true,
@@ -281,6 +294,10 @@ export function Thread({
   };
 
   const toggleMirror = () => {
+    if (isMobile) {
+      setMobileMirrorOpen((o) => !o);
+      return;
+    }
     const panel = mirrorPanelRef.current;
     if (!panel) return;
     if (panel.isCollapsed()) {
@@ -295,7 +312,7 @@ export function Thread({
     <div className="relative z-10 flex items-center justify-between gap-3 border-b border-[#1A1816]/5 p-2">
       <div className="flex items-center gap-2">
         <TooltipIconButton
-          tooltip={historyCollapsed || isMobile ? "Show history" : "Hide history"}
+          tooltip={historyCollapsed || isMobile ? "展开历史" : "收起历史"}
           variant="ghost"
           onClick={toggleHistory}
         >
@@ -306,39 +323,25 @@ export function Thread({
           )}
         </TooltipIconButton>
 
-        <button
-          className="flex cursor-pointer items-center gap-2"
-          onClick={() => setThreadId(null)}
-        >
-          <span className="text-xl font-semibold tracking-tight">
-            Voliti
-          </span>
-        </button>
+        <span className="text-xl font-semibold tracking-tight">
+          Voliti
+        </span>
       </div>
 
       <div className="flex items-center gap-2">
-        {!isMobile && (
-          <TooltipIconButton
-            tooltip={mirrorCollapsed ? "Show mirror" : "Hide mirror"}
-            variant="ghost"
-            onClick={toggleMirror}
-          >
-            {mirrorCollapsed ? (
-              <PanelRightOpen className="size-5" />
-            ) : (
-              <PanelRightClose className="size-5" />
-            )}
-          </TooltipIconButton>
-        )}
         <TooltipIconButton
-          tooltip="New thread"
+          tooltip={mirrorCollapsed ? "展开镜像" : "收起镜像"}
           variant="ghost"
-          onClick={() => setThreadId(null)}
+          onClick={toggleMirror}
         >
-          <SquarePen className="size-5" />
+          {mirrorCollapsed ? (
+            <PanelRightOpen className="size-5" />
+          ) : (
+            <PanelRightClose className="size-5" />
+          )}
         </TooltipIconButton>
         <TooltipIconButton
-          tooltip="Settings"
+          tooltip="设置"
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
         >
@@ -404,7 +407,7 @@ export function Thread({
                   Voliti
                 </h1>
                 <p className="text-sm text-[#1A1816]/40">
-                  What would you like to talk about today?
+                  今天想聊什么？
                 </p>
               </div>
             )}
@@ -452,7 +455,7 @@ export function Thread({
                     }
                   }}
                   disabled={isSealed}
-                  placeholder={isSealed ? "This conversation has ended" : "Type your message..."}
+                  placeholder={isSealed ? "本次对话已结束" : "输入消息…"}
                   rows={1}
                   className="field-sizing-content max-h-32 flex-1 resize-none border-none bg-transparent text-sm text-[#1A1816] shadow-none ring-0 outline-none placeholder:text-[#1A1816]/30 focus:ring-0 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
                 />
@@ -490,9 +493,24 @@ export function Thread({
     >
       <SheetContent side="left" className="w-[300px] p-0">
         <SheetHeader className="px-4 pt-4">
-          <SheetTitle>History</SheetTitle>
+          <SheetTitle>历史记录</SheetTitle>
         </SheetHeader>
         <ThreadHistory onThreadSelect={() => setMobileHistoryOpen(false)} />
+      </SheetContent>
+    </Sheet>
+  );
+
+  // Mobile: Sheet overlay for mirror
+  const mobileMirrorSheet = (
+    <Sheet
+      open={mobileMirrorOpen}
+      onOpenChange={setMobileMirrorOpen}
+    >
+      <SheetContent side="right" className="w-[300px] p-0">
+        <SheetHeader className="px-4 pt-4">
+          <SheetTitle>镜像</SheetTitle>
+        </SheetHeader>
+        <MirrorPanel />
       </SheetContent>
     </Sheet>
   );
@@ -523,6 +541,7 @@ export function Thread({
         {chatHeader}
         {chatContent}
         {mobileHistorySheet}
+        {mobileMirrorSheet}
         <SettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />
       </div>
     );

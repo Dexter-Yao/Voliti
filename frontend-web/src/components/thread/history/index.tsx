@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { useThreads } from "@/providers/Thread";
 import { Thread } from "@langchain/langgraph-sdk";
 import { useEffect, useMemo } from "react";
-import { getContentString } from "../utils";
 import { useQueryState } from "nuqs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isThreadSealed } from "@/lib/thread-utils";
@@ -37,7 +36,7 @@ function groupThreadsByDate(threads: Thread[]): DateGroup[] {
 
   return sortedDates.map((date) => ({
     date,
-    label: date === today ? "Today" : formatDateLabel(date),
+    label: date === today ? "今天" : formatDateLabel(date),
     isToday: date === today,
     threads: groups.get(date)!,
   }));
@@ -52,10 +51,10 @@ function formatDateLabel(dateStr: string): string {
 
     const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
     if (dateStr === yesterdayStr) {
-      return "Yesterday";
+      return "昨天";
     }
 
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("zh-CN", {
       month: "short",
       day: "numeric",
     });
@@ -74,18 +73,10 @@ function ThreadItem({
   onClick: () => void;
 }) {
   const sealed = isThreadSealed(thread);
-  let itemText = "New conversation";
-  if (
-    typeof thread.values === "object" &&
-    thread.values &&
-    "messages" in thread.values &&
-    Array.isArray(thread.values.messages) &&
-    thread.values.messages?.length > 0
-  ) {
-    const firstMessage = thread.values.messages[0];
-    const text = getContentString(firstMessage.content);
-    if (text) itemText = text;
-  }
+  const meta = thread.metadata as Record<string, unknown> | undefined;
+  const date = (meta?.date as string) ?? thread.created_at?.slice(0, 10) ?? "—";
+  const sessionType = meta?.session_type as string | undefined;
+  const label = sessionType === "onboarding" ? `${date} · 初始设定` : date;
 
   return (
     <Button
@@ -93,7 +84,7 @@ function ThreadItem({
       className={`w-full justify-start text-left font-normal text-sm ${isActive ? "bg-[#1A1816]/5" : ""} ${sealed ? "opacity-60" : ""}`}
       onClick={onClick}
     >
-      <p className="truncate">{itemText}</p>
+      <p className="truncate">{label}</p>
     </Button>
   );
 }
@@ -138,14 +129,14 @@ export default function ThreadHistory({
   return (
     <div className="flex h-full flex-col overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1A1816]/15 [&::-webkit-scrollbar-track]:bg-transparent">
       <div className="px-4 py-3">
-        <h2 className="text-sm font-medium text-[#1A1816]/60">History</h2>
+        <h2 className="text-sm font-medium text-[#1A1816]/60">历史记录</h2>
       </div>
 
       {threadsLoading ? (
         <ThreadHistoryLoading />
       ) : dateGroups.length === 0 ? (
         <div className="px-4 text-sm text-[#1A1816]/40">
-          No conversations yet
+          还没有对话记录
         </div>
       ) : (
         <div className="flex flex-col gap-3 px-2 pb-4">

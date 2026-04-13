@@ -59,7 +59,7 @@ async function checkGraphStatus(apiUrl: string): Promise<boolean> {
  * 查找或创建今天的 Thread。
  * 按 user_id + date metadata 搜索；不存在则新建。
  */
-async function ensureTodayThread(
+export async function ensureTodayThread(
   apiUrl: string,
   userId: string,
   assistantId: string,

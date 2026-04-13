@@ -39,8 +39,11 @@ export async function loginAction(
     return { error: "密码错误，请重试" };
   }
 
+  // 后端要求 user_id 满足 ^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$（最少 8 字符）
+  const paddedUserId = userId.length >= 8 ? userId : `u_${userId.padEnd(6, "0")}`;
+
   const cookieStore = await cookies();
-  cookieStore.set("voliti_access", userId, {
+  cookieStore.set("voliti_access", paddedUserId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -48,7 +51,7 @@ export async function loginAction(
     maxAge: 60 * 60 * 24 * 30, // 30 天
   });
   // 前端可读的 user_id cookie，用于 Thread 搜索和 configurable 注入
-  cookieStore.set("voliti_user_id", userId, {
+  cookieStore.set("voliti_user_id", paddedUserId, {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

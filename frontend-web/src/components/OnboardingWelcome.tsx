@@ -43,7 +43,7 @@ export function OnboardingWelcome({
   children: React.ReactNode;
   onStart?: (name: string) => void;
 }) {
-  const { needsOnboarding, mounted } = useOnboardingState();
+  const { needsOnboarding, mounted, markComplete } = useOnboardingState();
   const [name, setName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -51,6 +51,7 @@ export function OnboardingWelcome({
     const trimmed = name.trim();
     if (!trimmed) return;
     onStart?.(trimmed);
+    markComplete();
   };
 
   if (!mounted) return <>{children}</>;
@@ -63,7 +64,7 @@ export function OnboardingWelcome({
           Voliti
         </h1>
         <p className="mt-3 text-center font-serif-coach text-lg text-[#1A1816]/70">
-          AI Fat-Loss Leadership Coach
+          AI 减脂教练
         </p>
 
         <div className="mt-8 space-y-4 text-sm leading-relaxed text-[#1A1816]/80">

@@ -8,6 +8,8 @@ import { useStreamContext } from "@/providers/Stream";
 import { isA2UIPayload, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
 import { A2UIDrawer } from "./A2UIDrawer";
 import { toast } from "sonner";
+import { getUserId } from "@/lib/user";
+import { SESSION_TYPE_COACHING } from "@/lib/thread-utils";
 
 export function A2UIInterruptHandler() {
   const stream = useStreamContext();
@@ -55,6 +57,7 @@ export function A2UIInterruptHandler() {
       data: { _network_failure: true },
     };
     stream.submit(undefined, {
+      config: { configurable: { user_id: getUserId() ?? "", session_type: SESSION_TYPE_COACHING } },
       command: { resume: fallbackResponse },
     });
   }, [stream.error, stream, interruptId]);
@@ -79,6 +82,7 @@ export function A2UIInterruptHandler() {
       };
 
       stream.submit(undefined, {
+        config: { configurable: { user_id: getUserId() ?? "", session_type: SESSION_TYPE_COACHING } },
         command: { resume: response },
       });
     },
