@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 class BriefingMiddleware(PromptInjectionMiddleware):
     """预计算 Briefing 注入 Middleware。
 
-    在 wrap_model_call 中从 Store 读取由 briefing 脚本预生成的
-    /user/derived/briefing.md，注入到 Coach system prompt。
+    从 Store 读取由 briefing 脚本预生成的 briefing 文件，注入到 Coach system prompt。
+    遵循 DeepAgent MemoryMiddleware 的 download_files/adownload_files 模式。
 
     fail-open：读取失败时跳过注入，Coach 正常运行。
     Onboarding 会话跳过（新用户无历史数据）。
@@ -38,7 +38,7 @@ class BriefingMiddleware(PromptInjectionMiddleware):
         return self._briefing or ""
 
     def _resolve_backend(self, *, state: Any, runtime: Any) -> BackendProtocol | None:
-        """基于当前 runtime 解析 backend。"""
+        """基于当前 runtime 解析 backend，复用 DeepAgent MemoryMiddleware 的模式。"""
         try:
             from langgraph.config import get_config
 
@@ -61,18 +61,30 @@ class BriefingMiddleware(PromptInjectionMiddleware):
             return self._backend(tool_runtime)  # type: ignore[call-arg]
         return self._backend
 
-    def _load_briefing(self, backend: BackendProtocol) -> str | None:
-        """从 Store 读取预计算的 briefing 文件。"""
+    def _download_briefing(self, backend: BackendProtocol) -> str | None:
+        """同步读取 briefing（用于 wrap_model_call）。"""
         try:
-            content = backend.read_file(BRIEFING_DERIVED_KEY)
-            if content and content.strip():
-                return content.strip()
+            results = backend.download_files([BRIEFING_DERIVED_KEY])
+            if results and results[0].error is None and results[0].content is not None:
+                text = results[0].content.decode("utf-8").strip()
+                return text if text else None
         except Exception:  # noqa: BLE001
-            logger.debug("BriefingMW: failed to read briefing, skipping")
+            logger.debug("BriefingMW: failed to download briefing, skipping")
         return None
 
-    def _maybe_load(self, *, state: Any, runtime: Any) -> None:
-        """首次 model call 时加载 briefing（仅一次）。"""
+    async def _adownload_briefing(self, backend: BackendProtocol) -> str | None:
+        """异步读取 briefing（用于 awrap_model_call）。"""
+        try:
+            results = await backend.adownload_files([BRIEFING_DERIVED_KEY])
+            if results and results[0].error is None and results[0].content is not None:
+                text = results[0].content.decode("utf-8").strip()
+                return text if text else None
+        except Exception:  # noqa: BLE001
+            logger.debug("BriefingMW: failed to download briefing, skipping")
+        return None
+
+    def _maybe_load_sync(self, *, state: Any, runtime: Any) -> None:
+        """同步加载 briefing（仅一次）。"""
         if self._loaded:
             return
         self._loaded = True
@@ -84,14 +96,31 @@ class BriefingMiddleware(PromptInjectionMiddleware):
         if backend is None:
             return
 
-        self._briefing = self._load_briefing(backend)
+        self._briefing = self._download_briefing(backend)
+        if self._briefing:
+            logger.debug("BriefingMW: briefing loaded (%d chars)", len(self._briefing))
+
+    async def _maybe_load_async(self, *, state: Any, runtime: Any) -> None:
+        """异步加载 briefing（仅一次）。"""
+        if self._loaded:
+            return
+        self._loaded = True
+
+        if get_session_type() == "onboarding":
+            return
+
+        backend = self._resolve_backend(state=state, runtime=runtime)
+        if backend is None:
+            return
+
+        self._briefing = await self._adownload_briefing(backend)
         if self._briefing:
             logger.debug("BriefingMW: briefing loaded (%d chars)", len(self._briefing))
 
     def wrap_model_call(self, request: Any, handler: Any) -> Any:
-        self._maybe_load(state=request.state, runtime=request.runtime)
+        self._maybe_load_sync(state=request.state, runtime=request.runtime)
         return super().wrap_model_call(request, handler)
 
     async def awrap_model_call(self, request: Any, handler: Any) -> Any:
-        self._maybe_load(state=request.state, runtime=request.runtime)
+        await self._maybe_load_async(state=request.state, runtime=request.runtime)
         return await super().awrap_model_call(request, handler)
