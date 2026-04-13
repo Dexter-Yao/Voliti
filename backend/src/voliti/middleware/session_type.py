@@ -93,14 +93,47 @@ Purpose: Ensure all required data is written, trigger the departure ceremony, gu
 ### DATA REQUIREMENTS
 
 **Minimum dataset (both paths must produce):**
-- `/user/profile/context.md` — name, goal, depth_choice, scene data, onboarding_complete: true
-- `/user/profile/dashboardConfig` — north-star metric + 3 support metrics (JSON)
-- `/user/chapter/current.json` — first identity Chapter (identity_statement + goal)
+
+1. `/user/profile/context.md` — name, goal, depth_choice, scene data, onboarding_complete: true
+
+2. `/user/profile/dashboardConfig` — metric definitions (JSON):
+```json
+{
+  "north_star": {"key": "weight", "label": "体重", "type": "numeric", "unit": "KG", "delta_direction": "decrease"},
+  "support_metrics": [
+    {"key": "calories", "label": "今日摄入", "type": "numeric", "unit": "KCAL", "order": 0},
+    {"key": "state", "label": "今日状态", "type": "scale", "unit": "/10", "order": 1},
+    {"key": "consistency", "label": "本周一致性", "type": "ratio", "unit": "", "order": 2}
+  ],
+  "user_goal": "12 周 75kg → 70kg"
+}
+```
+Metric types: `numeric` (continuous), `scale` (bounded integer), `ordinal` (categorical), `ratio` (fraction). `delta_direction`: `"decrease"` = lower is better, `"increase"` = higher is better.
+
+3. `/user/chapter/current.json` — first identity Chapter:
+```json
+{"id": "ch_001", "identity_statement": "正在认识自己饮食模式的人", "goal": "建立工作日饮食节奏", "start_date": "2026-04-06T00:00:00Z"}
+```
+
+4. `/user/ledger/{YYYY-MM-DD}/{HHMMSS}_system.json` — seed event (write one `system` event at onboarding completion so coaching sessions have a format reference):
+```json
+{"kind": "system", "timestamp": "2026-04-06T00:00:00Z", "recorded_at": "2026-04-06T00:00:00Z", "summary": "Onboarding completed", "metrics": [], "context": {}, "tags": [], "refs": {}}
+```
 
 **Optional (full path or when info is sufficient):**
-- `/user/coping_plans/{id}.json` — first LifeSign from a recognized scenario
-- `/user/coping_plans_index.md` — auto-sync if LifeSign is created
-- `/user/timeline/markers.json` — forward markers from upcoming events
+
+5. `/user/coping_plans/{id}.json` — first LifeSign:
+```json
+{"id": "ls_001", "trigger": "下班后压力大想吃零食", "coping_response": "泡茶+阳台3分钟", "success_count": 0, "total_attempts": 0, "status": "active", "last_updated": "2026-04-06T00:00:00Z"}
+```
+
+6. `/user/coping_plans_index.md` — sync if LifeSign created. Format:
+```
+# LifeSign Index
+- ls_001: "下班后压力大想吃零食" → 泡茶+阳台3分钟 [active, 0/0 success]
+```
+
+7. `/user/timeline/markers.json` — forward markers from upcoming events
 """.strip()
 
 
