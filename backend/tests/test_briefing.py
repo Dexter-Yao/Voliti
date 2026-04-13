@@ -1,0 +1,161 @@
+# ABOUTME: Briefing 计算模块单元测试
+# ABOUTME: 验证各项 briefing 指标的确定性计算逻辑
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+
+from voliti.briefing import (
+    compute_days_since_last_session,
+    compute_sessions_this_week,
+    extract_lifesign_activity,
+    extract_upcoming_markers,
+    format_briefing,
+)
+
+
+class TestDaysSinceLastSession:
+    def test_returns_none_for_empty_threads(self) -> None:
+        assert compute_days_since_last_session([]) is None
+
+    def test_returns_zero_for_today(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        threads = [{"metadata": {"date": "2026-04-13"}}]
+        assert compute_days_since_last_session(threads, now=now) == 0
+
+    def test_returns_correct_days(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        threads = [{"metadata": {"date": "2026-04-10"}}]
+        assert compute_days_since_last_session(threads, now=now) == 3
+
+    def test_uses_most_recent_thread(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        threads = [
+            {"metadata": {"date": "2026-04-10"}},
+            {"metadata": {"date": "2026-04-12"}},
+            {"metadata": {"date": "2026-04-08"}},
+        ]
+        assert compute_days_since_last_session(threads, now=now) == 1
+
+    def test_ignores_threads_without_date(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        threads = [{"metadata": {}}, {"metadata": {"date": "2026-04-11"}}]
+        assert compute_days_since_last_session(threads, now=now) == 2
+
+
+class TestSessionsThisWeek:
+    def test_counts_sessions_from_monday(self) -> None:
+        # 2026-04-13 is Monday
+        now = datetime(2026, 4, 15, 10, 0, tzinfo=timezone.utc)  # Wednesday
+        threads = [
+            {"metadata": {"date": "2026-04-13"}},  # Monday
+            {"metadata": {"date": "2026-04-14"}},  # Tuesday
+            {"metadata": {"date": "2026-04-15"}},  # Wednesday
+            {"metadata": {"date": "2026-04-12"}},  # Sunday (prev week)
+        ]
+        assert compute_sessions_this_week(threads, now=now) == 3
+
+    def test_returns_zero_for_empty(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        assert compute_sessions_this_week([], now=now) == 0
+
+
+class TestExtractUpcomingMarkers:
+    def test_extracts_upcoming_within_window(self) -> None:
+        now = datetime(2026, 4, 13, 0, 0, tzinfo=timezone.utc)
+        markers = json.dumps({
+            "markers": [
+                {
+                    "id": "mk_001",
+                    "date": "2026-04-15T00:00:00+08:00",
+                    "description": "出差北京",
+                    "risk_level": "medium",
+                    "status": "upcoming",
+                },
+                {
+                    "id": "mk_002",
+                    "date": "2026-04-25T00:00:00+08:00",
+                    "description": "体检",
+                    "risk_level": "low",
+                    "status": "upcoming",
+                },
+                {
+                    "id": "mk_003",
+                    "date": "2026-04-10T00:00:00+08:00",
+                    "description": "已过期",
+                    "risk_level": "high",
+                    "status": "passed",
+                },
+            ]
+        })
+        result = extract_upcoming_markers(markers, now=now, days_ahead=7)
+        assert len(result) == 1
+        assert result[0]["desc"] == "出差北京"
+
+    def test_returns_empty_for_none(self) -> None:
+        assert extract_upcoming_markers(None) == []
+
+    def test_returns_empty_for_invalid_json(self) -> None:
+        assert extract_upcoming_markers("not json") == []
+
+
+class TestExtractLifesignActivity:
+    def test_parses_index_format(self) -> None:
+        content = '# LifeSign Index\n- ls_001: "下班后压力大想吃零食" → 泡茶+阳台3分钟 [active, 2/5 success]\n- ls_002: "周末聚餐" → 提前吃轻食垫底 [active, 0/1 success]'
+        result = extract_lifesign_activity(content)
+        assert len(result) == 2
+        assert result[0]["id"] == "ls_001"
+        assert result[0]["trigger"] == "下班后压力大想吃零食"
+        assert result[0]["success_count"] == 2
+        assert result[0]["total_attempts"] == 5
+
+    def test_returns_empty_for_none(self) -> None:
+        assert extract_lifesign_activity(None) == []
+
+
+class TestFormatBriefing:
+    def test_format_complete_briefing(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        result = format_briefing(
+            days_since_last=2,
+            sessions_this_week=4,
+            upcoming_markers=[{"date": "04/15", "desc": "出差北京", "risk": "medium"}],
+            lifesign_activity=[
+                {"id": "ls_001", "trigger": "下班压力", "success_count": 2, "total_attempts": 5},
+            ],
+            now=now,
+        )
+        assert "2026-04-13" in result
+        assert "距上次会话：2 天" in result
+        assert "本周会话：4 次" in result
+        assert "出差北京" in result
+        assert "下班压力" in result
+        assert "2/5 成功" in result
+
+    def test_format_minimal_briefing(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        result = format_briefing(
+            days_since_last=None,
+            sessions_this_week=0,
+            upcoming_markers=[],
+            lifesign_activity=[],
+            now=now,
+        )
+        assert "Coach Briefing" in result
+        assert "本周会话：0 次" in result
+        assert "近期日程" not in result
+
+    def test_no_streak_language(self) -> None:
+        """briefing 不应包含任何游戏化语言。"""
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        result = format_briefing(
+            days_since_last=0,
+            sessions_this_week=7,
+            upcoming_markers=[],
+            lifesign_activity=[],
+            now=now,
+        )
+        assert "打卡" not in result
+        assert "streak" not in result.lower()
+        assert "连续" not in result

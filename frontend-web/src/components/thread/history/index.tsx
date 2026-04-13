@@ -8,6 +8,7 @@ import { useEffect, useMemo } from "react";
 import { getContentString } from "../utils";
 import { useQueryState } from "nuqs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isThreadSealed } from "@/lib/thread-utils";
 import { getTodayDateString } from "@/lib/user";
 
 interface DateGroup {
@@ -71,6 +72,7 @@ function ThreadItem({
   isActive: boolean;
   onClick: () => void;
 }) {
+  const sealed = isThreadSealed(thread);
   let itemText = "New conversation";
   if (
     typeof thread.values === "object" &&
@@ -87,7 +89,7 @@ function ThreadItem({
   return (
     <Button
       variant="ghost"
-      className={`w-full justify-start text-left font-normal text-sm ${isActive ? "bg-[#1A1816]/5" : ""}`}
+      className={`w-full justify-start text-left font-normal text-sm ${isActive ? "bg-[#1A1816]/5" : ""} ${sealed ? "opacity-60" : ""}`}
       onClick={onClick}
     >
       <p className="truncate">{itemText}</p>

@@ -16,7 +16,7 @@ base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 api_key = "${DASHSCOPE_API_KEY}"
 extra_body = {enable_thinking = false}
 
-# JourneyAnalysisMiddleware 使用 GPT-5.4 Nano 生成旅程分析摘要
+# 日终 Pipeline 使用 GPT-5.4 Nano 生成日摘要
 [models.summarizer]
 model = "azure_openai:gpt-5.4-nano"
 azure_deployment = "gpt-5.4-nano"

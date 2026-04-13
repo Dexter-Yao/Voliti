@@ -83,6 +83,8 @@ async function ensureTodayThread(
         date: today,
         session_type: sessionType,
         graph_id: assistantId,
+        segment_status: "active",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       },
     });
 

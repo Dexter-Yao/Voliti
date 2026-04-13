@@ -13,7 +13,7 @@
 
 ## P2: Coach 自我反思日志
 - **What:** 每次会话结束后 Coach 写简短内部反思（"今天用户情绪低落，我尝试了 X 策略，效果待观察"）
-- **Why:** 为 JourneyAnalysisMiddleware 提供更丰富的分析材料，让 Coach 的长期记忆更有深度
+- **Why:** 为 BriefingMiddleware 和日终 Pipeline 提供更丰富的分析材料，让 Coach 的长期记忆更有深度
 - **Pros:** 提升模式识别质量，Coach 的干预策略可跨会话学习
 - **Cons:** 增加每次会话的 token 消耗，核心价值待验证
 - **Context:** 时间感知设计中 cherry-pick ceremony deferred。反思内容写入 Coach memory，格式与现有 AGENTS.md 一致
@@ -35,13 +35,13 @@
 
 ## P2: 端到端干预质量评估
 - **What:** 在 Petri eval 中测试 Coach 在有/无长期视角摘要时的干预质量差异
-- **Why:** JourneyAnalysisMiddleware 的最终价值体现在 Coach 干预质量，需要端到端验证
+- **Why:** BriefingMiddleware + 日终 Pipeline 的最终价值体现在 Coach 干预质量，需要端到端验证
 - **Pros:** 直接衡量功能的用户价值，而非中间产物
 - **Cons:** 依赖足够的测试数据和评估维度设计
 - **Context:** 本轮先做 MW 产出质量单元测试，端到端评估作为后续验证
 - **Effort:** M (human) → S (CC+gstack)
 - **Priority:** P2
-- **Depends on:** JourneyAnalysisMiddleware 实现（P1）
+- **Depends on:** BriefingMiddleware + 日终 Pipeline 实现
 - **Source:** /plan-ceo-review 2026-04-07
 
 ## P2: 可执行契约包
@@ -127,3 +127,14 @@
 - **Why:** 原 P3 项已被 CEO Review 2026-04-07 升级为时间感知的自然组成部分
 - **Context:** 不再作为独立 TODO。前瞻标记驱动 Check-in 内容调整已在 `coach_system.j2` 中实现
 - **Source:** 原 /plan-ceo-review 2026-04-06 → 升级 /plan-ceo-review 2026-04-07
+
+## P2: LangGraph Cron API 能力调研
+- **What:** 在天级 Thread Phase 3 开始前调研 LangGraph Cloud Cron API，确认是否支持按用户时区触发定时 run、是否能绑定到特定 thread
+- **Why:** 日终 Pipeline 的编排依赖此能力，如果不支持需要设计替代方案
+- **Pros:** 提前排除 Phase 3 的技术风险
+- **Cons:** 无
+- **Context:** 日终 Pipeline 需要在每个用户的零点（按其时区）触发封存、摘要生成等操作。LangGraph Cloud 有原生 Cron 支持，但需确认时区和 thread 绑定能力
+- **Effort:** S (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** 天级 Thread Phase 2 完成
+- **Source:** /plan-eng-review 2026-04-13

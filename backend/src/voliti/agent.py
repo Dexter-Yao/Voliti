@@ -13,16 +13,14 @@ from deepagents.middleware.subagents import SubAgent
 
 from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
-from voliti.middleware.base import MemoryLifecycleMiddleware
-from voliti.middleware.journey_analysis import JourneyAnalysisMiddleware
+from voliti.middleware.briefing import BriefingMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
 from voliti.session_type import SessionProfile, get_session_profile, list_session_profiles
 from voliti.store_contract import InvalidUserIDError, resolve_user_namespace
-from voliti.tools.conversation_archive import retrieve_conversation_archive
 from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
 
-COACH_TOOLS = [fan_out, retrieve_conversation_archive]
+COACH_TOOLS = [fan_out]
 """Coach 直接调用的工具，通过 A2UI 组件组合实现动态交互。"""
 
 
@@ -40,15 +38,14 @@ def _build_coach_memory_paths(profiles: tuple[SessionProfile, ...]) -> list[str]
 
 
 def _build_coach_middleware(
-    profiles: tuple[SessionProfile, ...],
     *,
     backend_factory: Callable[..., Any],
 ) -> list[Any]:
-    """从会话配置组装 middleware。"""
-    middleware: list[Any] = [SessionTypeMiddleware(), MemoryLifecycleMiddleware()]
-    if any(profile.enable_journey_analysis for profile in profiles):
-        middleware.append(JourneyAnalysisMiddleware(backend=backend_factory))
-    return middleware
+    """组装 Coach middleware 栈。"""
+    return [
+        SessionTypeMiddleware(),
+        BriefingMiddleware(backend=backend_factory),
+    ]
 
 def _resolve_user_namespace(ctx: Any) -> tuple[str, ...]:
     """从运行时 config 解析用户 namespace。
@@ -134,7 +131,6 @@ def create_coach_agent(
         "tools": COACH_TOOLS,
         "subagents": [_create_witness_card_composer()],
         "middleware": _build_coach_middleware(
-            profiles,
             backend_factory=backend_factory,
         ),
     }

@@ -83,10 +83,6 @@ Voliti/
 - eval：`cd eval && uv run python -m pytest`
 - iOS：`xcodebuild test -project frontend-ios/Voliti.xcodeproj -scheme Voliti -destination 'platform=iOS Simulator,name=<simulator>' -only-testing:VolitiTests`
 - 契约 live integration：`cd backend && uv run python ../tests/contracts/run_onboarding_completion_e2e.py`
-- 会话归档 / 检索 live integration：
-  - `cd backend && uv run python ../tests/contracts/run_conversation_archive_access_e2e.py`
-  - `cd backend && uv run python ../tests/contracts/run_conversation_retrieval_e2e.py`
-  - `cd backend && uv run python ../tests/contracts/run_conversation_archive_tool_e2e.py`
 
 ## 代码规范
 
@@ -157,3 +153,4 @@ Key routing rules:
 | 2026-04-12 | 文档体系精简 8 → 6：删除已完成的里程碑（05）和 Harness 方案（08），合并 DeepAgent 边界到架构文档；编号顺延；修正 Store key 示例；AGENTS.md 同步维护 |
 | 2026-04-12 | 新增 frontend-web/ Web MVP（Next.js 15），项目结构、工具链、验证入口同步更新 |
 | 2026-04-13 | 删除已完成的方案文档（docs/plans/）；架构约定修正为 iOS/Web 双端；AGENTS.md 同步 |
+| 2026-04-13 | 天级 Thread 重组 Phase 1-3：删除 MemoryLifecycleMW + JourneyAnalysisMW + conversation archive 系统；新增 BriefingMW + briefing 计算 + 日终 Pipeline；MemoryMW 4→3 路径；Coach prompt 精简；前端封存 thread 只读 |

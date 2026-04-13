@@ -10,8 +10,10 @@ from voliti.store_contract import (
     CHAPTER_CURRENT_KEY,
     COACH_MEMORY_KEY,
     COPING_PLANS_INDEX_KEY,
+    LIFESIGNS_KEY,
     PROFILE_CONTEXT_KEY,
     PROFILE_DASHBOARD_CONFIG_KEY,
+    TIMELINE_CALENDAR_KEY,
     TIMELINE_MARKERS_KEY,
 )
 
@@ -32,6 +34,8 @@ _AUTHORITATIVE_PATHS = frozenset(
         COPING_PLANS_INDEX_KEY,
         TIMELINE_MARKERS_KEY,
         COACH_MEMORY_KEY,
+        LIFESIGNS_KEY,
+        TIMELINE_CALENDAR_KEY,
     }
 )
 _CHAPTER_ARCHIVE_PATTERN = re.compile(r"^/chapter/archive/[^/]+\.json$")

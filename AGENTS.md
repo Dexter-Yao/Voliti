@@ -81,10 +81,6 @@ Voliti/
 - eval：`cd eval && uv run python -m pytest`
 - iOS：`xcodebuild test -project frontend-ios/Voliti.xcodeproj -scheme Voliti -destination 'platform=iOS Simulator,name=<simulator>' -only-testing:VolitiTests`
 - 契约 live integration：`cd backend && uv run python ../tests/contracts/run_onboarding_completion_e2e.py`
-- 会话归档 / 检索 live integration：
-  - `cd backend && uv run python ../tests/contracts/run_conversation_archive_access_e2e.py`
-  - `cd backend && uv run python ../tests/contracts/run_conversation_retrieval_e2e.py`
-  - `cd backend && uv run python ../tests/contracts/run_conversation_archive_tool_e2e.py`
 
 ## 代码规范
 
