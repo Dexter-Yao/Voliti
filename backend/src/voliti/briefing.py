@@ -1,18 +1,27 @@
 # ABOUTME: Briefing 计算模块 — 确定性脚本生成 Coach Briefing
-# ABOUTME: 从 Store 和 Thread API 读取用户数据，计算结构化 briefing 写入 /user/derived/briefing.md
+# ABOUTME: 从 Store 和 Thread API 读取用户数据，计算结构化 briefing 写入 Store
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from voliti.store_contract import (
+    BRIEFING_DERIVED_KEY,
+    COPING_PLANS_INDEX_KEY,
+    TIMELINE_MARKERS_KEY,
+    make_file_value,
+    unwrap_file_value,
+)
+
 logger = logging.getLogger(__name__)
 
-_BRIEFING_KEY = "/user/derived/briefing.md"
-_MARKERS_KEY = "/user/timeline/markers.json"
-_COPING_PLANS_INDEX_KEY = "/user/coping_plans_index.md"
+# Store keys 使用 /user/ 前缀（client SDK 视角）
+_MARKERS_STORE_KEY = f"/user{TIMELINE_MARKERS_KEY}"
+_COPING_STORE_KEY = f"/user{COPING_PLANS_INDEX_KEY}"
 
 
 def compute_days_since_last_session(
@@ -22,20 +31,17 @@ def compute_days_since_last_session(
 ) -> int | None:
     """计算距上次会话的天数。"""
     now = now or datetime.now(timezone.utc)
-    dates: list[str] = []
+    latest = None
     for t in threads:
-        meta = t.get("metadata", {})
-        date_str = meta.get("date")
-        if date_str:
-            dates.append(date_str)
-    if not dates:
+        date_str = t.get("metadata", {}).get("date")
+        if date_str and (latest is None or date_str > latest):
+            latest = date_str
+    if latest is None:
         return None
-    dates.sort(reverse=True)
     try:
-        last_date = datetime.strptime(dates[0], "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        delta = now - last_date
-        return max(0, delta.days)
-    except (ValueError, IndexError):
+        last_date = datetime.strptime(latest, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        return max(0, (now - last_date).days)
+    except ValueError:
         return None
 
 
@@ -46,15 +52,11 @@ def compute_sessions_this_week(
 ) -> int:
     """计算本周会话数（周一至周日）。"""
     now = now or datetime.now(timezone.utc)
-    monday = now - timedelta(days=now.weekday())
-    monday_date = monday.strftime("%Y-%m-%d")
-    count = 0
-    for t in threads:
-        meta = t.get("metadata", {})
-        date_str = meta.get("date", "")
-        if date_str >= monday_date:
-            count += 1
-    return count
+    monday_date = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+    return sum(
+        1 for t in threads
+        if t.get("metadata", {}).get("date", "") >= monday_date
+    )
 
 
 def extract_upcoming_markers(
@@ -110,7 +112,6 @@ def extract_lifesign_activity(
             continue
         ls_id = parts[0].strip()
         rest = parts[1].strip()
-        # 提取 success 信息
         success_count = 0
         total_attempts = 0
         if "[" in rest and "success" in rest:
@@ -125,7 +126,6 @@ def extract_lifesign_activity(
                             total_attempts = int(ratio[1].strip())
                     except (ValueError, IndexError):
                         pass
-        # 提取 trigger
         trigger = ""
         if '"' in rest:
             first_q = rest.index('"')
@@ -176,8 +176,19 @@ def format_briefing(
             lines.append(f"- {trigger}：{sc}/{ta} 成功")
         lines.append("")
 
-    lines.append(f"完整日历：read_file /user/timeline/markers.json")
+    lines.append(f"完整日历：read_file {_MARKERS_STORE_KEY}")
     return "\n".join(lines)
+
+
+async def _read_store_file(client: Any, namespace: tuple[str, ...], key: str) -> str | None:
+    """从 Store 读取文件内容，fail-open。"""
+    try:
+        item = await client.store.get_item(namespace, key)
+        if item and item.get("value"):
+            return unwrap_file_value(item["value"])
+    except Exception:  # noqa: BLE001
+        logger.debug("Briefing: failed to read %s", key)
+    return None
 
 
 async def compute_and_write_briefing(
@@ -185,6 +196,7 @@ async def compute_and_write_briefing(
     client: Any,
     user_id: str,
     namespace: tuple[str, ...],
+    threads: list[dict[str, Any]] | None = None,
     now: datetime | None = None,
 ) -> str | None:
     """计算并写入 briefing 文件。
@@ -193,6 +205,7 @@ async def compute_and_write_briefing(
         client: LangGraph SDK client
         user_id: 用户标识
         namespace: Store namespace（如 ("voliti", user_id)）
+        threads: 预查询的 threads 列表（避免重复 API 调用）
         now: 当前时间（可覆盖用于测试）
 
     Returns:
@@ -200,43 +213,29 @@ async def compute_and_write_briefing(
     """
     now = now or datetime.now(timezone.utc)
 
-    # 1. 获取用户的近期 threads
-    try:
-        threads = await client.threads.search(
-            metadata={"user_id": user_id},
-            limit=30,
-        )
-    except Exception:  # noqa: BLE001
-        logger.warning("Briefing: failed to search threads for user %s", user_id)
-        threads = []
+    # 1. 获取 threads（如果未预传入）
+    if threads is None:
+        try:
+            threads = await client.threads.search(
+                metadata={"user_id": user_id},
+                limit=30,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("Briefing: failed to search threads for user %s", user_id)
+            threads = []
 
-    # 2. 从 Store 读取 markers
-    markers_content = None
-    try:
-        item = await client.store.get_item(namespace, _MARKERS_KEY)
-        if item and item.get("value"):
-            from voliti.store_contract import unwrap_file_value
-            markers_content = unwrap_file_value(item["value"])
-    except Exception:  # noqa: BLE001
-        logger.debug("Briefing: failed to read markers")
+    # 2. 并行读取 Store 数据
+    markers_task = _read_store_file(client, namespace, _MARKERS_STORE_KEY)
+    coping_task = _read_store_file(client, namespace, _COPING_STORE_KEY)
+    markers_content, coping_content = await asyncio.gather(markers_task, coping_task)
 
-    # 3. 从 Store 读取 coping plans index
-    coping_content = None
-    try:
-        item = await client.store.get_item(namespace, _COPING_PLANS_INDEX_KEY)
-        if item and item.get("value"):
-            from voliti.store_contract import unwrap_file_value
-            coping_content = unwrap_file_value(item["value"])
-    except Exception:  # noqa: BLE001
-        logger.debug("Briefing: failed to read coping plans index")
-
-    # 4. 计算各项指标
+    # 3. 计算各项指标
     days_since_last = compute_days_since_last_session(threads, now=now)
     sessions_this_week = compute_sessions_this_week(threads, now=now)
     upcoming = extract_upcoming_markers(markers_content, now=now)
     lifesigns = extract_lifesign_activity(coping_content)
 
-    # 5. 格式化
+    # 4. 格式化并写入
     briefing = format_briefing(
         days_since_last=days_since_last,
         sessions_this_week=sessions_this_week,
@@ -245,12 +244,10 @@ async def compute_and_write_briefing(
         now=now,
     )
 
-    # 6. 写入 Store
     try:
-        from voliti.store_contract import make_file_value
         await client.store.put_item(
             namespace,
-            _BRIEFING_KEY,
+            BRIEFING_DERIVED_KEY,
             value=make_file_value(briefing, now=now),
         )
         logger.info("Briefing: written for user %s", user_id)

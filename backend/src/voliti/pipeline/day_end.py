@@ -9,13 +9,13 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from voliti.briefing import compute_and_write_briefing
 from voliti.config.models import ModelRegistry
-from voliti.store_contract import make_file_value
+from voliti.store_contract import DAY_SUMMARY_PREFIX, make_file_value
 
 logger = logging.getLogger(__name__)
 
-_DAY_SUMMARY_PREFIX = "/user/day_summary/"
-_BRIEFING_KEY = "/user/derived/briefing.md"
+_MAX_MESSAGE_CHARS = 500
 
 _SUMMARY_SYSTEM_PROMPT = """\
 你是一个日志摘要助手。根据以下教练会话记录，生成一份简洁的日摘要。
@@ -30,17 +30,27 @@ _SUMMARY_SYSTEM_PROMPT = """\
 只输出摘要内容，不要加任何前缀或标题。"""
 
 
+def _thread_meta(t: Any) -> dict[str, Any]:
+    """统一获取 thread metadata（兼容 dict 和 object 两种返回格式）。"""
+    if isinstance(t, dict):
+        return t.get("metadata", {})
+    return getattr(t, "metadata", {})
+
+
+def _thread_id(t: Any) -> str:
+    """统一获取 thread ID。"""
+    if isinstance(t, dict):
+        return t.get("thread_id", "")
+    return getattr(t, "thread_id", "")
+
+
 async def seal_thread(
     client: Any,
     thread_id: str,
     *,
     sealed_at: datetime | None = None,
 ) -> bool:
-    """封存 thread，标记为 sealed。
-
-    Returns:
-        True if sealed successfully, False on failure.
-    """
+    """封存 thread，标记为 sealed。"""
     sealed_at = sealed_at or datetime.now(timezone.utc)
     try:
         await client.threads.update(
@@ -75,11 +85,10 @@ def _extract_messages_text(state: dict[str, Any]) -> str:
 
         if not content or not isinstance(content, str):
             continue
-        # 跳过 system 消息和工具调用/结果
         if role in ("system", "tool"):
             continue
         prefix = "用户" if role == "human" else "Coach"
-        lines.append(f"{prefix}: {content[:500]}")
+        lines.append(f"{prefix}: {content[:_MAX_MESSAGE_CHARS]}")
 
     return "\n\n".join(lines)
 
@@ -92,21 +101,9 @@ async def generate_day_summary(
     namespace: tuple[str, ...],
     now: datetime | None = None,
 ) -> str | None:
-    """从 thread 历史生成日摘要，写入 Store。
-
-    Args:
-        client: LangGraph SDK client
-        thread_id: 要摘要的 thread ID
-        date_str: 日期字符串 (YYYY-MM-DD)
-        namespace: Store namespace
-        now: 当前时间
-
-    Returns:
-        生成的摘要文本，或 None（失败时）
-    """
+    """从 thread 历史生成日摘要，写入 Store。"""
     now = now or datetime.now(timezone.utc)
 
-    # 1. 读取 thread 状态获取消息历史
     try:
         state = await client.threads.get_state(thread_id)
     except Exception:  # noqa: BLE001
@@ -118,7 +115,6 @@ async def generate_day_summary(
         logger.info("Pipeline: thread %s has no messages, skipping summary", thread_id)
         return None
 
-    # 2. 使用 summarizer 模型生成摘要
     try:
         model = ModelRegistry.get("summarizer")
         response = await model.ainvoke([
@@ -134,13 +130,10 @@ async def generate_day_summary(
         logger.warning("Pipeline: failed to generate summary for thread %s", thread_id)
         return None
 
-    # 3. 写入 Store
-    key = f"{_DAY_SUMMARY_PREFIX}{date_str}.md"
+    key = f"{DAY_SUMMARY_PREFIX}{date_str}.md"
     try:
         await client.store.put_item(
-            namespace,
-            key,
-            value=make_file_value(summary, now=now),
+            namespace, key, value=make_file_value(summary, now=now),
         )
         logger.info("Pipeline: day summary written for %s", date_str)
     except Exception:  # noqa: BLE001
@@ -155,28 +148,25 @@ async def find_unsealed_threads(
     *,
     user_id: str,
     before_date: str,
-) -> list[dict[str, Any]]:
+    threads: list[Any] | None = None,
+) -> list[Any]:
     """查找需要封存的 threads（日期早于 before_date 且未封存）。"""
-    try:
-        threads = await client.threads.search(
-            metadata={"user_id": user_id},
-            limit=30,
-        )
-    except Exception:  # noqa: BLE001
-        logger.warning("Pipeline: failed to search threads for user %s", user_id)
-        return []
+    if threads is None:
+        try:
+            threads = await client.threads.search(
+                metadata={"user_id": user_id},
+                limit=30,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("Pipeline: failed to search threads for user %s", user_id)
+            return []
 
-    unsealed = []
-    for t in threads:
-        meta = t.get("metadata", {}) if isinstance(t, dict) else getattr(t, "metadata", {})
-        date = meta.get("date", "")
-        status = meta.get("segment_status", "")
-        thread_id = t.get("thread_id", "") if isinstance(t, dict) else getattr(t, "thread_id", "")
-
-        if date and date < before_date and status != "sealed" and thread_id:
-            unsealed.append(t)
-
-    return unsealed
+    return [
+        t for t in threads
+        if _thread_meta(t).get("date", "") < before_date
+        and _thread_meta(t).get("segment_status") != "sealed"
+        and _thread_id(t)
+    ]
 
 
 async def run_day_end_pipeline(
@@ -193,16 +183,6 @@ async def run_day_end_pipeline(
     1. 查找并封存过期 threads
     2. 为每个封存的 thread 生成日摘要
     3. 更新 briefing
-
-    Args:
-        client: LangGraph SDK client
-        user_id: 用户标识
-        namespace: Store namespace (e.g., ("voliti", user_id))
-        today: 今天的日期字符串 (YYYY-MM-DD)
-        now: 当前时间
-
-    Returns:
-        执行结果摘要 dict
     """
     now = now or datetime.now(timezone.utc)
     today = today or now.strftime("%Y-%m-%d")
@@ -216,18 +196,27 @@ async def run_day_end_pipeline(
         "errors": [],
     }
 
-    # Step 1: 查找并封存
-    unsealed = await find_unsealed_threads(client, user_id=user_id, before_date=today)
+    # 查询一次 threads，共享给 find_unsealed 和 briefing
+    try:
+        all_threads = await client.threads.search(
+            metadata={"user_id": user_id},
+            limit=30,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("Pipeline: failed to search threads for user %s", user_id)
+        all_threads = []
+
+    # Step 1+2: 封存 + 摘要
+    unsealed = await find_unsealed_threads(
+        client, user_id=user_id, before_date=today, threads=all_threads,
+    )
     for thread in unsealed:
-        meta = thread.get("metadata", {}) if isinstance(thread, dict) else getattr(thread, "metadata", {})
-        tid = thread.get("thread_id", "") if isinstance(thread, dict) else getattr(thread, "thread_id", "")
-        date = meta.get("date", "unknown")
+        tid = _thread_id(thread)
+        date = _thread_meta(thread).get("date", "unknown")
 
         sealed = await seal_thread(client, tid, sealed_at=now)
         if sealed:
             result["sealed"].append(tid)
-
-            # Step 2: 生成日摘要
             summary = await generate_day_summary(
                 client, tid, date_str=date, namespace=namespace, now=now,
             )
@@ -236,14 +225,13 @@ async def run_day_end_pipeline(
         else:
             result["errors"].append(f"seal failed: {tid}")
 
-    # Step 3: 更新 briefing
+    # Step 3: 更新 briefing（共享 threads 避免重复查询）
     try:
-        from voliti.briefing import compute_and_write_briefing
-
         briefing = await compute_and_write_briefing(
             client=client,
             user_id=user_id,
             namespace=namespace,
+            threads=all_threads,
             now=now,
         )
         result["briefing_updated"] = briefing is not None

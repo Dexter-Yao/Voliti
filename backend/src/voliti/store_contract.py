@@ -19,6 +19,8 @@ TIMELINE_MARKERS_KEY = "/timeline/markers.json"
 COACH_MEMORY_KEY = "/coach/AGENTS.md"
 LIFESIGNS_KEY = "/lifesigns.md"
 TIMELINE_CALENDAR_KEY = "/timeline-calendar.md"
+BRIEFING_DERIVED_KEY = "/user/derived/briefing.md"
+DAY_SUMMARY_PREFIX = "/user/day_summary/"
 INTERVENTIONS_SEGMENT = "interventions"
 
 

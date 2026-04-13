@@ -8,6 +8,7 @@ import { useEffect, useMemo } from "react";
 import { getContentString } from "../utils";
 import { useQueryState } from "nuqs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isThreadSealed } from "@/lib/thread-utils";
 import { getTodayDateString } from "@/lib/user";
 
 interface DateGroup {
@@ -60,11 +61,6 @@ function formatDateLabel(dateStr: string): string {
   } catch {
     return dateStr;
   }
-}
-
-function isThreadSealed(thread: Thread): boolean {
-  const meta = thread.metadata as Record<string, unknown> | undefined;
-  return meta?.segment_status === "sealed";
 }
 
 function ThreadItem({

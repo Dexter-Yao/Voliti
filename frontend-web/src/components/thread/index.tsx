@@ -53,6 +53,7 @@ import {
 } from "../ui/sheet";
 import { MirrorPanel } from "../mirror/MirrorPanel";
 import { SettingsDrawer } from "../settings/SettingsDrawer";
+import { isThreadSealed } from "@/lib/thread-utils";
 import { useThreads } from "@/providers/Thread";
 
 function StickyToBottomContent(props: {
@@ -111,8 +112,7 @@ export function Thread({
   const isSealed = useMemo(() => {
     if (!threadId) return false;
     const thread = threads.find((t) => t.thread_id === threadId);
-    if (!thread) return false;
-    return (thread.metadata as Record<string, unknown>)?.segment_status === "sealed";
+    return thread ? isThreadSealed(thread) : false;
   }, [threadId, threads]);
   const [input, setInput] = useState("");
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);

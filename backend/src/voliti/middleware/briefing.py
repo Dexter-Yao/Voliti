@@ -10,10 +10,9 @@ from deepagents.backends.protocol import BACKEND_TYPES, BackendProtocol
 from langchain.tools import ToolRuntime
 
 from voliti.middleware.base import PromptInjectionMiddleware, get_session_type
+from voliti.store_contract import BRIEFING_DERIVED_KEY
 
 logger = logging.getLogger(__name__)
-
-_BRIEFING_KEY = "/user/derived/briefing.md"
 
 
 class BriefingMiddleware(PromptInjectionMiddleware):
@@ -65,7 +64,7 @@ class BriefingMiddleware(PromptInjectionMiddleware):
     def _load_briefing(self, backend: BackendProtocol) -> str | None:
         """从 Store 读取预计算的 briefing 文件。"""
         try:
-            content = backend.read_file(_BRIEFING_KEY)
+            content = backend.read_file(BRIEFING_DERIVED_KEY)
             if content and content.strip():
                 return content.strip()
         except Exception:  # noqa: BLE001
