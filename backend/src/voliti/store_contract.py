@@ -17,6 +17,8 @@ CHAPTER_CURRENT_KEY = "/chapter/current.json"
 COPING_PLANS_INDEX_KEY = "/coping_plans_index.md"
 TIMELINE_MARKERS_KEY = "/timeline/markers.json"
 COACH_MEMORY_KEY = "/coach/AGENTS.md"
+LIFESIGNS_KEY = "/lifesigns.md"
+TIMELINE_CALENDAR_KEY = "/timeline-calendar.md"
 INTERVENTIONS_SEGMENT = "interventions"
 
 

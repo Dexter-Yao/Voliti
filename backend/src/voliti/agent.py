@@ -13,7 +13,6 @@ from deepagents.middleware.subagents import SubAgent
 
 from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
-from voliti.middleware.base import MemoryLifecycleMiddleware
 from voliti.middleware.journey_analysis import JourneyAnalysisMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
 from voliti.session_type import SessionProfile, get_session_profile, list_session_profiles
@@ -45,7 +44,7 @@ def _build_coach_middleware(
     backend_factory: Callable[..., Any],
 ) -> list[Any]:
     """从会话配置组装 middleware。"""
-    middleware: list[Any] = [SessionTypeMiddleware(), MemoryLifecycleMiddleware()]
+    middleware: list[Any] = [SessionTypeMiddleware()]
     if any(profile.enable_journey_analysis for profile in profiles):
         middleware.append(JourneyAnalysisMiddleware(backend=backend_factory))
     return middleware

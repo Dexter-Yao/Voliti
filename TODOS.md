@@ -127,3 +127,14 @@
 - **Why:** 原 P3 项已被 CEO Review 2026-04-07 升级为时间感知的自然组成部分
 - **Context:** 不再作为独立 TODO。前瞻标记驱动 Check-in 内容调整已在 `coach_system.j2` 中实现
 - **Source:** 原 /plan-ceo-review 2026-04-06 → 升级 /plan-ceo-review 2026-04-07
+
+## P2: LangGraph Cron API 能力调研
+- **What:** 在天级 Thread Phase 3 开始前调研 LangGraph Cloud Cron API，确认是否支持按用户时区触发定时 run、是否能绑定到特定 thread
+- **Why:** 日终 Pipeline 的编排依赖此能力，如果不支持需要设计替代方案
+- **Pros:** 提前排除 Phase 3 的技术风险
+- **Cons:** 无
+- **Context:** 日终 Pipeline 需要在每个用户的零点（按其时区）触发封存、摘要生成等操作。LangGraph Cloud 有原生 Cron 支持，但需确认时区和 thread 绑定能力
+- **Effort:** S (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** 天级 Thread Phase 2 完成
+- **Source:** /plan-eng-review 2026-04-13
