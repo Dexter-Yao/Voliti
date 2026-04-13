@@ -26,7 +26,6 @@ class SessionProfile:
     session_type: SessionType
     system_prompt_name: str
     memory_paths: tuple[str, ...]
-    enable_journey_analysis: bool
 
 
 _DEFAULT_MEMORY_PATHS = (
@@ -40,13 +39,11 @@ _SESSION_PROFILES: dict[SessionType, SessionProfile] = {
         session_type="coaching",
         system_prompt_name="coach_system",
         memory_paths=_DEFAULT_MEMORY_PATHS,
-        enable_journey_analysis=True,
     ),
     "onboarding": SessionProfile(
         session_type="onboarding",
         system_prompt_name="coach_system",
         memory_paths=_DEFAULT_MEMORY_PATHS,
-        enable_journey_analysis=False,
     ),
 }
 

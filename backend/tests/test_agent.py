@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from langgraph.store.memory import InMemoryStore
 
 from voliti.agent import create_coach_agent
+from voliti.middleware.briefing import BriefingMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
 from voliti.session_type import get_session_profile
 
@@ -244,6 +245,25 @@ class TestCreateCoachAgent:
     @patch("voliti.agent.create_deep_agent")
     @patch("voliti.agent.PromptRegistry")
     @patch("voliti.agent.ModelRegistry")
+    def test_registers_briefing_middleware(
+        self,
+        mock_model_reg: MagicMock,
+        mock_prompt_reg: MagicMock,
+        mock_create: MagicMock,
+    ) -> None:
+        """应注册 BriefingMiddleware。"""
+        mock_model_reg.get.return_value = MagicMock()
+        mock_prompt_reg.get.return_value = "You are a coach."
+        mock_create.return_value = MagicMock()
+
+        create_coach_agent()
+
+        call_kwargs = mock_create.call_args
+        assert any(isinstance(item, BriefingMiddleware) for item in call_kwargs.kwargs["middleware"])
+
+    @patch("voliti.agent.create_deep_agent")
+    @patch("voliti.agent.PromptRegistry")
+    @patch("voliti.agent.ModelRegistry")
     def test_uses_prompt_name_from_coaching_profile(
         self,
         mock_model_reg: MagicMock,
@@ -264,10 +284,7 @@ class TestCreateCoachAgent:
 class TestSessionProfile:
     """SessionProfile 配置测试。"""
 
-    def test_onboarding_profile_disables_journey_analysis(self) -> None:
-        """onboarding profile 不启用 journey analysis。"""
-        assert get_session_profile("onboarding").enable_journey_analysis is False
-
-    def test_coaching_profile_enables_journey_analysis(self) -> None:
-        """coaching profile 启用 journey analysis。"""
-        assert get_session_profile("coaching").enable_journey_analysis is True
+    def test_coaching_and_onboarding_profiles_exist(self) -> None:
+        """coaching 和 onboarding profile 均可正常获取。"""
+        assert get_session_profile("coaching").session_type == "coaching"
+        assert get_session_profile("onboarding").session_type == "onboarding"
