@@ -13,7 +13,7 @@
 
 ## P2: Coach 自我反思日志
 - **What:** 每次会话结束后 Coach 写简短内部反思（"今天用户情绪低落，我尝试了 X 策略，效果待观察"）
-- **Why:** 为 JourneyAnalysisMiddleware 提供更丰富的分析材料，让 Coach 的长期记忆更有深度
+- **Why:** 为 BriefingMiddleware 和日终 Pipeline 提供更丰富的分析材料，让 Coach 的长期记忆更有深度
 - **Pros:** 提升模式识别质量，Coach 的干预策略可跨会话学习
 - **Cons:** 增加每次会话的 token 消耗，核心价值待验证
 - **Context:** 时间感知设计中 cherry-pick ceremony deferred。反思内容写入 Coach memory，格式与现有 AGENTS.md 一致
@@ -35,13 +35,13 @@
 
 ## P2: 端到端干预质量评估
 - **What:** 在 Petri eval 中测试 Coach 在有/无长期视角摘要时的干预质量差异
-- **Why:** JourneyAnalysisMiddleware 的最终价值体现在 Coach 干预质量，需要端到端验证
+- **Why:** BriefingMiddleware + 日终 Pipeline 的最终价值体现在 Coach 干预质量，需要端到端验证
 - **Pros:** 直接衡量功能的用户价值，而非中间产物
 - **Cons:** 依赖足够的测试数据和评估维度设计
 - **Context:** 本轮先做 MW 产出质量单元测试，端到端评估作为后续验证
 - **Effort:** M (human) → S (CC+gstack)
 - **Priority:** P2
-- **Depends on:** JourneyAnalysisMiddleware 实现（P1）
+- **Depends on:** BriefingMiddleware + 日终 Pipeline 实现
 - **Source:** /plan-ceo-review 2026-04-07
 
 ## P2: 可执行契约包

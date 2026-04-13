@@ -134,6 +134,10 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 /ledger/{yyyy-mm-dd}/{hhmmss}_{kind}.json
 /timeline/markers.json
 /coach/AGENTS.md
+/lifesigns.md
+/timeline-calendar.md
+/derived/briefing.md
+/day_summary/{yyyy-mm-dd}.md
 ```
 
 ### 6.3 Value
@@ -211,7 +215,6 @@ Store 在代码中只允许存在两个唯一收口点：
 1. `session_type`
 2. `system_prompt_name`
 3. `memory_paths`
-4. `enable_journey_analysis`
 
 当前 backend 实现已按上述最小形态收口，会话差异通过同一 profile 入口驱动 `system_prompt`、`memory` 与 middleware 装配。
 
@@ -345,6 +348,8 @@ resume 同时校验以下两类约束：
 6. `/coping_plans_index.md`
 7. `/coping_plans/{id}.json`
 8. `/timeline/markers.json`
+9. `/lifesigns.md`
+10. `/timeline-calendar.md`
 
 以下内容不属于权威语义记忆：
 
@@ -380,7 +385,7 @@ resume 同时校验以下两类约束：
 
 约束如下：
 
-1. `/profile/...`、`/chapter/...`、`/coach/AGENTS.md`、`/coping_plans...`、`/timeline/markers.json` 属于 `authoritative_semantic`。
+1. `/profile/...`、`/chapter/...`、`/coach/AGENTS.md`、`/coping_plans...`、`/timeline/markers.json`、`/lifesigns.md`、`/timeline-calendar.md` 属于 `authoritative_semantic`。
 2. `/derived/...` 属于 `candidate_signal`。
 3. `/archive/...` 属于 `archive_source`。
 4. `/ledger/...` 属于 `runtime_only`。
@@ -447,7 +452,7 @@ resume 同时校验以下两类约束：
 4. `a2ui.resume.rejected`
 5. `store.write.completed`
 6. `store.contract.decode_failed`
-7. `conversation_archive.retrieval_failed`
+7. `briefing.load_failed`
 
 ### 12.3 最小字段标准
 
