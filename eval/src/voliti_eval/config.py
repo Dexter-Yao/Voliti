@@ -43,6 +43,8 @@ class EvalConfig:
         )
     )
     model_labels: dict[str, str] = field(default_factory=dict)
+    seed_directory_lite: Path = field(default_factory=lambda: _EVAL_ROOT / "seeds_lite")
+    max_concurrency: int = 10
 
 
 def load_config(
@@ -90,6 +92,8 @@ def load_config(
         seed_directory=root / defaults.get("seed_directory", "seeds/"),
         output_directory=output_dir or root / defaults.get("output_directory", "output/"),
         model_labels=defaults.get("model_labels", {}),
+        seed_directory_lite=root / defaults.get("seed_directory_lite", "seeds_lite/"),
+        max_concurrency=defaults.get("max_concurrency", 10),
         auditor_model=ModelConfig(
             provider=auditor_cfg.get("provider", "azure_openai"),
             deployment=auditor_cfg.get("deployment", "gpt-5.4"),

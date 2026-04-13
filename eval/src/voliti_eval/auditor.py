@@ -118,7 +118,13 @@ MIN_TURNS_BEFORE_END = 10
 class Auditor:
     """LLM 驱动的用户模拟器。"""
 
-    def __init__(self, model_config: ModelConfig, *, timeout: float) -> None:
+    def __init__(
+        self,
+        model_config: ModelConfig,
+        *,
+        timeout: float,
+        min_turns_before_end: int = MIN_TURNS_BEFORE_END,
+    ) -> None:
         self._client = AsyncAzureOpenAI(
             azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
             api_key=os.environ["AZURE_OPENAI_API_KEY"],
@@ -129,6 +135,7 @@ class Auditor:
         self._deployment = model_config.deployment
         self._temperature = model_config.temperature
         self._reasoning_effort = model_config.reasoning_effort
+        self._min_turns_before_end = min_turns_before_end
 
     def _build_system_prompt(self, seed: Seed) -> str:
         return AUDITOR_SYSTEM_PROMPT.format(
@@ -138,7 +145,7 @@ class Auditor:
             persona_language=seed.persona.language,
             persona_language_name=LANGUAGE_NAMES.get(seed.persona.language, seed.persona.language),
             goal=seed.goal,
-            min_turns=MIN_TURNS_BEFORE_END,
+            min_turns=self._min_turns_before_end,
         )
 
     def _build_conversation_messages(

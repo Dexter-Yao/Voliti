@@ -363,6 +363,7 @@ async def run_evaluation(
     config: EvalConfig,
     judge_fn: Any = None,
     output_dir: str = "",
+    min_turns_before_end: int | None = None,
 ) -> EvalResult:
     """并发执行所有 seed 场景，每个 seed 使用独立的 Store namespace。
 
@@ -371,6 +372,7 @@ async def run_evaluation(
         config: 评估配置。
         judge_fn: 可选的 Judge 评分函数，签名 (Seed, Transcript) -> ScoreCard。
         output_dir: 评估输出目录，图片保存到其 images/ 子目录。
+        min_turns_before_end: Auditor 允许结束对话的最小用户轮次。
     """
     result = EvalResult(
         run_id=datetime.now(UTC).strftime("%Y%m%d_%H%M%S"),
@@ -384,10 +386,13 @@ async def run_evaluation(
         },
     )
 
-    auditor = Auditor(config.auditor_model, timeout=config.turn_timeout_seconds)
+    auditor_kwargs: dict[str, Any] = {"timeout": config.turn_timeout_seconds}
+    if min_turns_before_end is not None:
+        auditor_kwargs["min_turns_before_end"] = min_turns_before_end
+    auditor = Auditor(config.auditor_model, **auditor_kwargs)
 
-    # 限制并发数，避免 Azure OpenAI API 连接超时
-    max_concurrency = 5
+    # 限制并发数，避免 API 连接超时
+    max_concurrency = config.max_concurrency
     semaphore = asyncio.Semaphore(max_concurrency)
 
     async def _run_with_semaphore(seed: Seed) -> SeedResult:

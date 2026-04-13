@@ -18,7 +18,12 @@ logger = logging.getLogger(__name__)
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent / "templates"
 
 
-def generate_report(eval_result: EvalResult, output_dir: Path) -> Path:
+def generate_report(
+    eval_result: EvalResult,
+    output_dir: Path,
+    *,
+    judge_rubric: str | None = None,
+) -> Path:
     """渲染单模型 HTML 评估报告。"""
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -33,6 +38,8 @@ def generate_report(eval_result: EvalResult, output_dir: Path) -> Path:
         seen.update(sr.score_card.scores.keys())
     all_dimensions = sorted(seen)
 
+    rubric = judge_rubric if judge_rubric is not None else SCORING_RUBRIC
+
     html = template.render(
         run_id=eval_result.run_id,
         started_at=eval_result.started_at.strftime("%Y-%m-%d %H:%M:%S UTC") if eval_result.started_at else "",
@@ -41,7 +48,7 @@ def generate_report(eval_result: EvalResult, output_dir: Path) -> Path:
         seed_results=eval_result.seed_results,
         all_dimensions=all_dimensions,
         auditor_prompt_template=AUDITOR_SYSTEM_PROMPT,
-        judge_rubric=SCORING_RUBRIC,
+        judge_rubric=rubric,
     )
 
     report_path = output_dir / "report.html"

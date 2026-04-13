@@ -1,9 +1,10 @@
 # ABOUTME: CLI 入口，解析参数并调用评估编排器
-# ABOUTME: 支持单模型评估和多模型对比模式（--compare）
+# ABOUTME: 支持 full/lite 两种评估 profile 和多模型对比模式
 
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import logging
 import sys
@@ -14,11 +15,14 @@ from pathlib import Path
 import click
 
 from voliti_eval.config import EvalConfig, load_config, load_seeds
-from voliti_eval.judge import Judge
+from voliti_eval.judge import Judge, SCORING_RUBRIC_LITE
 from voliti_eval.models import EvalResult, Seed
 from voliti_eval.report import generate_comparison_report, generate_report
 from voliti_eval.runner import run_evaluation
 from voliti_eval.transcript import save_transcript
+
+# lite profile 参数
+_LITE_MIN_TURNS_BEFORE_END = 4
 
 
 @click.command()
@@ -32,6 +36,12 @@ from voliti_eval.transcript import save_transcript
 @click.option("--compare", is_flag=True, help="对多个模型运行相同 seed 并生成对比报告")
 @click.option("--models", default=None, help="逗号分隔的 assistant ID（如 'coach,coach_qwen'）")
 @click.option("--runs", default=1, type=int, help="每个 seed 重复运行次数（统计可靠性）")
+@click.option(
+    "--profile",
+    default="full",
+    type=click.Choice(["full", "lite"]),
+    help="评估 Profile：full（15 维 16 seed）或 lite（10 维 10 seed 精华版）",
+)
 def main(
     seeds: str,
     server_url: str | None,
@@ -43,6 +53,7 @@ def main(
     compare: bool,
     models: str | None,
     runs: int,
+    profile: str,
 ) -> None:
     """Voliti Coach Agent 行为评估工具。"""
     level = logging.DEBUG if verbose else logging.INFO
@@ -63,10 +74,13 @@ def main(
         output_dir=output_path,
     )
 
-    # 加载 seed
-    all_seeds = load_seeds(config.seed_directory)
+    # 根据 profile 选择 seed 目录
+    is_lite = profile == "lite"
+    seed_dir = config.seed_directory_lite if is_lite else config.seed_directory
+
+    all_seeds = load_seeds(seed_dir)
     if not all_seeds:
-        click.echo("错误：未找到任何 seed YAML 文件", err=True)
+        click.echo(f"错误：未找到任何 seed YAML 文件（{seed_dir}）", err=True)
         sys.exit(1)
 
     # 过滤 seed
@@ -81,6 +95,7 @@ def main(
             click.echo(f"可用 seed: {', '.join(s.id for s in all_seeds)}", err=True)
             sys.exit(1)
 
+    click.echo(f"Profile: {profile}")
     click.echo(f"Seeds: {len(selected)}/{len(all_seeds)} selected")
     for s in selected:
         click.echo(f"  {s.id} — {s.name}")
@@ -100,30 +115,40 @@ def main(
 
     if compare:
         model_ids = [m.strip() for m in (models or "coach,coach_qwen").split(",")]
-        asyncio.run(_run_compare(selected, config, model_ids, runs))
+        asyncio.run(_run_compare(selected, config, model_ids, runs, is_lite=is_lite))
     else:
-        asyncio.run(_run(selected, config))
+        asyncio.run(_run(selected, config, is_lite=is_lite))
 
 
-async def _run(seeds: list[Seed], config: EvalConfig) -> None:
+async def _run(seeds: list[Seed], config: EvalConfig, *, is_lite: bool = False) -> None:
     """异步执行单模型评估流程。"""
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    output_dir = config.output_directory / timestamp
+    label = "lite" if is_lite else "full"
+    output_dir = config.output_directory / f"{timestamp}_{label}"
     transcripts_dir = output_dir / "transcripts"
     scores_dir = output_dir / "scores"
 
     judge = Judge(config.judge_model, timeout=config.turn_timeout_seconds)
+    judge_fn = (
+        functools.partial(judge.score, rubric_override=SCORING_RUBRIC_LITE)
+        if is_lite
+        else judge.score
+    )
+    rubric_for_report = SCORING_RUBRIC_LITE if is_lite else None
 
     click.echo(f"\n开始评估 → {output_dir}")
     click.echo(f"Server: {config.server_url}")
     click.echo(f"Assistant: {config.assistant_id}")
     click.echo()
 
-    result = await run_evaluation(seeds, config, judge_fn=judge.score, output_dir=str(output_dir))
+    result = await run_evaluation(
+        seeds, config, judge_fn=judge_fn, output_dir=str(output_dir),
+        min_turns_before_end=_LITE_MIN_TURNS_BEFORE_END if is_lite else None,
+    )
 
     _save_results(result, transcripts_dir, scores_dir)
 
-    report_path = generate_report(result, output_dir)
+    report_path = generate_report(result, output_dir, judge_rubric=rubric_for_report)
     click.echo(f"\n报告已生成: {report_path}")
 
     _print_summary([result])
@@ -134,12 +159,21 @@ async def _run_compare(
     config: EvalConfig,
     model_ids: list[str],
     runs_per_model: int,
+    *,
+    is_lite: bool = False,
 ) -> None:
     """对多个模型顺序运行评估，生成对比报告。"""
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    compare_dir = config.output_directory / f"compare_{timestamp}"
+    label = "lite" if is_lite else "full"
+    compare_dir = config.output_directory / f"compare_{timestamp}_{label}"
 
     judge = Judge(config.judge_model, timeout=config.turn_timeout_seconds)
+    judge_fn = (
+        functools.partial(judge.score, rubric_override=SCORING_RUBRIC_LITE)
+        if is_lite
+        else judge.score
+    )
+    rubric_for_report = SCORING_RUBRIC_LITE if is_lite else None
 
     click.echo(f"\n开始多模型对比 → {compare_dir}")
     click.echo(f"Server: {config.server_url}")
@@ -165,14 +199,15 @@ async def _run_compare(
             scores_dir = run_dir / "scores"
 
             result = await run_evaluation(
-                seeds, model_config, judge_fn=judge.score, output_dir=str(run_dir),
+                seeds, model_config, judge_fn=judge_fn, output_dir=str(run_dir),
+                min_turns_before_end=_LITE_MIN_TURNS_BEFORE_END if is_lite else None,
             )
             _save_results(result, transcripts_dir, scores_dir)
             model_results.append(result)
 
         # 为每个模型生成独立报告（使用最后一次 run 的结果）
         model_report_dir = compare_dir / model_id
-        generate_report(model_results[-1], model_report_dir)
+        generate_report(model_results[-1], model_report_dir, judge_rubric=rubric_for_report)
 
         all_results[model_id] = model_results
 
