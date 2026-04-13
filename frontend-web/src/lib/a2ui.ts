@@ -108,6 +108,7 @@ export interface A2UIResponse {
   action: "submit" | "reject" | "skip";
   interrupt_id: string | null;
   data: Record<string, unknown>;
+  reason: string | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -51,6 +51,8 @@ def fan_out(
         return "User response no longer matches the active panel. Ask the user to try again."
 
     if response.action == "reject":
+        if response.reason:
+            return f"User rejected: {response.reason}"
         return "User closed the panel without responding."
     if response.action == "skip":
         return "User acknowledged but chose to skip."

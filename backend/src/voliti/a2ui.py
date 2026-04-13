@@ -135,6 +135,8 @@ class A2UIResponse(BaseModel):
     interrupt_id: str | None = None
     data: dict[str, object] = {}
     """Input component 的 key → value 映射。"""
+    reason: str | None = None
+    """reject 时的用户理由。仅在 action="reject" 时有效。"""
 
 
 def current_interrupt_id() -> str | None:
@@ -163,10 +165,20 @@ def validate_a2ui_response(
         if response.interrupt_id != expected_interrupt_id:
             raise ValueError("A2UI response interrupt_id does not match active interrupt")
 
-    if response.action != "submit":
+    if response.action == "skip":
         if response.data:
-            raise ValueError("A2UI non-submit actions must not include data")
+            raise ValueError("A2UI skip action must not include data")
+        if response.reason is not None:
+            raise ValueError("A2UI skip action must not include reason")
         return
+
+    if response.action == "reject":
+        if response.data:
+            raise ValueError("A2UI reject action must not include data")
+        return
+
+    if response.reason is not None:
+        raise ValueError("A2UI submit action must not include reason")
 
     allowed_inputs: dict[str, Component] = {}
     for component in payload.components:

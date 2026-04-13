@@ -9,8 +9,6 @@ import { cn } from "@/lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
 import { Fragment } from "react/jsx-runtime";
-import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
-import { ThreadView } from "../agent-inbox";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { GenericInterruptView } from "./generic-interrupt";
 import { useArtifact } from "../artifact";
@@ -91,19 +89,9 @@ function Interrupt({
     : (((interrupt as { value?: unknown } | undefined)?.value ??
         interrupt) as Record<string, any>);
 
-  return (
-    <>
-      {isAgentInboxInterruptSchema(interrupt) &&
-        (isLastMessage || hasNoAIOrToolMessages) && (
-          <ThreadView interrupt={interrupt} />
-        )}
-      {interrupt &&
-      !isAgentInboxInterruptSchema(interrupt) &&
-      (isLastMessage || hasNoAIOrToolMessages) ? (
-        <GenericInterruptView interrupt={fallbackValue} />
-      ) : null}
-    </>
-  );
+  if (!interrupt || (!isLastMessage && !hasNoAIOrToolMessages)) return null;
+
+  return <GenericInterruptView interrupt={fallbackValue} />;
 }
 
 export function AssistantMessage({

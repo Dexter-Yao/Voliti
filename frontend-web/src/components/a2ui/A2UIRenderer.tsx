@@ -1,9 +1,9 @@
 // ABOUTME: A2UI 组件渲染器，将 Component[] 渲染为交互表单
-// ABOUTME: 8 种组件类型各自渲染，收集 input 值传回 parent
+// ABOUTME: 8 种组件类型、重置、拒绝理由、Cmd+Enter 提交
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import type {
   Component,
   SliderComponent,
@@ -15,6 +15,36 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Undo2 } from "lucide-react";
+
+// --- Initial data builder ---
+
+function buildInitialData(components: Component[]): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  for (const c of components) {
+    if ("key" in c) {
+      switch (c.kind) {
+        case "slider":
+          data[c.key] = c.value ?? Math.round((c.min + c.max) / 2);
+          break;
+        case "text_input":
+          data[c.key] = c.value ?? "";
+          break;
+        case "number_input":
+          data[c.key] = c.value != null ? String(c.value) : "";
+          break;
+        case "select":
+          data[c.key] = c.value ?? "";
+          break;
+        case "multi_select":
+          data[c.key] = c.value ?? [];
+          break;
+      }
+    }
+  }
+  return data;
+}
 
 // --- Individual renderers ---
 
@@ -208,7 +238,7 @@ function MultiSelectInput({
 interface A2UIRendererProps {
   components: Component[];
   onSubmit: (data: Record<string, unknown>) => void;
-  onReject: () => void;
+  onReject: (reason: string) => void;
   onSkip: () => void;
   isSubmitting: boolean;
 }
@@ -220,39 +250,24 @@ export function A2UIRenderer({
   onSkip,
   isSubmitting,
 }: A2UIRendererProps) {
-  // Build initial state from input components
-  const [formData, setFormData] = useState<Record<string, unknown>>(() => {
-    const data: Record<string, unknown> = {};
-    for (const c of components) {
-      if ("key" in c) {
-        switch (c.kind) {
-          case "slider":
-            data[c.key] = c.value ?? Math.round((c.min + c.max) / 2);
-            break;
-          case "text_input":
-            data[c.key] = c.value ?? "";
-            break;
-          case "number_input":
-            data[c.key] = c.value != null ? String(c.value) : "";
-            break;
-          case "select":
-            data[c.key] = c.value ?? "";
-            break;
-          case "multi_select":
-            data[c.key] = c.value ?? [];
-            break;
-        }
-      }
-    }
-    return data;
-  });
+  const initialDataRef = useRef<Record<string, unknown>>(buildInitialData(components));
+  const [formData, setFormData] = useState<Record<string, unknown>>(() => ({ ...initialDataRef.current }));
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   const updateField = useCallback((key: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const handleSubmit = () => {
-    // Convert number input strings to actual numbers
+  const hasChanges = useMemo(() => {
+    return JSON.stringify(formData) !== JSON.stringify(initialDataRef.current);
+  }, [formData]);
+
+  const handleReset = useCallback(() => {
+    setFormData({ ...initialDataRef.current });
+  }, []);
+
+  const handleSubmit = useCallback(() => {
     const processedData: Record<string, unknown> = {};
     for (const c of components) {
       if ("key" in c) {
@@ -265,7 +280,25 @@ export function A2UIRenderer({
       }
     }
     onSubmit(processedData);
-  };
+  }, [components, formData, onSubmit]);
+
+  const handleRejectConfirm = useCallback(() => {
+    onReject(rejectReason.trim());
+    setShowRejectInput(false);
+    setRejectReason("");
+  }, [onReject, rejectReason]);
+
+  // Cmd/Ctrl + Enter 快捷键提交
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !e.isComposing) {
+        e.preventDefault();
+        if (!isSubmitting && hasInputs) handleSubmit();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleSubmit, isSubmitting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasInputs = components.some((c) => "key" in c);
 
@@ -335,26 +368,79 @@ export function A2UIRenderer({
         }
       })}
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-3 pt-2">
-        {hasInputs && (
+      {/* 拒绝理由输入 */}
+      {showRejectInput && (
+        <div className="space-y-2 border-t border-[#1A1816]/10 pt-3">
+          <Textarea
+            placeholder="告诉教练你为什么拒绝…"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            className="min-h-[60px] resize-none border-[#1A1816]/10 text-sm focus:border-[#B87333] focus:ring-[#B87333]"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={handleRejectConfirm}
+              disabled={isSubmitting}
+              className="bg-[#1A1816] text-[#F4F0E8] hover:bg-[#1A1816]/90"
+            >
+              确认拒绝
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => { setShowRejectInput(false); setRejectReason(""); }}
+              disabled={isSubmitting}
+              className="text-[#1A1816]/50"
+            >
+              取消
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 操作按钮 */}
+      {!showRejectInput && (
+        <div className="flex items-center gap-3 pt-2">
+          {hasInputs && (
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex-1 bg-[#1A1816] text-[#F4F0E8] hover:bg-[#1A1816]/90"
+            >
+              {isSubmitting ? "提交中…" : "提交"}
+            </Button>
+          )}
+          {hasChanges && (
+            <Button
+              variant="ghost"
+              onClick={handleReset}
+              disabled={isSubmitting}
+              className="text-[#1A1816]/40 hover:text-[#1A1816]"
+            >
+              <Undo2 className="mr-1 size-3.5" />
+              重置
+            </Button>
+          )}
           <Button
-            onClick={handleSubmit}
+            variant="ghost"
+            onClick={onSkip}
             disabled={isSubmitting}
-            className="flex-1 bg-[#1A1816] text-[#F4F0E8] hover:bg-[#1A1816]/90"
+            className="text-[#1A1816]/50 hover:text-[#1A1816]"
           >
-            {isSubmitting ? "Submitting..." : "Submit"}
+            跳过
           </Button>
-        )}
-        <Button
-          variant="ghost"
-          onClick={onSkip}
-          disabled={isSubmitting}
-          className="text-[#1A1816]/50 hover:text-[#1A1816]"
-        >
-          Skip
-        </Button>
-      </div>
+          <Button
+            variant="ghost"
+            onClick={() => setShowRejectInput(true)}
+            disabled={isSubmitting}
+            className="text-red-400 hover:text-red-500"
+          >
+            拒绝
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
