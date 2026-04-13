@@ -362,7 +362,7 @@ resume 同时校验以下两类约束：
 1. `Coach` 只能把跨会话仍有持续价值的结论写入权威语义记忆路径。
 2. 原始事件、候选信号与会话归档只能作为证据来源，不得直接等同于长期语义记忆。
 3. backend 的分析与中间件若产生候选信号，必须写入候选层，而不是直接覆盖权威语义记忆。
-4. 当前实现中，`journey_analysis` 产生的单次摘要只能作为 `candidate_signal` 使用，不得直接 promotion 到权威语义。
+4. 当前实现中，`/derived/` 路径下的所有内容只能作为 `candidate_signal` 使用，不得直接 promotion 到权威语义。
 5. 当前实现中，archive summary / excerpt、`runtime_only` 与 `observability_only` 内容一律不得直接 promotion 到权威语义。
 6. 当前实现中，`authoritative_semantic` 路径的直接文件写入必须经过显式确认上下文，不允许未确认写入。
 

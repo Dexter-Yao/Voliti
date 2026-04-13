@@ -43,9 +43,7 @@ _COPING_PLAN_PATTERN = re.compile(r"^/coping_plans/[^/]+\.json$")
 _CANDIDATE_SIGNAL_PREFIXES = (
     "/derived/",
 )
-_ARCHIVE_SOURCE_PREFIXES = (
-    "/archive/",
-)
+_ARCHIVE_SOURCE_PREFIXES = ("/archive/", "/day_summary/")
 _RUNTIME_ONLY_PREFIXES = (
     "/ledger/",
 )
