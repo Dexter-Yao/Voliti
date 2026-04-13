@@ -129,10 +129,7 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 /profile/context.md
 /profile/dashboardConfig
 /chapter/current.json
-/coping_plans_index.md
-/coping_plans/{id}.json
 /ledger/{yyyy-mm-dd}/{hhmmss}_{kind}.json
-/timeline/markers.json
 /coach/AGENTS.md
 /lifesigns.md
 /timeline-calendar.md
@@ -345,17 +342,14 @@ resume 同时校验以下两类约束：
 3. `/chapter/current.json`
 4. `/chapter/archive/{id}.json`
 5. `/coach/AGENTS.md`
-6. `/coping_plans_index.md`
-7. `/coping_plans/{id}.json`
-8. `/timeline/markers.json`
-9. `/lifesigns.md`
-10. `/timeline-calendar.md`
+6. `/lifesigns.md`
+7. `/timeline-calendar.md`
 
 以下内容不属于权威语义记忆：
 
 1. `/ledger/...` 等事件历史。
 2. `/derived/...` 等候选信号与分析结果。
-3. `Runtime Session History` 与 `Conversation Archive Access Layer` 提供的原始会话记录。
+3. `/day_summary/...` 日摘要（由日终 Pipeline 生成，属于 `archive_source`）。
 
 约束如下：
 
@@ -385,9 +379,9 @@ resume 同时校验以下两类约束：
 
 约束如下：
 
-1. `/profile/...`、`/chapter/...`、`/coach/AGENTS.md`、`/coping_plans...`、`/timeline/markers.json`、`/lifesigns.md`、`/timeline-calendar.md` 属于 `authoritative_semantic`。
+1. `/profile/...`、`/chapter/...`、`/coach/AGENTS.md`、`/lifesigns.md`、`/timeline-calendar.md` 属于 `authoritative_semantic`。
 2. `/derived/...` 属于 `candidate_signal`。
-3. `/archive/...` 属于 `archive_source`。
+3. `/archive/...`、`/day_summary/...` 属于 `archive_source`。
 4. `/ledger/...` 属于 `runtime_only`。
 5. `/observability/...` 属于 `observability_only`。
 6. 该分类同时兼容 backend 视角路径与 `/user/...` 前缀路径，不允许调用方各自维护另一套归一化逻辑。

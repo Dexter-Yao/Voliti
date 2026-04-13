@@ -211,11 +211,11 @@ Voliti 采用行为文件系统，而非传统数据库：
 
 - 每日为目录，每次行为为带时间戳的事件文件
 - 原始证据永久保存，结构层可演化
-- LifeSign 预案独立存储于 `/user/coping_plans/`，包含触发条件、应对行为、激活与成功计数
-- 前瞻标记存储于 `/user/timeline/markers.json`，结构化 JSON schema，含日期、时区、风险等级和 LifeSign 关联
+- LifeSign 预案存储于 `/user/lifesigns.md`，简化 markdown 格式，最多 6 条，每条不超过 100 字（触发场景 → 应对策略）
+- 前瞻标记存储于 `/user/timeline-calendar.md`，markdown 按日期分组，支持 Coach 直接编辑与日终清理
 - 用户偏好（通知频率、Check-in 维度）存储于 `/user/profile/`
 
-派生层（`/user/derived/`）生成趋势、模式索引与情境-行为关联。Coach Agent 拥有指标治理能力，可新增或退役观测维度。后台分析定期扫描时间轴并生成旅程分析摘要。
+派生层（`/user/derived/`）生成 briefing 与候选信号。Coach Agent 拥有指标治理能力，可新增或退役观测维度。日终 Pipeline 自动封存当天会话、生成日摘要（`/user/day_summary/`）并更新 briefing。
 
 ## 六、Guardrail：伦理边界与反馈机制
 
