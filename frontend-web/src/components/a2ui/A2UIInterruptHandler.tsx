@@ -14,10 +14,8 @@ import { SESSION_TYPE_COACHING } from "@/lib/thread-utils";
 export function A2UIInterruptHandler() {
   const stream = useStreamContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // 追踪是否正在等待 A2UI resume 完成
   const pendingResumeRef = useRef(false);
 
-  // 从 stream.interrupt 中提取 A2UI payload
   const a2uiPayload = useMemo((): A2UIPayload | null => {
     const interrupt = stream.interrupt;
     if (!interrupt) return null;
@@ -39,7 +37,10 @@ export function A2UIInterruptHandler() {
     return (interrupt as { id?: string })?.id ?? null;
   }, [stream.interrupt]);
 
-  // 监听 stream.error：如果 resume 发出后遇到错误，尝试 fallback
+  const submitConfig = useMemo(() => ({
+    configurable: { user_id: getUserId() ?? "", session_type: SESSION_TYPE_COACHING },
+  }), []);
+
   useEffect(() => {
     if (!stream.error || !pendingResumeRef.current) return;
     pendingResumeRef.current = false;
@@ -50,19 +51,18 @@ export function A2UIInterruptHandler() {
       closeButton: true,
     });
 
-    // Fallback: skip with _network_failure context
     const fallbackResponse: A2UIResponse = {
       action: "skip",
       interrupt_id: interruptId,
-      data: { _network_failure: true },
+      data: {},
+      reason: null,
     };
     stream.submit(undefined, {
-      config: { configurable: { user_id: getUserId() ?? "", session_type: SESSION_TYPE_COACHING } },
+      config: submitConfig,
       command: { resume: fallbackResponse },
     });
-  }, [stream.error, stream, interruptId]);
+  }, [stream.error, stream, interruptId, submitConfig]);
 
-  // interrupt 消失说明 resume 成功
   useEffect(() => {
     if (!stream.interrupt && pendingResumeRef.current) {
       pendingResumeRef.current = false;
@@ -71,7 +71,7 @@ export function A2UIInterruptHandler() {
   }, [stream.interrupt]);
 
   const resumeWithAction = useCallback(
-    (action: A2UIResponse["action"], data: Record<string, unknown> = {}) => {
+    (action: A2UIResponse["action"], data: Record<string, unknown> = {}, reason: string | null = null) => {
       setIsSubmitting(true);
       pendingResumeRef.current = true;
 
@@ -79,14 +79,15 @@ export function A2UIInterruptHandler() {
         action,
         interrupt_id: interruptId,
         data: action === "submit" ? data : {},
+        reason: action === "reject" ? reason : null,
       };
 
       stream.submit(undefined, {
-        config: { configurable: { user_id: getUserId() ?? "", session_type: SESSION_TYPE_COACHING } },
+        config: submitConfig,
         command: { resume: response },
       });
     },
-    [stream, interruptId],
+    [stream, interruptId, submitConfig],
   );
 
   const handleSubmit = useCallback(
@@ -95,7 +96,7 @@ export function A2UIInterruptHandler() {
   );
 
   const handleReject = useCallback(
-    () => resumeWithAction("reject"),
+    (reason: string) => resumeWithAction("reject", {}, reason || null),
     [resumeWithAction],
   );
 

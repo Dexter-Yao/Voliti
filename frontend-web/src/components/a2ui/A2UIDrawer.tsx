@@ -22,7 +22,7 @@ interface A2UIDrawerProps {
   payload: A2UIPayload | null;
   isSubmitting: boolean;
   onSubmit: (data: Record<string, unknown>) => void;
-  onReject: () => void;
+  onReject: (reason: string) => void;
   onSkip: () => void;
   onClose: () => void;
 }
@@ -45,7 +45,7 @@ export function A2UIDrawer({
         style={{ maxHeight: LAYOUT_HEIGHT[payload.layout] }}
       >
         <SheetHeader className="sr-only">
-          <SheetTitle>Coach Input</SheetTitle>
+          <SheetTitle>教练交互</SheetTitle>
         </SheetHeader>
         <A2UIRenderer
           components={payload.components}

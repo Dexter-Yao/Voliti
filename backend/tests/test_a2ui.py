@@ -390,7 +390,7 @@ class TestA2UIResponseValidation:
         with pytest.raises(ValueError, match="tags"):
             validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
 
-    def test_rejects_non_submit_data_payload(self) -> None:
+    def test_rejects_reject_with_data(self) -> None:
         payload = self.make_payload()
         response = A2UIResponse(
             action="reject",
@@ -399,4 +399,57 @@ class TestA2UIResponseValidation:
         )
 
         with pytest.raises(ValueError, match="data"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_rejects_skip_with_data(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="skip",
+            interrupt_id="int_123",
+            data={"energy": 7},
+        )
+
+        with pytest.raises(ValueError, match="data"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_reject_with_reason_passes(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="reject",
+            interrupt_id="int_123",
+            reason="现在不方便回答",
+        )
+
+        validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_reject_without_reason_passes(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="reject",
+            interrupt_id="int_123",
+        )
+
+        validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_skip_with_reason_raises(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="skip",
+            interrupt_id="int_123",
+            reason="不想回答",
+        )
+
+        with pytest.raises(ValueError, match="reason"):
+            validate_a2ui_response(payload, response, expected_interrupt_id="int_123")
+
+    def test_submit_with_reason_raises(self) -> None:
+        payload = self.make_payload()
+        response = A2UIResponse(
+            action="submit",
+            interrupt_id="int_123",
+            data={"energy": 5},
+            reason="should not be here",
+        )
+
+        with pytest.raises(ValueError, match="reason"):
             validate_a2ui_response(payload, response, expected_interrupt_id="int_123")

@@ -65,7 +65,7 @@ Voliti/
 - 构建：`cd frontend-web && pnpm build`
 - 设计系统：Starpath v2（obsidian/parchment/copper）
 - 密码认证：VOLITI_USER_MAP 环境变量
-- A2UI 组件库：精确镜像 `backend/src/voliti/a2ui.py`
+- A2UI 组件库：8 种组件类型 + 拒绝理由 + 重置 + Cmd+Enter 快捷键，精确镜像 `backend/src/voliti/a2ui.py`
 
 ### Frontend-iOS（Swift）
 - Swift 6+ / SwiftUI / SwiftData
@@ -152,3 +152,4 @@ Key routing rules:
 | 2026-04-12 | 新增 frontend-web/ Web MVP（Next.js 15），项目结构、工具链、验证入口、架构约定同步更新 |
 | 2026-04-13 | 删除已完成的方案文档（docs/plans/）；CLAUDE.md 同步 |
 | 2026-04-13 | 天级 Thread 重组 Phase 1-3：删除 MemoryLifecycleMW + JourneyAnalysisMW + conversation archive 系统；新增 BriefingMW + briefing 计算 + 日终 Pipeline + Cron 触发；MemoryMW 4→3 路径；Coach prompt 精简；前端封存 thread 只读 + 常量集中 |
+| 2026-04-13 | A2UI 增强（reject reason + 重置 + Cmd+Enter）；删除 agent-inbox 脚手架和死代码；架构文档新增 Web MVP 客户端章节 |
