@@ -17,11 +17,10 @@ from voliti.middleware.briefing import BriefingMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
 from voliti.session_type import SessionProfile, get_session_profile, list_session_profiles
 from voliti.store_contract import InvalidUserIDError, resolve_user_namespace
-from voliti.tools.conversation_archive import retrieve_conversation_archive
 from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
 
-COACH_TOOLS = [fan_out, retrieve_conversation_archive]
+COACH_TOOLS = [fan_out]
 """Coach 直接调用的工具，通过 A2UI 组件组合实现动态交互。"""
 
 

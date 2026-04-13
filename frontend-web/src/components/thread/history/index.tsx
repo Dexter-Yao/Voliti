@@ -62,6 +62,11 @@ function formatDateLabel(dateStr: string): string {
   }
 }
 
+function isThreadSealed(thread: Thread): boolean {
+  const meta = thread.metadata as Record<string, unknown> | undefined;
+  return meta?.segment_status === "sealed";
+}
+
 function ThreadItem({
   thread,
   isActive,
@@ -71,6 +76,7 @@ function ThreadItem({
   isActive: boolean;
   onClick: () => void;
 }) {
+  const sealed = isThreadSealed(thread);
   let itemText = "New conversation";
   if (
     typeof thread.values === "object" &&
@@ -87,7 +93,7 @@ function ThreadItem({
   return (
     <Button
       variant="ghost"
-      className={`w-full justify-start text-left font-normal text-sm ${isActive ? "bg-[#1A1816]/5" : ""}`}
+      className={`w-full justify-start text-left font-normal text-sm ${isActive ? "bg-[#1A1816]/5" : ""} ${sealed ? "opacity-60" : ""}`}
       onClick={onClick}
     >
       <p className="truncate">{itemText}</p>

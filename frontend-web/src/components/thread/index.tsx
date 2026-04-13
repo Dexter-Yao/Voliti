@@ -2,7 +2,7 @@
 // ABOUTME: 使用 react-resizable-panels v4 实现可折叠可拖拽面板
 
 import { v4 as uuidv4 } from "uuid";
-import { ReactNode, useCallback, useEffect, useRef } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
 import { useState, FormEvent } from "react";
@@ -53,6 +53,7 @@ import {
 } from "../ui/sheet";
 import { MirrorPanel } from "../mirror/MirrorPanel";
 import { SettingsDrawer } from "../settings/SettingsDrawer";
+import { useThreads } from "@/providers/Thread";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -106,6 +107,13 @@ export function Thread({
   const [artifactOpen, closeArtifact] = useArtifactOpen();
 
   const [threadId, _setThreadId] = useQueryState("threadId");
+  const { threads } = useThreads();
+  const isSealed = useMemo(() => {
+    if (!threadId) return false;
+    const thread = threads.find((t) => t.thread_id === threadId);
+    if (!thread) return false;
+    return (thread.metadata as Record<string, unknown>)?.segment_status === "sealed";
+  }, [threadId, threads]);
   const [input, setInput] = useState("");
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
@@ -205,7 +213,7 @@ export function Thread({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (input.trim().length === 0 || isLoading) return;
+    if (input.trim().length === 0 || isLoading || isSealed) return;
     setFirstTokenReceived(false);
 
     const newHumanMessage: Message = {
@@ -442,9 +450,10 @@ export function Thread({
                       form?.requestSubmit();
                     }
                   }}
-                  placeholder="Type your message..."
+                  disabled={isSealed}
+                  placeholder={isSealed ? "This conversation has ended" : "Type your message..."}
                   rows={1}
-                  className="field-sizing-content max-h-32 flex-1 resize-none border-none bg-transparent text-sm text-[#1A1816] shadow-none ring-0 outline-none placeholder:text-[#1A1816]/30 focus:ring-0 focus:outline-none"
+                  className="field-sizing-content max-h-32 flex-1 resize-none border-none bg-transparent text-sm text-[#1A1816] shadow-none ring-0 outline-none placeholder:text-[#1A1816]/30 focus:ring-0 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
                 />
 
                 {stream.isLoading ? (
@@ -458,7 +467,7 @@ export function Thread({
                 ) : (
                   <button
                     type="submit"
-                    disabled={isLoading || !input.trim()}
+                    disabled={isLoading || isSealed || !input.trim()}
                     className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#1A1816] text-[#F4F0E8] transition-opacity disabled:opacity-20"
                   >
                     <ArrowUp className="h-4 w-4" />
