@@ -45,7 +45,7 @@ export function A2UIInterruptHandler() {
     pendingResumeRef.current = false;
     setIsSubmitting(false);
 
-    toast.error("Network error. Coach has been notified.", {
+    toast.error("网络错误，教练已收到通知", {
       richColors: true,
       closeButton: true,
     });

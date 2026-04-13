@@ -33,7 +33,7 @@ function EmptyState() {
   return (
     <div className="flex h-full items-center justify-center p-8">
       <div className="text-center text-sm text-[#1A1816]/30">
-        <p>Complete onboarding to see your Mirror data</p>
+        <p>完成引导流程后查看 Mirror 数据</p>
       </div>
     </div>
   );
@@ -98,7 +98,7 @@ export function MirrorPanel() {
             </span>
             {chapter.start_date && (
               <span className="text-xs text-[#1A1816]/30">
-                since {chapter.start_date}
+                自 {chapter.start_date}
               </span>
             )}
           </div>
@@ -155,7 +155,7 @@ export function MirrorPanel() {
         {chapter.support_metrics?.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <span className="text-xs font-medium text-[#1A1816]/40">
-              Support Metrics
+              辅助指标
             </span>
             <div className="grid gap-2">
               {chapter.support_metrics.map((m, i) => (
@@ -180,7 +180,7 @@ export function MirrorPanel() {
         {copingPlans.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <span className="text-xs font-medium text-[#1A1816]/40">
-              LifeSign Plans
+              LifeSign 方案
             </span>
             <div className="flex flex-col gap-1.5">
               {copingPlans.map((plan, i) => (
@@ -199,7 +199,7 @@ export function MirrorPanel() {
         {cards.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <span className="text-xs font-medium text-[#1A1816]/40">
-              Witness Cards
+              见证卡
             </span>
             <div className="grid grid-cols-3 gap-1.5">
               {cards.map((card) => (
