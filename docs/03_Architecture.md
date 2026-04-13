@@ -21,11 +21,12 @@
 
 ## 二、系统总览
 
-Voliti 由三部分组成：
+Voliti 由四部分组成：
 
-1. **iOS 原生客户端**：负责对话界面、A2UI 渲染、设备本地状态与投影视图。
-2. **LangGraph backend**：负责单一 Coach Agent 的运行时、共享持久化真相与会话执行。
-3. **eval 模块**：负责对 Coach Agent 行为进行离线评估与验证。
+1. **Web MVP 客户端**：当前开发优先级。Next.js 15 + React 19，三栏布局（History | Chat | Mirror），A2UI 交互面板。
+2. **iOS 原生客户端**：SwiftUI 原生体验，功能与 Web 端对齐。
+3. **LangGraph backend**：负责单一 Coach Agent 的运行时、共享持久化真相与会话执行。
+4. **eval 模块**：负责对 Coach Agent 行为进行离线评估与验证。
 
 当前系统遵循两个结构性原则：
 
@@ -34,7 +35,23 @@ Voliti 由三部分组成：
 
 ## 三、核心组件
 
-### 3.1 iOS 原生客户端
+### 3.1 Web MVP 客户端
+
+**技术栈**
+
+1. Next.js 15 / React 19 / TypeScript / Tailwind CSS 4 / shadcn/ui
+2. LangGraph SDK（useStream hook）
+3. SSE 与 LangGraph backend 通信
+
+**职责**
+
+1. 呈现 Coach 对话与 A2UI 结构化交互（8 种组件 + 拒绝理由 + 重置 + 键盘快捷键）。
+2. 管理天级 Thread（一天一个会话，自动创建/复用）。
+3. 持有设备本地状态（localStorage）：Onboarding 完成标记、Witness Card 缓存。
+4. Mirror 面板从 LangGraph Store 同步 Chapter/指标/LifeSign 数据。
+5. 密码认证（VOLITI_USER_MAP）+ `configurable` 注入（user_id + session_type）。
+
+### 3.2 iOS 原生客户端
 
 **技术栈**
 
@@ -49,7 +66,7 @@ Voliti 由三部分组成：
 3. 管理 thread 标识、草稿、临时输入和系统权限相关状态。
 4. 将共享持久化请求发送到 backend。
 
-### 3.2 Coach Agent
+### 3.3 Coach Agent
 
 **运行形态**
 
@@ -67,7 +84,7 @@ Voliti 由三部分组成：
 2. 会话差异通过 `session profile` 组合，而不是多套独立 agent。
 3. Witness Card 等专项能力通过工具或 subagent 组合进入主运行时。
 
-### 3.3 LangGraph Store 与运行态
+### 3.4 LangGraph Store 与运行态
 
 backend 同时承载两类后端状态：
 
@@ -84,7 +101,7 @@ backend 同时承载两类后端状态：
 
 正式边界以 [`05_Runtime_Contracts.md`](05_Runtime_Contracts.md) 为准。
 
-### 3.4 Eval 模块
+### 3.5 Eval 模块
 
 eval 是独立 Python 包，用于：
 

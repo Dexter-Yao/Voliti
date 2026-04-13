@@ -248,7 +248,18 @@ resume 同时校验以下两类约束：
    - 已消费、已过期或旧版本 snapshot 的提交必须被拒绝。
    - 双击提交、重复 resume、旧响应晚到均视为无效。
 
-### 8.3 长期存储边界
+### 8.3 Reject Reason 语义
+
+`reject` 响应可携带可选的 `reason` 字段，传递给 Coach 作为用户反馈。
+
+约束如下：
+
+1. `reason` 仅在 `action="reject"` 时有效。
+2. `action="skip"` 和 `action="submit"` 的 `reason` 必须为 `null`。
+3. `reason` 为可选字段（`null` 表示用户未提供理由）。
+4. Coach 接收到的 `fan_out` 返回值包含 reason 原文（如 `"User rejected: 现在不方便回答"`）。
+
+### 8.4 长期存储边界
 
 原始 A2UI payload snapshot 不进入长期 Store。长期 Store 只保存该次交互真正产生的业务结果。
 
@@ -492,3 +503,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 2026-04-11 | 同步当前实现状态：补充 `SessionProfile` 最小字段、语义边界六分类、archive retrieval 的 `archive_source` / `runtime_evidence` 契约，以及当前已代码化的 promotion 禁止规则 |
 | 2026-04-12 | 收紧当前实现状态：`session_type` 改为 fail-closed；Journey Analysis 改为通过共享 backend factory 解析真实 backend；权威语义写入边界改为在 `edit_file` / `write_file` 写入面执行 |
 | 2026-04-12 | 编号调整 06 → 05；修正 Store key 示例（dashboardConfig、coping_plans）；移除已删除文档的交叉引用 |
+| 2026-04-13 | §8.3 新增 Reject Reason 语义；原 §8.3 长期存储边界顺延为 §8.4 |
