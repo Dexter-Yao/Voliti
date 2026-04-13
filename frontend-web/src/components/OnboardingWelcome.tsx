@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "./ui/button";
+import { fetchOnboardingComplete } from "@/lib/store-sync";
 
 const ONBOARDING_KEY = "voliti_onboarding_complete";
 
@@ -23,9 +24,18 @@ export function useOnboardingState() {
   useEffect(() => {
     setMounted(true);
     const done = localStorage.getItem(ONBOARDING_KEY);
-    if (!done) {
+    if (done) return;
+
+    // localStorage 未标记完成时，查询后端确认
+    fetchOnboardingComplete().then((backendDone) => {
+      if (backendDone) {
+        localStorage.setItem(ONBOARDING_KEY, "true");
+      } else {
+        setNeedsOnboarding(true);
+      }
+    }).catch(() => {
       setNeedsOnboarding(true);
-    }
+    });
   }, []);
 
   const markComplete = useCallback(() => {

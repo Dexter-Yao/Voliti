@@ -6,6 +6,7 @@
 const FENCED_BLOCK_RE =
   /```json:(?:coach_thinking|suggested_replies)\n[\s\S]*?(?:```|$)/g;
 const TOOL_OUTPUT_RE = /\['\/user\/[^\]]*\]/g;
+const TOOL_ERROR_RE = /Error invoking tool '[^']*' with kwargs \{[^}]*\} with error:[^\n]*/g;
 
 const THINKING_RE = /```json:coach_thinking\n(\{[\s\S]*?\})\n```/;
 const REPLIES_RE = /```json:suggested_replies\n(\[[\s\S]*?\])\n```/;
@@ -28,6 +29,7 @@ export function stripFencedBlocks(content: string): string {
   let text = content;
   text = text.replace(FENCED_BLOCK_RE, "");
   text = text.replace(TOOL_OUTPUT_RE, "");
+  text = text.replace(TOOL_ERROR_RE, "");
   text = text.trim();
   if (text.startsWith("```")) return "";
   return text;

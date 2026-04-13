@@ -67,6 +67,7 @@ Voliti/
 - 设计系统：Starpath v2（obsidian/parchment/copper + LXGW WenKai/DM Sans/JetBrains Mono）
 - 三栏可拖拽布局：react-resizable-panels v4（History | Chat | Mirror）
 - 密码认证：VOLITI_USER_MAP 环境变量映射 password:user_id
+- QA 测试密码：`voliti2026`（user_id: dexter，配置于 `.env.local`）
 - A2UI 组件库：8 种组件类型 + 拒绝理由 + 重置 + Cmd+Enter 快捷键，精确镜像 `backend/src/voliti/a2ui.py`
 
 ### Frontend-iOS（Swift）

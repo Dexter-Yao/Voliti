@@ -364,7 +364,17 @@ export function Thread({
         content={
           <>
             {(() => {
-              const visible = messages.filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX));
+              const visible = messages.filter((m) => {
+                if (m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX)) return false;
+                if (m.type === "tool") return false;
+                if (m.type === "ai" && "tool_calls" in m && m.tool_calls?.length) {
+                  const text = typeof m.content === "string"
+                    ? m.content
+                    : (m.content ?? []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
+                  if (!text.trim()) return false;
+                }
+                return true;
+              });
               return visible.map((message, index) =>
                 message.type === "human" ? (
                   <HumanMessage

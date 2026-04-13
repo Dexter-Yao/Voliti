@@ -6,6 +6,7 @@
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -28,6 +29,9 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
       <SheetContent side="right" className="w-[320px]">
         <SheetHeader>
           <SheetTitle>设置</SheetTitle>
+          <SheetDescription className="sr-only">
+            账户设置与引导流程管理
+          </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 flex flex-col gap-6">
