@@ -129,7 +129,7 @@ export default function ThreadHistory({
   return (
     <div className="flex h-full flex-col overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1A1816]/15 [&::-webkit-scrollbar-track]:bg-transparent">
       <div className="px-4 py-3">
-        <h2 className="text-sm font-medium text-[#1A1816]/60">历史记录</h2>
+        <h2 className="font-mono text-xs font-medium uppercase tracking-[2px] text-[#1A1816]/60">历史记录</h2>
       </div>
 
       {threadsLoading ? (

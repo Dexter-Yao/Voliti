@@ -27,7 +27,7 @@ export default function LoginPage() {
             placeholder="访问密码"
             autoFocus
             required
-            className="w-full rounded-lg border border-[#1A1816]/10 bg-white px-4 py-3 text-[#1A1816] placeholder:text-[#1A1816]/30 focus:border-[#B87333] focus:outline-none focus:ring-1 focus:ring-[#B87333]"
+            className="w-full rounded-[4px] border border-[#1A1816]/10 bg-white px-4 py-3 text-[#1A1816] placeholder:text-[#1A1816]/30 focus:border-[#B87333] focus:outline-none focus:ring-1 focus:ring-[#B87333]"
           />
 
           {state?.error && (
@@ -37,7 +37,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full rounded-lg bg-[#1A1816] px-4 py-3 text-sm font-medium text-[#F4F0E8] transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-none bg-[#1A1816] px-4 py-3 text-sm font-medium text-[#F4F0E8] transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {isPending ? "验证中..." : "进入"}
           </button>

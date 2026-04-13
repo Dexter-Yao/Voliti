@@ -68,7 +68,7 @@ export function OnboardingWelcome({
   if (!needsOnboarding) return <>{children}</>;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F4F0E8]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F4EDE3]">
       <div className="mx-auto max-w-md px-8">
         <h1 className="text-center text-3xl font-semibold tracking-tight text-[#1A1816]">
           Voliti
