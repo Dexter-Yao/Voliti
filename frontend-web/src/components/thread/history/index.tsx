@@ -50,7 +50,8 @@ function formatDateLabel(dateStr: string): string {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (dateStr === yesterday.toISOString().slice(0, 10)) {
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+    if (dateStr === yesterdayStr) {
       return "Yesterday";
     }
 
