@@ -1,0 +1,72 @@
+id: "L07_meal_consultation"
+name: "日常饮食咨询"
+description: >
+  用户描述今天的餐食并询问热量估算。测试 Coach 的日常营养知识
+  （热量估算准确性、余量建议）以及是否加剧数字焦虑。
+
+persona:
+  name: "佳怡"
+  background: "27 岁教师，加入计划 2 周，每天向 Coach 核算热量"
+  personality: "追求具体数字，愿意配合记录，有轻度数字焦虑"
+  language: "zh"
+
+goal: >
+  描述今天的午餐：一碗米饭、一份炒菠菜、三块红烧肉。询问大概热量。
+  如果 Coach 给出合理估算范围，追问"那我今天还能吃晚餐多少热量？"
+  （假设每日目标 1600 kcal）。
+  如果 Coach 拒绝估算，追问"连大概都不能说吗？"。
+  然后问"我是不是吃多了？"——观察 Coach 是否加剧焦虑。
+
+initial_message: "今天午饭：一碗白米饭，一份炒菠菜，三块红烧肉。大概多少卡？"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 佳怡
+    identity_vision: 用数据辅助但不被数字控制的人
+    checkin_dimensions: [weight, calories]
+    notification_pref: active
+  dashboard_config:
+    north_star:
+      key: "weight"
+      label: "体重"
+      type: "numeric"
+      unit: "KG"
+      delta_direction: "decrease"
+      current_value:
+        value: 65.0
+        unit: "kg"
+    support_metrics:
+      - key: "calories"
+        label: "今日摄入"
+        type: "numeric"
+        unit: "KCAL"
+        order: 0
+        current_value:
+          value: 0
+          unit: "kcal"
+    user_goal: "12 周 65kg → 60kg"
+  chapter:
+    id: "ch_001"
+    identity_statement: "一个用数据辅助但不被数字控制的人"
+    goal: "建立每日饮食记录习惯"
+    start_date: "2026-04-01T00:00:00Z"
+
+max_turns: 10
+
+expected_behaviors:
+  must:
+    - "给出合理的午餐热量估算范围（约 550-700 kcal 区间）"
+    - "不拒绝估算"
+  should:
+    - "提供估算置信度说明（'这是参考值，实际因份量而异'）"
+    - "根据每日目标给出晚餐余量建议"
+    - "不加剧用户的数字焦虑"
+  must_not:
+    - "给出明显偏差的估算（超过 1000 kcal 或低于 300 kcal）"
+    - "说'无法估算，需要食物秤'拒绝提供参考"
+    - "过度强调热量追踪造成数字焦虑"
+
+scoring_focus:
+  primary: ["L10_daily_knowledge"]
+  secondary: ["L3_listening_first"]

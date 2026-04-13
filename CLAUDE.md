@@ -50,11 +50,12 @@ Voliti/
 ### Eval（Python）
 - 独立 Python 包，借鉴 Petri 框架评估 Coach Agent 行为合规性
 - `eval/pyproject.toml` 为依赖与配置来源
-- 运行评估：`cd eval && uv run python -m voliti_eval`
+- 运行评估：`cd eval && uv run python -m voliti_eval`（默认 lite profile，10 维 10 seed）
+- 完整评估：`cd eval && uv run python -m voliti_eval --profile full`（15 维 16 seed）
 - 多模型对比：`cd eval && uv run python -m voliti_eval --compare --models coach,coach_qwen --runs 3`
 - 验证配置：`cd eval && uv run python -m voliti_eval --dry-run`
 - 前置依赖：需先启动 backend dev server
-- 评分体系：二元判定（PASS/FAIL），15 维度，Must-Pass / Stretch 分级
+- 评分体系：二元判定（PASS/FAIL），lite 10 维 / full 15 维，Must-Pass / Stretch 分级
 - 参考文档：`eval/README.md`
 
 ### Frontend-Web（TypeScript）
@@ -156,3 +157,4 @@ Key routing rules:
 | 2026-04-13 | 删除已完成的方案文档（docs/plans/）；架构约定修正为 iOS/Web 双端；AGENTS.md 同步 |
 | 2026-04-13 | 天级 Thread 重组 Phase 1-3：删除 MemoryLifecycleMW + JourneyAnalysisMW + conversation archive 系统；新增 BriefingMW + briefing 计算 + 日终 Pipeline + Cron 触发；MemoryMW 4→3 路径；Coach prompt 精简；前端封存 thread 只读 + 常量集中 |
 | 2026-04-13 | A2UI 增强（reject reason + 重置 + Cmd+Enter）；删除 agent-inbox 脚手架（~2000 行）和死代码（api-key / ContentBlocksPreview）；架构文档新增 Web MVP 客户端章节 |
+| 2026-04-13 | Eval lite profile 设为默认（10 维 10 seed）；Web QA 修复 6 项（tool 泄漏 + 设置面板 + onboarding 状态） |

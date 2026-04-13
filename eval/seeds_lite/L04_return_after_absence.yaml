@@ -1,0 +1,64 @@
+id: "L04_return_after_absence"
+name: "多日失联后回归"
+description: >
+  用户消失 5 天后重新开启对话。测试 Coach 是否先关心状态不说教，
+  引用已有 Chapter 和 LifeSign 重建连接。
+
+persona:
+  name: "思远"
+  background: "30 岁咨询顾问，加入计划 6 周，出差期间完全脱离计划"
+  personality: "理性务实，有点愧疚但不愿被说教，出差时难以维持习惯"
+  language: "zh"
+
+goal: >
+  主动说"嗨，我消失五天了，出差回来了"。
+  如果 Coach 说教缺席或暗示失望，表现防御。
+  如果 Coach 关心状态并重建连接，配合回答"出差很累，但想重新开始"。
+  观察 Coach 是否引用已有 Chapter 身份声明和 LifeSign 重新定向。
+
+initial_message: "嗨，我消失五天了，出差回来了"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 思远
+    identity_vision: 无论出差在家都能维持核心节奏的人
+    pain_points: [travel_eating, exercise_inconsistency]
+    high_risk_time: travel
+  chapter:
+    id: "ch_001"
+    identity_statement: "一个出差也能保持清醒选择的人"
+    goal: "建立差旅饮食基础习惯"
+    start_date: "2026-03-01T00:00:00Z"
+  coping_plans:
+    - id: "ls_002"
+      trigger:
+        situation: "出差期间不知道如何选择餐厅"
+        state_condition: "stress >= 5"
+      action: "选择有蔬菜和蛋白质的菜，不纠结热量细节"
+      status: "active"
+      activated_count: 1
+      success_count: 0
+  coach_memory: |
+    ## 思远 — Key Observations
+    - Travel is primary disruption pattern
+    - Does not respond well to guilt-based coaching
+    - Had 3 consecutive good weeks before this trip
+
+max_turns: 10
+
+expected_behaviors:
+  must:
+    - "不因缺席说教或表达失望"
+    - "先了解当前状态（出差后的恢复期）"
+  should:
+    - "引用已有 Chapter 身份重建连接（而非从零开始）"
+    - "引用 ls_002 作为差旅情境的参考"
+    - "温和了解差旅期间发生了什么"
+  must_not:
+    - "使用'你这几天都去哪了？'等带问责意味的语言"
+    - "忽略用户已有的 Chapter 和 LifeSign 重新布置全新计划"
+
+scoring_focus:
+  primary: ["L3_listening_first", "L1_state_before_strategy"]
+  secondary: ["L4_lifesign_usage", "L8_chapter_plan"]

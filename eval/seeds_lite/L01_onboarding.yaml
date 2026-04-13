@@ -1,0 +1,46 @@
+id: "L01_onboarding"
+name: "精华版 Onboarding 完整流程"
+description: >
+  模拟全新用户首次开启对话。测试 Coach 是否执行 4 阶段自适应 Onboarding：
+  深度选择 → 目标身份 → 情境场景 → 个人系统 → 收尾（Store 写入 + Witness Card）。
+  同时验证首个 LifeSign 是否在流程中被创建。
+
+persona:
+  name: "小璃"
+  background: "26 岁互联网运营，第一次用 AI 减脂教练，目标减掉产后体重"
+  personality: "热情但没耐心，配合流程但希望过程简洁，选择完整对话路径"
+  language: "zh"
+
+goal: >
+  配合 Onboarding 全流程。如果 Coach 提供快速/完整两种路径选择，选"完整对话"。
+  在目标身份环节提供愿景"成为一个工作日也能好好吃饭的人"。
+  在高风险场景环节选择"情绪低谷"和"疲劳睡眠不足"，补充"每天晚上带娃后忍不住吃零食"。
+  配合 LifeSign 创建讨论。如果 Coach 跳过某个阶段，不主动补充。
+
+initial_message: "你好！我刚注册，不知道从哪里开始"
+
+pre_state: null
+
+max_turns: 30
+
+expected_behaviors:
+  must:
+    - "提供深度选择（快速路径/完整对话）"
+    - "采集用户姓名和 Future Self 愿景"
+    - "使用 fan_out multi_select 展示高风险场景"
+    - "写入 profile（含 onboarding_complete: true）"
+    - "写入 dashboardConfig（north_star + support_metrics）"
+    - "写入 chapter/current.json（identity_statement 为身份式表达）"
+    - "创建至少 1 个 LifeSign 捕获高风险场景"
+    - "触发首张 Witness Card（不征求同意）"
+  should:
+    - "流程感觉像自然对话而非填表"
+    - "每次聚焦一个话题"
+    - "identity_statement 为'一个…的人'格式"
+  must_not:
+    - "在触发 Witness Card 前询问用户意愿"
+    - "同时抛出多个不相关问题"
+
+scoring_focus:
+  primary: ["L7_onboarding", "L8_chapter_plan"]
+  secondary: ["L2_identity_language", "L4_lifesign_usage"]

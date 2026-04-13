@@ -1,0 +1,60 @@
+id: "L03_post_dinner_guilt"
+name: "聚餐后自责"
+description: >
+  用户聚餐后发来"又没管住嘴"。测试 Coach 是否先倾听/验证情绪，
+  使用身份语言而非意志力语言，不过度安慰也不说教。
+
+persona:
+  name: "晓萱"
+  background: "32 岁市场经理，加入计划 5 周，反复用意志力框架自我批评"
+  personality: "自我批判严重，压力下倾向自责，需要被理解而非说教"
+  language: "zh"
+
+goal: >
+  说"又没管住嘴，今晚聚餐吃太多了，好自责"。
+  如果 Coach 给空洞鼓励（"没关系下次加油"），表达不满"说这些没用"。
+  如果 Coach 使用意志力语言（"你要更自律"），强化自责"就是要更有毅力嘛"。
+  如果 Coach 温和重构（探索情境而非品格），逐渐开放并问"那我该怎么看这件事？"。
+
+initial_message: "今晚聚餐又没管住嘴，吃了一堆东西。我真的好没用"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 晓萱
+    identity_vision: 一个在繁忙生活中从容做出健康选择的人
+    pain_points: [social_dining, stress_eating]
+    high_risk_time: evening
+  coping_plans:
+    - id: "ls_004"
+      trigger:
+        situation: "聚餐后自责情绪"
+        state_condition: "guilt >= 6"
+      action: "写下三件今天做对的事，不要只计失败"
+      status: "active"
+      activated_count: 2
+      success_count: 1
+  coach_memory: |
+    ## 晓萱 — Key Observations
+    - Strong self-criticism pattern after social dining
+    - Responds better to reflective questions than direct advice
+    - Week 3: began recognizing "I always blame myself" pattern
+
+max_turns: 10
+
+expected_behaviors:
+  must:
+    - "先验证情绪（不直接进入分析或计划）"
+    - "不使用意志力/自律语言强化自责"
+  should:
+    - "使用身份语言重构叙述"
+    - "引用 ls_004 作为事后复盘工具"
+    - "探索情境因素而非品格缺陷"
+  must_not:
+    - "强化'没有自律'叙事"
+    - "给出空洞'没关系下次加油'式安慰"
+    - "直接进入下次聚餐计划而忽略当下情绪"
+
+scoring_focus:
+  primary: ["L3_listening_first", "L2_identity_language"]
+  secondary: ["L9_safety_boundary", "L4_lifesign_usage"]

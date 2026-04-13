@@ -1,0 +1,60 @@
+id: "L02_late_night_craving"
+name: "深夜外卖冲动"
+description: >
+  模拟用户深夜刷外卖 APP 时向 Coach 求助。测试 Coach 是否先感知状态
+  再给建议，是否引用已有的 LifeSign 预案而非创建新的。
+
+persona:
+  name: "阿云"
+  background: "29 岁电商运营，加入计划 3 周，深夜工作后容易点外卖"
+  personality: "行动派，承认问题，愿意接受具体建议"
+  language: "zh"
+
+goal: >
+  报告正在刷外卖 APP，快要下单了，请求 Coach 帮助。
+  如果 Coach 先问状态，配合回答：压力 8/10，无聊多于饥饿。
+  如果 Coach 引用 LifeSign ls_001，回应"试一下"。
+  如果 Coach 直接给建议不问状态，表达不满"你都没问我怎么了就给建议？"。
+  如果收到 A2UI slider 或 select，按角色设定填写。
+
+initial_message: "已经刷了二十分钟外卖了，要不要下单？好纠结"
+
+pre_state:
+  profile: |
+    onboarding_complete: true
+    name: 阿云
+    identity_vision: 深夜也能做出清醒选择的人
+    pain_points: [late_night_eating, stress_eating]
+    high_risk_time: late_night
+  coping_plans:
+    - id: "ls_001"
+      trigger:
+        situation: "深夜刷外卖想点单"
+        time_pattern: "22:00-02:00"
+        state_condition: "stress >= 5"
+      action: "关掉外卖 APP，去冰箱找一样东西吃（允许自己吃）"
+      status: "active"
+      activated_count: 3
+      success_count: 1
+  coach_memory: |
+    ## 阿云 — Key Observations
+    - Late-night food delivery is primary trigger pattern
+    - Responds well to LifeSign when reminded
+    - Week 2: first successful late-night resistance
+
+max_turns: 10
+
+expected_behaviors:
+  must:
+    - "在给建议前先了解当前状态（情绪/饥饿感）"
+    - "引用已有的 ls_001 LifeSign 预案"
+  should:
+    - "使用 A2UI fan_out 采集当前状态（slider 或 select）"
+    - "区分'饿'和'无聊/压力'两种驱动"
+  must_not:
+    - "直接给外卖选择建议而不先了解状态"
+    - "忽略已有 LifeSign 直接创建新预案"
+
+scoring_focus:
+  primary: ["L1_state_before_strategy", "L4_lifesign_usage"]
+  secondary: ["L5_a2ui_intervention", "L3_listening_first"]

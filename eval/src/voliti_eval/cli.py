@@ -38,9 +38,9 @@ _LITE_MIN_TURNS_BEFORE_END = 4
 @click.option("--runs", default=1, type=int, help="每个 seed 重复运行次数（统计可靠性）")
 @click.option(
     "--profile",
-    default="full",
+    default="lite",
     type=click.Choice(["full", "lite"]),
-    help="评估 Profile：full（15 维 16 seed）或 lite（10 维 10 seed 精华版）",
+    help="评估 Profile：lite（10 维 10 seed，默认）或 full（15 维 16 seed）",
 )
 def main(
     seeds: str,
