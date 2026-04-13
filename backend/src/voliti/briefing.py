@@ -198,6 +198,7 @@ async def compute_and_write_briefing(
     namespace: tuple[str, ...],
     threads: list[dict[str, Any]] | None = None,
     now: datetime | None = None,
+    user_timezone: str | None = None,
 ) -> str | None:
     """计算并写入 briefing 文件。
 
@@ -207,6 +208,7 @@ async def compute_and_write_briefing(
         namespace: Store namespace（如 ("voliti", user_id)）
         threads: 预查询的 threads 列表（避免重复 API 调用）
         now: 当前时间（可覆盖用于测试）
+        user_timezone: 用户本地时区标识（如 "Asia/Shanghai"），用于日期对齐
 
     Returns:
         生成的 briefing 文本，或 None（计算失败时）

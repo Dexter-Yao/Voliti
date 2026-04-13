@@ -11,6 +11,7 @@ import pytest
 from voliti.pipeline.day_end import (
     _extract_messages_text,
     find_unsealed_threads,
+    run_day_end_pipeline,
     seal_thread,
 )
 
@@ -88,3 +89,52 @@ class TestExtractMessagesText:
         assert _extract_messages_text({"values": {"messages": []}}) == ""
         assert _extract_messages_text({"values": {}}) == ""
         assert _extract_messages_text({}) == ""
+
+
+class TestRunDayEndPipelineTimezone:
+    @pytest.mark.asyncio
+    async def test_pipeline_uses_user_timezone(self) -> None:
+        """UTC 00:30 时，Asia/Shanghai 已是次日，today 应为本地日期。"""
+        # 2026-04-13 00:30 UTC == 2026-04-13 08:30 CST
+        now = datetime(2026, 4, 13, 0, 30, 0, tzinfo=timezone.utc)
+        expected_local_date = "2026-04-13"
+
+        client = AsyncMock()
+        client.threads.search = AsyncMock(return_value=[])
+        client.store.put_item = AsyncMock()
+        client.store.get_item = AsyncMock(return_value=None)
+
+        with patch("voliti.pipeline.day_end.compute_and_write_briefing", new_callable=AsyncMock) as mock_briefing:
+            mock_briefing.return_value = "briefing text"
+            result = await run_day_end_pipeline(
+                client,
+                user_id="u1",
+                namespace=("voliti", "u1"),
+                now=now,
+                user_timezone="Asia/Shanghai",
+            )
+
+        assert result["today"] == expected_local_date
+
+    @pytest.mark.asyncio
+    async def test_pipeline_utc_fallback_without_timezone(self) -> None:
+        """不传时区时，today 使用 UTC 日期。"""
+        # 2026-04-12 23:30 UTC（CST 已是 2026-04-13，但无时区参数应取 UTC）
+        now = datetime(2026, 4, 12, 23, 30, 0, tzinfo=timezone.utc)
+        expected_utc_date = "2026-04-12"
+
+        client = AsyncMock()
+        client.threads.search = AsyncMock(return_value=[])
+        client.store.put_item = AsyncMock()
+        client.store.get_item = AsyncMock(return_value=None)
+
+        with patch("voliti.pipeline.day_end.compute_and_write_briefing", new_callable=AsyncMock) as mock_briefing:
+            mock_briefing.return_value = "briefing text"
+            result = await run_day_end_pipeline(
+                client,
+                user_id="u1",
+                namespace=("voliti", "u1"),
+                now=now,
+            )
+
+        assert result["today"] == expected_utc_date
