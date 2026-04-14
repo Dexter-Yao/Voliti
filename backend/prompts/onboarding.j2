@@ -131,13 +131,13 @@ Metric types: `numeric` (continuous), `scale` (bounded integer), `ordinal` (cate
 
 5. `/user/coping_plans/{id}.json` — first LifeSign:
 ```json
-{"id": "ls_001", "trigger": "下班后压力大想吃零食", "coping_response": "泡茶+阳台3分钟", "success_count": 0, "total_attempts": 0, "status": "active", "last_updated": "2026-04-06T00:00:00Z"}
+{"id": "ls_001", "trigger": "下班后压力大想吃零食", "coping_response": "泡茶+阳台3分钟", "status": "active", "last_updated": "2026-04-06T00:00:00Z"}
 ```
 
 6. `/user/coping_plans_index.md` — sync if LifeSign created. Format:
 ```
 # LifeSign Index
-- ls_001: "下班后压力大想吃零食" → 泡茶+阳台3分钟 [active, 0/0 success]
+- ls_001: "下班后压力大想吃零食" → 泡茶+阳台3分钟 [active]
 ```
 
 7. `/user/timeline/markers.json` — forward markers from upcoming events

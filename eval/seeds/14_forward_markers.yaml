@@ -38,8 +38,6 @@ pre_state:
         state_condition: "stress >= 4"
       action: "提前选好一个主菜，不看菜单上的甜品区"
       status: "active"
-      activated_count: 3
-      success_count: 2
   coach_memory: |
     ## 思齐 — Key Observations
     - Afternoon slump is primary trigger

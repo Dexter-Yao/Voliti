@@ -38,13 +38,11 @@ pre_state:
         state_condition: "social_pressure >= 3"
       action: "点气泡水，不需要解释"
       status: "active"
-      activated_count: 3
-      success_count: 1
   coach_memory: |
     ## 小慧 — Key Observations
     - Social eating is her biggest challenge
     - Week 2: making progress with lunch prep
-    - LifeSign ls_010 activated 3 times, 1 success so far
+    - LifeSign ls_010 still difficult — she managed it once at a dinner but struggled at other gatherings
 
 follow_up_messages:
   - "哦对了，昨晚跟大学同学聚餐，他们都在喝酒"

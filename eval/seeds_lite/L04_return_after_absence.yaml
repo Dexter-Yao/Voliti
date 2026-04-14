@@ -37,8 +37,6 @@ pre_state:
         state_condition: "stress >= 5"
       action: "选择有蔬菜和蛋白质的菜，不纠结热量细节"
       status: "active"
-      activated_count: 1
-      success_count: 0
   coach_memory: |
     ## 思远 — Key Observations
     - Travel is primary disruption pattern

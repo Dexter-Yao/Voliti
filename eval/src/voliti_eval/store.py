@@ -61,7 +61,7 @@ async def populate_store(
         logger.info("[%s] Populated /coping_plans/%s.json", user_id, plan.id)
         index_lines.append(
             f'- {plan.id}: "{plan.trigger.get("situation", "")}" → {plan.action} '
-            f"[{plan.status}, {plan.success_count}/{plan.activated_count} success]"
+            f"[{plan.status}]"
         )
 
     if pre_state.coping_plans:

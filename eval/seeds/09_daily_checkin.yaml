@@ -80,8 +80,6 @@ pre_state:
         state_condition: "energy <= 4"
       action: "先喝一大杯水，走到窗边站2分钟，然后再决定"
       status: "active"
-      activated_count: 5
-      success_count: 2
   forward_markers:
     - id: "mk_010"
       date: "2026-04-08T18:30:00+08:00"

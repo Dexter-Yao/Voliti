@@ -39,8 +39,6 @@ pre_state:
         state_condition: "mood <= 3"
       action: "穿好衣服走出家门，哪怕只是到楼下便利店买一杯咖啡"
       status: "active"
-      activated_count: 2
-      success_count: 1
   coach_memory: |
     ## 雨桐 — Key Observations
     - Recently went through a breakup, emotionally fragile

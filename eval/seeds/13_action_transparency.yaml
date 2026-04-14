@@ -80,13 +80,10 @@ pre_state:
         time_pattern: "14:00-17:00"
       action: "泡一杯茶，礼貌地说'我刚喝了茶，不用了'"
       status: "active"
-      activated_count: 6
-      success_count: 4
   coach_memory: |
     ## 美琳 — Key Observations
     - Social pressure is primary trigger (colleagues buying snacks)
-    - LifeSign ls_010 showing good improvement (4/6 success)
-    - 1 more success on ls_010 → milestone (identity_evolution eligible)
+    - LifeSign ls_010 has been working well recently — she's finding it easier to decline
 
 max_turns: 8
 

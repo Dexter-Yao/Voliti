@@ -20,25 +20,10 @@ struct LifeSignSummaryCard: View {
                         .foregroundStyle(StarpathTokens.obsidian40)
                 } else {
                     let active = plans.filter { $0.status == "active" }
-                    let totalSuccess = active.reduce(0) { $0 + $1.successCount }
-                    let totalAttempts = active.reduce(0) { $0 + $1.totalAttempts }
 
                     HStack(spacing: StarpathTokens.spacingSM) {
                         Text("\(active.count) 预案")
                             .starpathSans()
-
-                        Text("·")
-                            .foregroundStyle(StarpathTokens.obsidian40)
-
-                        if totalAttempts > 0 {
-                            Text("激活 \(totalAttempts) 成功 \(totalSuccess)")
-                                .starpathSans()
-                                .foregroundStyle(StarpathTokens.obsidian40)
-                        } else {
-                            Text("待激活")
-                                .starpathSans()
-                                .foregroundStyle(StarpathTokens.obsidian40)
-                        }
 
                         Spacer()
 

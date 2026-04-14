@@ -102,13 +102,11 @@ class TestExtractUpcomingMarkers:
 
 class TestExtractLifesignActivity:
     def test_parses_index_format(self) -> None:
-        content = '# LifeSign Index\n- ls_001: "下班后压力大想吃零食" → 泡茶+阳台3分钟 [active, 2/5 success]\n- ls_002: "周末聚餐" → 提前吃轻食垫底 [active, 0/1 success]'
+        content = '# LifeSign Index\n- ls_001: "下班后压力大想吃零食" → 泡茶+阳台3分钟 [active]\n- ls_002: "周末聚餐" → 提前吃轻食垫底 [active]'
         result = extract_lifesign_activity(content)
         assert len(result) == 2
         assert result[0]["id"] == "ls_001"
         assert result[0]["trigger"] == "下班后压力大想吃零食"
-        assert result[0]["success_count"] == 2
-        assert result[0]["total_attempts"] == 5
 
     def test_returns_empty_for_none(self) -> None:
         assert extract_lifesign_activity(None) == []
@@ -122,7 +120,7 @@ class TestFormatBriefing:
             sessions_this_week=4,
             upcoming_markers=[{"date": "04/15", "desc": "出差北京", "risk": "medium"}],
             lifesign_activity=[
-                {"id": "ls_001", "trigger": "下班压力", "success_count": 2, "total_attempts": 5},
+                {"id": "ls_001", "trigger": "下班压力"},
             ],
             now=now,
         )
@@ -131,7 +129,6 @@ class TestFormatBriefing:
         assert "本周会话：4 次" in result
         assert "出差北京" in result
         assert "下班压力" in result
-        assert "2/5 成功" in result
 
     def test_format_minimal_briefing(self) -> None:
         now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)

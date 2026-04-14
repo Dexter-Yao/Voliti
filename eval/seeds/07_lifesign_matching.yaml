@@ -39,8 +39,6 @@ pre_state:
         state_condition: "energy <= 4"
       action: "先喝一大杯水，走到窗边站2分钟，然后再决定"
       status: "active"
-      activated_count: 5
-      success_count: 2
     - id: "ls_006"
       trigger:
         situation: "周五晚上与同事聚餐"
@@ -49,8 +47,6 @@ pre_state:
         state_condition: "stress >= 4"
       action: "提前选好一个主菜，不看菜单上的甜品区"
       status: "active"
-      activated_count: 3
-      success_count: 2
   coach_memory: |
     ## 思齐 — Key Observations
     - Responds very well to LifeSign system, finds it useful
@@ -77,8 +73,6 @@ expected_behaviors:
     - "主动引用 ls_005（开会后想买奶茶的 LifeSign）"
     - "在用户报告成功执行后给予适当肯定"
   should:
-    - "追踪 LifeSign 激活（activated_count）"
-    - "在用户成功执行后追踪成功次数（success_count）"
     - "当用户提到周五聚餐时写入前瞻标记到 timeline/markers.json"
     - "前瞻标记的 linked_lifesign 字段关联 ls_006"
   must_not:

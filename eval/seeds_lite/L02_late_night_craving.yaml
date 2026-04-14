@@ -34,8 +34,6 @@ pre_state:
         state_condition: "stress >= 5"
       action: "关掉外卖 APP，去冰箱找一样东西吃（允许自己吃）"
       status: "active"
-      activated_count: 3
-      success_count: 1
   coach_memory: |
     ## 阿云 — Key Observations
     - Late-night food delivery is primary trigger pattern

@@ -30,8 +30,6 @@ class CopingPlan(BaseModel):
     trigger: dict[str, Any]
     action: str
     status: str = "active"
-    activated_count: int = 0
-    success_count: int = 0
 
 
 class LedgerEntry(BaseModel):

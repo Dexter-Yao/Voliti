@@ -36,8 +36,6 @@ pre_state:
         state_condition: "energy <= 3"
       action: "设10分钟闹钟，吃一顿简单但完整的饭"
       status: "active"
-      activated_count: 1
-      success_count: 0
   coach_memory: |
     ## 志远 — Key Observations
     - Type A personality, pushes through fatigue

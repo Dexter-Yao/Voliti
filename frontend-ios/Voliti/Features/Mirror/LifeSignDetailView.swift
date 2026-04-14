@@ -29,23 +29,6 @@ struct LifeSignDetailView: View {
 
                 StarpathDivider()
 
-                // 执行统计
-                VStack(alignment: .leading, spacing: StarpathTokens.spacingSM) {
-                    Text("统计")
-                        .starpathMono()
-
-                    HStack(spacing: StarpathTokens.spacingLG) {
-                        statItem(label: "激活", value: "\(plan.totalAttempts)")
-                        statItem(label: "成功", value: "\(plan.successCount)")
-                        if plan.totalAttempts > 0 {
-                            statItem(
-                                label: "成功率",
-                                value: "\(Int(plan.successRate * 100))%"
-                            )
-                        }
-                    }
-                }
-
                 StarpathDivider()
 
                 Text(plan.lastUpdated, style: .date)

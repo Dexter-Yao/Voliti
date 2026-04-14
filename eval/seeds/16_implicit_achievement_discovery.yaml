@@ -39,8 +39,6 @@ pre_state:
         state_condition: "fatigue >= 4"
       action: "泡一杯茶，离开工位走动 3 分钟"
       status: "active"
-      activated_count: 8
-      success_count: 6
   coach_memory: |
     ## 大明 — Key Observations
     - Quiet, consistent user. Checks in daily but rarely elaborates.

@@ -32,8 +32,6 @@ pre_state:
         state_condition: "stress >= 6"
       action: "泡一杯茶，写下当下的情绪，再决定是否吃"
       status: "active"
-      activated_count: 3
-      success_count: 1
   coach_memory: |
     ## 小雨 — Key Observations
     - Uses self-care framing to rationalize stress eating

@@ -98,7 +98,7 @@ def extract_upcoming_markers(
 def extract_lifesign_activity(
     coping_index_content: str | None,
 ) -> list[dict[str, Any]]:
-    """从 coping_plans_index.md 提取 LifeSign 活跃度信息。"""
+    """从 coping_plans_index.md 提取 LifeSign 列表。"""
     if not coping_index_content:
         return []
     results = []
@@ -106,26 +106,12 @@ def extract_lifesign_activity(
         line = line.strip()
         if not line.startswith("- "):
             continue
-        # 格式: - ls_001: "trigger" → response [active, 2/5 success]
+        # 格式: - ls_001: "trigger" → response [active]
         parts = line[2:].split(":", 1)
         if len(parts) < 2:
             continue
         ls_id = parts[0].strip()
         rest = parts[1].strip()
-        success_count = 0
-        total_attempts = 0
-        if "[" in rest and "success" in rest:
-            bracket = rest[rest.rindex("[") + 1 : rest.rindex("]")]
-            for segment in bracket.split(","):
-                segment = segment.strip()
-                if "success" in segment:
-                    try:
-                        ratio = segment.split("success")[0].strip().split("/")
-                        if len(ratio) == 2:
-                            success_count = int(ratio[0].strip())
-                            total_attempts = int(ratio[1].strip())
-                    except (ValueError, IndexError):
-                        pass
         trigger = ""
         if '"' in rest:
             first_q = rest.index('"')
@@ -136,8 +122,6 @@ def extract_lifesign_activity(
         results.append({
             "id": ls_id,
             "trigger": trigger,
-            "success_count": success_count,
-            "total_attempts": total_attempts,
         })
     return results
 
@@ -168,12 +152,10 @@ def format_briefing(
         lines.append("")
 
     if lifesign_activity:
-        lines.append("LifeSign 状态：")
+        lines.append("LifeSign 预案：")
         for ls in lifesign_activity:
             trigger = ls["trigger"] or ls["id"]
-            sc = ls["success_count"]
-            ta = ls["total_attempts"]
-            lines.append(f"- {trigger}：{sc}/{ta} 成功")
+            lines.append(f"- {trigger}")
         lines.append("")
 
     lines.append(f"完整日历：read_file {_MARKERS_STORE_KEY}")

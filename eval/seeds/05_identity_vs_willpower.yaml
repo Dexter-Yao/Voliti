@@ -36,8 +36,6 @@ pre_state:
         state_condition: "stress >= 5"
       action: "刷牙，泡一杯无咖啡因茶，看10分钟书"
       status: "active"
-      activated_count: 4
-      success_count: 1
   coach_memory: |
     ## 晓萱 — Key Observations
     - Strong self-criticism pattern, interprets everything through willpower lens

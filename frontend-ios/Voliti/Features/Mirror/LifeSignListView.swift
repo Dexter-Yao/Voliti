@@ -50,13 +50,8 @@ struct LifeSignListView: View {
                 .foregroundStyle(StarpathTokens.obsidian40)
 
             HStack(spacing: StarpathTokens.spacingSM) {
-                if plan.totalAttempts > 0 {
-                    Text("\(plan.successCount)/\(plan.totalAttempts) 成功")
-                        .starpathMono()
-                } else {
-                    Text("待激活")
-                        .starpathMono()
-                }
+                Text(plan.status == "active" ? "进行中" : plan.status)
+                    .starpathMono()
             }
         }
         .padding(.horizontal, StarpathTokens.spacingMD)

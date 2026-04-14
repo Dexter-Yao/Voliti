@@ -109,8 +109,6 @@ final class StoreSyncService: StoreSyncing {
                 let triggerData = value["trigger"] as? [String: Any]
                 let trigger = triggerData?["situation"] as? String ?? ""
                 let copingResponse = value["action"] as? String ?? value["coping_response"] as? String ?? ""
-                let successCount = value["success_count"] as? Int ?? 0
-                let totalAttempts = value["activated_count"] as? Int ?? value["total_attempts"] as? Int ?? 0
                 let status = value["status"] as? String ?? "active"
                 let lastUpdatedStr = value["last_updated"] as? String
 
@@ -127,8 +125,6 @@ final class StoreSyncService: StoreSyncing {
                 if let existing = try modelContext.fetch(descriptor).first {
                     existing.trigger = trigger
                     existing.copingResponse = copingResponse
-                    existing.successCount = successCount
-                    existing.totalAttempts = totalAttempts
                     existing.status = status
                     existing.lastUpdated = lastUpdated
                 } else {
@@ -136,8 +132,6 @@ final class StoreSyncService: StoreSyncing {
                         id: planId,
                         trigger: trigger,
                         copingResponse: copingResponse,
-                        successCount: successCount,
-                        totalAttempts: totalAttempts,
                         status: status,
                         lastUpdated: lastUpdated
                     )

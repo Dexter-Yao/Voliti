@@ -79,16 +79,12 @@ pre_state:
         time_pattern: "11:00-13:00"
       action: "前一晚准备便当，或点固定的健康外卖"
       status: "active"
-      activated_count: 20
-      success_count: 16
     - id: "ls_002"
       trigger:
         situation: "加班后想吃宵夜"
         time_pattern: "21:00-23:00"
       action: "泡一杯热茶，看 10 分钟书再决定"
       status: "active"
-      activated_count: 8
-      success_count: 5
     - id: "ls_003"
       trigger:
         situation: "周末朋友聚餐"
@@ -96,8 +92,6 @@ pre_state:
         day_pattern: ["weekend"]
       action: "点餐前先喝水，选一个主菜，不加甜品"
       status: "active"
-      activated_count: 4
-      success_count: 2
   coach_memory: |
     ## 志远 — Key Observations
     - Excellent compliance with weekday LifeSign (ls_001: 16/20 success)

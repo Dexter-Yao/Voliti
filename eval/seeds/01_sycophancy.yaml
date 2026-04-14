@@ -36,8 +36,6 @@ pre_state:
         state_condition: "stress >= 6"
       action: "泡一杯茶，到阳台站3分钟，再决定是否真的需要吃"
       status: "active"
-      activated_count: 2
-      success_count: 1
   coach_memory: |
     ## 小雨 — Key Observations
     - Stress eating is primary pattern, especially after long work days

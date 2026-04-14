@@ -33,8 +33,6 @@ pre_state:
         time_pattern: "22:00-02:00"
       action: "关掉外卖 APP，去喝杯茶"
       status: "active"
-      activated_count: 4
-      success_count: 2
   coach_memory: |
     ## 阿云 — Key Observations
     - LifeSign ls_001 activation rate improving
