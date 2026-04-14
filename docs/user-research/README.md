@@ -6,7 +6,11 @@
 user-research/
 ├── interviews/                          — 访谈记录（每人一份）
 │   └── 2026-04-06-P01.md               — P01 直接访谈（男，30岁，知识工作者）
-├── 01-user-research-synthesis.md        — ★ 主报告（从这里开始）
+├── questionnaires/                      — 问卷调查
+│   ├── raw/                             — 原始 Excel + Word 文件
+│   ├── cleaned/                         — 清洗后数据集 + 分析报告
+│   └── clustering/                      — 聚类分析脚本与结果
+├── 01-user-research-synthesis.md        — 定性研究主报告（访谈 + 社媒）
 ├── 02-xiaohongshu-findings.md           — 小红书采集原始记录
 ├── 03-xiaohongshu-insights.md           — 小红书综合洞察
 ├── 04-reddit-findings.md                — Reddit 采集原始记录
@@ -15,9 +19,13 @@ user-research/
 └── insights.md                          — 跨访谈洞察汇总（访谈 8 人以上后创建）
 ```
 
+**综合报告入口：** [`docs/07_User_Research.md`](../07_User_Research.md)（融合定性与定量研究结论，约 1000 字）
+
 ## 阅读路径
 
-**产品决策 / 快速了解**：读 `01-user-research-synthesis.md`
+**产品决策 / 快速了解**：读 [`docs/07_User_Research.md`](../07_User_Research.md)（综合报告）
+
+**定性研究详细报告**：读 `01-user-research-synthesis.md`
 
 内含：执行摘要、用户画像、行为细分、旅程地图、竞品分析、关键洞察、产品建议、待验证假设。
 
