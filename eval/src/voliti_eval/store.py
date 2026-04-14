@@ -90,6 +90,13 @@ async def populate_store(
         await store_client.put_item(ns, key="/profile/dashboardConfig", value=make_file_value(dc_json))
         logger.info("[%s] Populated /profile/dashboardConfig", user_id)
 
+    # 顶层目标
+    if pre_state.goal:
+        goal_data = pre_state.goal.model_dump()
+        goal_json = json.dumps(goal_data, ensure_ascii=False, indent=2)
+        await store_client.put_item(ns, key="/goal/current.json", value=make_file_value(goal_json))
+        logger.info("[%s] Populated /goal/current.json", user_id)
+
     # Chapter
     if pre_state.chapter:
         ch_data = pre_state.chapter.model_dump()

@@ -13,6 +13,8 @@ STORE_NAMESPACE_PREFIX = "voliti"
 
 PROFILE_CONTEXT_KEY = "/profile/context.md"
 PROFILE_DASHBOARD_CONFIG_KEY = "/profile/dashboardConfig"
+GOAL_CURRENT_KEY = "/goal/current.json"
+GOAL_ARCHIVE_PREFIX = "/goal/archive/"
 CHAPTER_CURRENT_KEY = "/chapter/current.json"
 COPING_PLANS_INDEX_KEY = "/coping_plans_index.md"
 TIMELINE_MARKERS_KEY = "/timeline/markers.json"

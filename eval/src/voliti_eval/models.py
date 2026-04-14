@@ -49,13 +49,38 @@ class DashboardConfigData(BaseModel):
     user_goal: str | None = None
 
 
+class ProcessGoalData(BaseModel):
+    """Chapter 内的过程目标，驱动具体行为执行。"""
+
+    key: str
+    description: str
+    target: str
+    metric_key: str  # 对应 DashboardConfig 中的 support_metrics.key
+
+
 class ChapterData(BaseModel):
-    """预填充的 Chapter，对应 Coach 写入的 /user/chapter/current.json。"""
+    """预填充的 Chapter，对应 Coach 写入的 /chapter/current.json。"""
 
     id: str
-    identity_statement: str
-    goal: str
+    goal_id: str  # 关联的顶层目标 ID
+    chapter_number: int  # 同一目标下的 Chapter 序号，从 1 开始
+    title: str  # Chapter 阶段标题
+    milestone: str  # 本阶段的里程碑描述
+    process_goals: list[ProcessGoalData] = Field(default_factory=list)
     start_date: str  # ISO 8601
+    planned_end_date: str  # ISO 8601
+    status: str = "active"  # active / completed / archived
+
+
+class GoalData(BaseModel):
+    """预填充的顶层目标，对应 Coach 写入的 /goal/current.json。"""
+
+    id: str
+    description: str  # 用户语言描述的目标，如 "12 周内从 75kg 降至 70kg"
+    north_star_target: dict[str, Any]  # {key, baseline, target, unit}
+    start_date: str  # ISO 8601
+    target_date: str  # ISO 8601
+    status: str = "active"  # active / completed / archived
 
 
 class ForwardMarker(BaseModel):
@@ -79,6 +104,7 @@ class PreState(BaseModel):
     coach_memory: str | None = None
     ledger_entries: list[LedgerEntry] = Field(default_factory=list)
     dashboard_config: DashboardConfigData | None = None
+    goal: GoalData | None = None
     chapter: ChapterData | None = None
     forward_markers: list[ForwardMarker] = Field(default_factory=list)
 
