@@ -55,6 +55,8 @@ async function checkGraphStatus(apiUrl: string): Promise<boolean> {
   }
 }
 
+export type EnsureThreadResult = { threadId: string; isNew: boolean };
+
 /**
  * 查找或创建今天的 Thread。
  * 按 user_id + date metadata 搜索；不存在则新建。
@@ -64,7 +66,7 @@ export async function ensureTodayThread(
   userId: string,
   assistantId: string,
   sessionType: SessionType = SESSION_TYPE_COACHING,
-): Promise<string | null> {
+): Promise<EnsureThreadResult | null> {
   const client = createClient(apiUrl, undefined, undefined);
   const today = getTodayDateString();
 
@@ -75,7 +77,7 @@ export async function ensureTodayThread(
     });
 
     if (existing.length > 0) {
-      return existing[0].thread_id;
+      return { threadId: existing[0].thread_id, isNew: false };
     }
 
     const thread = await client.threads.create({
@@ -89,7 +91,7 @@ export async function ensureTodayThread(
       },
     });
 
-    return thread.thread_id;
+    return { threadId: thread.thread_id, isNew: true };
   } catch (e) {
     console.error("Failed to ensure today thread:", e);
     return null;
@@ -97,13 +99,13 @@ export async function ensureTodayThread(
 }
 
 /**
- * 创建 onboarding thread 并发送用户名字作为第一条消息。
+ * 创建 onboarding thread。
  */
 export async function startOnboardingThread(
   apiUrl: string,
   userId: string,
   assistantId: string,
-): Promise<string | null> {
+): Promise<EnsureThreadResult | null> {
   return ensureTodayThread(apiUrl, userId, assistantId, "onboarding");
 }
 
@@ -118,10 +120,12 @@ const StreamSession = ({
   children,
   apiUrl: rawApiUrl,
   assistantId,
+  onNewThread,
 }: {
   children: ReactNode;
   apiUrl: string;
   assistantId: string;
+  onNewThread?: () => void;
 }) => {
   const apiUrl = resolveApiUrl(rawApiUrl);
   const [threadId, setThreadId] = useQueryState("threadId");
@@ -136,13 +140,16 @@ const StreamSession = ({
 
     ensureInFlight.current = true;
     ensureTodayThread(apiUrl, userId, assistantId)
-      .then((id) => {
-        if (id) setThreadId(id);
+      .then((result) => {
+        if (result) {
+          setThreadId(result.threadId);
+          if (result.isNew) onNewThread?.();
+        }
       })
       .finally(() => {
         ensureInFlight.current = false;
       });
-  }, [threadId, apiUrl, assistantId, setThreadId]);
+  }, [threadId, apiUrl, assistantId, setThreadId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const streamValue = useTypedStream({
     apiUrl,
@@ -187,9 +194,10 @@ const StreamSession = ({
   );
 };
 
-export const StreamProvider: React.FC<{ children: ReactNode }> = ({
-  children,
-}) => {
+export const StreamProvider: React.FC<{
+  children: ReactNode;
+  onNewThread?: () => void;
+}> = ({ children, onNewThread }) => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
 
@@ -204,7 +212,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   }
 
   return (
-    <StreamSession apiUrl={apiUrl} assistantId={assistantId}>
+    <StreamSession apiUrl={apiUrl} assistantId={assistantId} onNewThread={onNewThread}>
       {children}
     </StreamSession>
   );

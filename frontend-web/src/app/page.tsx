@@ -46,9 +46,16 @@ function OnboardingComplete({ onConfirm }: { onConfirm: () => void }) {
   );
 }
 
+function buildCheckinTrigger(): string {
+  const now = new Date();
+  const time = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `[daily_checkin] ${time}`;
+}
+
 function MainApp() {
   const [, setThreadId] = useQueryState("threadId");
   const [pendingName, setPendingName] = useState<string | null>(null);
+  const [checkinTrigger, setCheckinTrigger] = useState<string | null>(null);
   const [onboardingActive, setOnboardingActive] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(false);
   const pendingCoachingThreadRef = useRef<string | null>(null);
@@ -60,14 +67,14 @@ function MainApp() {
     const userId = getUserId();
     if (!apiUrl || !assistantId || !userId) return;
 
-    const threadId = await startOnboardingThread(
+    const result = await startOnboardingThread(
       resolveUrl(apiUrl),
       userId,
       assistantId,
     );
-    if (threadId) {
+    if (result) {
       setPendingName(name);
-      setThreadId(threadId);
+      setThreadId(result.threadId);
       setOnboardingActive(true);
     }
   };
@@ -84,11 +91,12 @@ function MainApp() {
       const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
       const userId = getUserId();
       if (!apiUrl || !assistantId || !userId) return;
-      const coachingThreadId = await ensureTodayThread(
+      const result = await ensureTodayThread(
         resolveUrl(apiUrl), userId, assistantId, SESSION_TYPE_COACHING,
       );
-      if (coachingThreadId && !cancelled) {
-        pendingCoachingThreadRef.current = coachingThreadId;
+      if (result && !cancelled) {
+        pendingCoachingThreadRef.current = result.threadId;
+        if (result.isNew) setCheckinTrigger(buildCheckinTrigger());
         setOnboardingDone(true);
         setOnboardingActive(false);
       }
@@ -111,6 +119,18 @@ function MainApp() {
     window.location.reload();
   }, [setThreadId]);
 
+  const handleNewThread = useCallback(() => {
+    if (!onboardingActive) {
+      setCheckinTrigger(buildCheckinTrigger());
+    }
+  }, [onboardingActive]);
+
+  const initialMessage = pendingName ?? checkinTrigger;
+  const handleInitialMessageSent = useCallback(() => {
+    setPendingName(null);
+    setCheckinTrigger(null);
+  }, []);
+
   if (onboardingDone) {
     return <OnboardingComplete onConfirm={handleConfirmJourney} />;
   }
@@ -121,11 +141,11 @@ function MainApp() {
       conversationActive={onboardingActive}
     >
       <ThreadProvider>
-        <StreamProvider>
+        <StreamProvider onNewThread={handleNewThread}>
           <ArtifactProvider>
             <Thread
-              initialMessage={pendingName}
-              onInitialMessageSent={() => setPendingName(null)}
+              initialMessage={initialMessage}
+              onInitialMessageSent={handleInitialMessageSent}
               onboardingMode={onboardingActive}
             />
             <A2UIInterruptHandler />

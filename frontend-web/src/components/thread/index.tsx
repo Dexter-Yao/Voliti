@@ -193,15 +193,16 @@ export function Thread({
     }
   }, [stream.error]);
 
-  // Auto-send initial message (e.g. user name from onboarding welcome)
+  // Auto-send initial message (e.g. user name from onboarding, or [daily_checkin] trigger)
   const initialSent = useRef(false);
   useEffect(() => {
     if (!initialMessage || initialSent.current || isLoading) return;
     if (!threadId) return;
     initialSent.current = true;
 
+    const isSystemTrigger = initialMessage.startsWith("[daily_");
     const msg: Message = {
-      id: uuidv4(),
+      id: isSystemTrigger ? `${DO_NOT_RENDER_ID_PREFIX}${uuidv4()}` : uuidv4(),
       type: "human",
       content: [{ type: "text", text: initialMessage }] as Message["content"],
     };
@@ -402,7 +403,19 @@ export function Thread({
                 handleRegenerate={handleRegenerate}
               />
             )}
-            {isLoading && !firstTokenReceived && <AssistantMessageLoading />}
+            {isLoading && !firstTokenReceived && (
+              <AssistantMessageLoading
+                toolName={
+                  messages.length > 0
+                    ? (() => {
+                        const last = messages[messages.length - 1];
+                        const calls = last?.type === "ai" ? (last as any).tool_calls : undefined;
+                        return calls?.length ? calls[calls.length - 1].name : undefined;
+                      })()
+                    : undefined
+                }
+              />
+            )}
           </>
         }
         footer={

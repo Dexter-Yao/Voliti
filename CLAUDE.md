@@ -158,3 +158,4 @@ Key routing rules:
 | 2026-04-13 | 天级 Thread 重组 Phase 1-3：删除 MemoryLifecycleMW + JourneyAnalysisMW + conversation archive 系统；新增 BriefingMW + briefing 计算 + 日终 Pipeline + Cron 触发；MemoryMW 4→3 路径；Coach prompt 精简；前端封存 thread 只读 + 常量集中 |
 | 2026-04-13 | A2UI 增强（reject reason + 重置 + Cmd+Enter）；删除 agent-inbox 脚手架（~2000 行）和死代码（api-key / ContentBlocksPreview）；架构文档新增 Web MVP 客户端章节 |
 | 2026-04-13 | Eval lite profile 设为默认（10 维 10 seed）；Web QA 修复 6 项（tool 泄漏 + 设置面板 + onboarding 状态） |
+| 2026-04-14 | 会话体验增强 5 项：记忆可见性 prompt 治理、daily_checkin 自动触发（A2UI）、Markdown 层次感引导 + blockquote copper 色、思考过渡态设计规格与实现、日摘要精简至 60 字 + 7 天滚动窗口注入 briefing |
