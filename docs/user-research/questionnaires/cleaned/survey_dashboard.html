@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voliti 用户调研 · 探索性分析</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1a2e;
+      --card: #16213e;
+      --card-hover: #1a2850;
+      --text: #e0e0e0;
+      --text-muted: #8899aa;
+      --copper: #B87333;
+      --copper-light: #d4914a;
+      --blue: #4a6fa5;
+      --green: #6b8f71;
+      --red: #c94c4c;
+      --gold: #c9a96e;
+      --purple: #8b6f8e;
+      --border: rgba(255,255,255,0.06);
+      --border-active: #B87333;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+      line-height: 1.6;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 36px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--copper);
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+    }
+    .header .subtitle {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .header .subtitle span {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* Segmentation Matrix */
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .matrix-wrapper {
+      margin-bottom: 36px;
+    }
+    .matrix-axis-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+    }
+    .axis-col-labels {
+      display: flex;
+      margin-left: 64px;
+      margin-bottom: 6px;
+    }
+    .axis-col-label {
+      flex: 1;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+    .axis-row-labels {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      width: 60px;
+      flex-shrink: 0;
+      padding: 8px 0;
+    }
+    .axis-row-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      flex: 1;
+    }
+    .quadrant-card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .quadrant-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 12px 12px 0 0;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+    .quadrant-card[data-q="起步行动者"]::before { background: var(--blue); }
+    .quadrant-card[data-q="反复行动者"]::before { background: var(--copper); }
+    .quadrant-card[data-q="轻度脱轨"]::before { background: var(--green); }
+    .quadrant-card[data-q="重度脱轨"]::before { background: var(--red); }
+
+    .quadrant-card:hover {
+      background: var(--card-hover);
+      transform: translateY(-1px);
+    }
+    .quadrant-card.active {
+      border-color: var(--border-active);
+      background: var(--card-hover);
+      box-shadow: 0 0 0 1px var(--border-active), 0 4px 20px rgba(184,115,51,0.15);
+    }
+    .quadrant-card[data-q="起步行动者"].active { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue), 0 4px 20px rgba(74,111,165,0.2); }
+    .quadrant-card[data-q="反复行动者"].active { border-color: var(--copper); box-shadow: 0 0 0 1px var(--copper), 0 4px 20px rgba(184,115,51,0.2); }
+    .quadrant-card[data-q="轻度脱轨"].active { border-color: var(--green); box-shadow: 0 0 0 1px var(--green), 0 4px 20px rgba(107,143,113,0.2); }
+    .quadrant-card[data-q="重度脱轨"].active { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 4px 20px rgba(201,76,76,0.2); }
+
+    .quadrant-name {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .quadrant-card[data-q="起步行动者"] .quadrant-name { color: var(--blue); }
+    .quadrant-card[data-q="反复行动者"] .quadrant-name { color: var(--copper); }
+    .quadrant-card[data-q="轻度脱轨"] .quadrant-name { color: var(--green); }
+    .quadrant-card[data-q="重度脱轨"] .quadrant-name { color: var(--red); }
+
+    .quadrant-stats {
+      display: flex;
+      gap: 16px;
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .active-indicator {
+      display: none;
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.06);
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    .quadrant-card.active .active-indicator { display: block; }
+
+    /* Active filter banner */
+    .filter-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(184,115,51,0.1);
+      border: 1px solid rgba(184,115,51,0.3);
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: 0.8rem;
+      color: var(--copper);
+    }
+    .filter-banner.visible { display: flex; }
+    .filter-banner .clear-btn {
+      margin-left: auto;
+      background: none;
+      border: 1px solid rgba(184,115,51,0.4);
+      color: var(--copper);
+      border-radius: 6px;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .filter-banner .clear-btn:hover { background: rgba(184,115,51,0.15); }
+
+    /* Charts grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .chart-card.wide {
+      grid-column: span 2;
+    }
+    .chart-card.half-pair {
+      /* used in 2-col layout normally */
+    }
+    .chart-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+      letter-spacing: 0.02em;
+    }
+    .chart-title .q-tag {
+      font-size: 0.65rem;
+      background: rgba(255,255,255,0.07);
+      color: var(--text-muted);
+      padding: 1px 7px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    .chart-title .info-icon {
+      margin-left: 2px;
+      cursor: help;
+      font-size: 0.75rem;
+      opacity: 0.5;
+      transition: opacity 0.15s;
+    }
+    .chart-title .info-icon:hover { opacity: 1; }
+    .chart-subtitle {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .chart-container {
+      position: relative;
+    }
+    .dual-donut {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .dual-donut .donut-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .dual-donut .donut-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    /* Methodology section */
+    .methodology {
+      margin-top: 16px;
+    }
+    .methodology summary {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 12px 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .methodology summary:hover { background: var(--card-hover); color: var(--text); }
+    .methodology summary::marker { display: none; }
+    .methodology summary .arrow {
+      margin-left: auto;
+      transition: transform 0.2s;
+      font-size: 0.6rem;
+    }
+    .methodology[open] summary .arrow { transform: rotate(90deg); }
+    .methodology-content {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 20px;
+    }
+    .methodology-content h4 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--copper);
+      margin-bottom: 6px;
+      margin-top: 16px;
+    }
+    .methodology-content h4:first-child { margin-top: 0; }
+    .methodology-content p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    .methodology-content code {
+      background: rgba(255,255,255,0.07);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.7rem;
+      color: var(--gold);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    @media (max-width: 900px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-card.wide { grid-column: span 1; }
+      .dual-donut { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      .header h1 { font-size: 1.3rem; }
+      .matrix-grid { grid-template-columns: 1fr; }
+      .dual-donut { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <h1>Voliti 用户调研 · 探索性分析</h1>
+  <p class="subtitle">
+    有效样本 <span>86 人</span> &nbsp;|&nbsp;
+    CEIBS <span>38</span> + 公开版 <span>48</span> &nbsp;|&nbsp;
+    留联系方式 <span>22 人 (26%)</span>
+  </p>
+</header>
+
+<!-- Segmentation Matrix -->
+<section class="matrix-wrapper">
+  <div class="section-title">用户分群矩阵 · 点击筛选</div>
+  <div class="axis-col-labels">
+    <div style="width:60px; flex-shrink:0;"></div>
+    <div class="axis-col-label">少次 (1–2 次)</div>
+    <div class="axis-col-label">多次 (3+ 次)</div>
+  </div>
+  <div class="matrix-axis-row">
+    <div class="axis-row-labels">
+      <div class="axis-row-label">行动中</div>
+      <div class="axis-row-label">非行动中</div>
+    </div>
+    <div class="matrix-grid">
+      <div class="quadrant-card" data-q="起步行动者"
+           title="当前正在减脂行动中，过去尝试次数较少（1-2次）。相对新手，动力充足但经验有限。">
+        <div class="active-indicator">当前筛选</div>
+        <div class="quadrant-name">起步行动者</div>
+        <div class="quadrant-stats">
+          <div class="stat-item"><span class="stat-value">22</span><span class="stat-label">总人数</span></div>
+          <div class="stat-item"><span class="stat-value">7</span><span class="stat-label">CEIBS</span></div>
+          <div class="stat-item"><span class="stat-value">7</span><span class="stat-label">留联系方式</span></div>
+        </div>
+      </div>
+      <div class="quadrant-card" data-q="反复行动者"
+           title="当前正在减脂行动中，过去尝试次数较多（3+次）。有一定经验但难以持续，典型复胖人群。">
+        <div class="active-indicator">当前筛选</div>
+        <div class="quadrant-name">反复行动者</div>
+        <div class="quadrant-stats">
+          <div class="stat-item"><span class="stat-value">30</span><span class="stat-label">总人数</span></div>
+          <div class="stat-item"><span class="stat-value">14</span><span class="stat-label">CEIBS</span></div>
+          <div class="stat-item"><span class="stat-value">7</span><span class="stat-label">留联系方式</span></div>
+        </div>
+      </div>
+      <div class="quadrant-card" data-q="轻度脱轨"
+           title="当前未在减脂行动中，过去尝试次数较少（1-2次）。尚未找到方法，或动机不够强。">
+        <div class="active-indicator">当前筛选</div>
+        <div class="quadrant-name">轻度脱轨</div>
+        <div class="quadrant-stats">
+          <div class="stat-item"><span class="stat-value">17</span><span class="stat-label">总人数</span></div>
+          <div class="stat-item"><span class="stat-value">9</span><span class="stat-label">CEIBS</span></div>
+          <div class="stat-item"><span class="stat-value">2</span><span class="stat-label">留联系方式</span></div>
+        </div>
+      </div>
+      <div class="quadrant-card" data-q="重度脱轨"
+           title="当前未在减脂行动中，过去尝试次数较多（3+次）。反复尝试、反复失败，挫败感最强的群体。">
+        <div class="active-indicator">当前筛选</div>
+        <div class="quadrant-name">重度脱轨</div>
+        <div class="quadrant-stats">
+          <div class="stat-item"><span class="stat-value">17</span><span class="stat-label">总人数</span></div>
+          <div class="stat-item"><span class="stat-value">8</span><span class="stat-label">CEIBS</span></div>
+          <div class="stat-item"><span class="stat-value">6</span><span class="stat-label">留联系方式</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Active filter banner -->
+<div class="filter-banner" id="filterBanner">
+  <span>🔍</span>
+  <span id="filterLabel">筛选中：</span>
+  <button class="clear-btn" onclick="clearFilter()">清除筛选</button>
+</div>
+
+<!-- Charts Grid -->
+<div class="charts-grid">
+
+  <!-- Chart 1: Motivation Q3 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>推动力</span>
+      <span class="q-tag">Q3</span>
+      <span class="info-icon" title="Q3：哪些因素推动了你开始/想开始减脂行动？（Borda 评分，越高越重要）">ℹ</span>
+    </div>
+    <div class="chart-subtitle">Borda 评分 · 最高 4 分</div>
+    <div class="chart-container" style="height:180px;">
+      <canvas id="chart-motivation"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 2: Hesitation Q4 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>重启障碍</span>
+      <span class="q-tag">Q4</span>
+      <span class="info-icon" title="Q4：是什么让你难以开始或重新开始减脂？（Borda 评分，越高越阻碍越大）">ℹ</span>
+    </div>
+    <div class="chart-subtitle">Borda 评分 · 最高 5 分</div>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="chart-hesitation"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 3: Disruption radar Q5 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>日常干扰因素</span>
+      <span class="q-tag">Q5</span>
+      <span class="info-icon" title="Q5：以下哪些因素会干扰你坚持减脂计划？（0-4 均值，雷达图展示整体干扰模式）">ℹ</span>
+    </div>
+    <div class="chart-subtitle">均值评分 0–4</div>
+    <div class="chart-container" style="height:220px;">
+      <canvas id="chart-disruption-radar"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 4: High disruption rate Q5 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>高影响率</span>
+      <span class="q-tag">Q5</span>
+      <span class="info-icon" title="Q5："影响很大"+"彻底打乱"的选择比例，反映各干扰因素的极端影响频率">ℹ</span>
+    </div>
+    <div class="chart-subtitle">"影响很大 + 彻底打乱" 占比 (%)</div>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="chart-disruption-high"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 5: Intention gap Q6 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>失控频率分布</span>
+      <span class="q-tag">Q6</span>
+      <span class="info-icon" title="Q6：你多久会出现一次饮食/运动失控（偏离计划较大）？">ℹ</span>
+    </div>
+    <div class="chart-subtitle">各频率段人数占比 (%)</div>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="chart-intention-gap"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 6: IG reasons Q6b -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>失控原因</span>
+      <span class="q-tag">Q6b</span>
+      <span class="info-icon" title="Q6b：当你失控时，通常是什么原因导致的？（Borda 评分）">ℹ</span>
+    </div>
+    <div class="chart-subtitle">Borda 评分 · 最高 4 分</div>
+    <div class="chart-container" style="height:180px;">
+      <canvas id="chart-ig-reasons"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 7: Lapse reaction Q7 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>失控后反应</span>
+      <span class="q-tag">Q7</span>
+      <span class="info-icon" title="Q7：当你发生一次失控后，你通常的反应是什么？">ℹ</span>
+    </div>
+    <div class="chart-subtitle">各反应类型占比 (%)</div>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="chart-lapse-reaction"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 8: Preference Q8 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>支持偏好</span>
+      <span class="q-tag">Q8</span>
+      <span class="info-icon" title="Q8：在减脂这件事上，你更偏向哪种支持方式？">ℹ</span>
+    </div>
+    <div class="chart-subtitle">各偏好类型占比 (%)</div>
+    <div class="chart-container" style="height:240px;">
+      <canvas id="chart-preference"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 9: Support experience Q9 -->
+  <div class="chart-card wide">
+    <div class="chart-title">
+      <span>支持方式体验</span>
+      <span class="q-tag">Q9</span>
+      <span class="info-icon" title="Q9：以下减脂支持方式，你是否尝试过？觉得是否有效？（尝试率 vs 有效率对比）">ℹ</span>
+    </div>
+    <div class="chart-subtitle">尝试率 vs 有效率 (%) — 双色柱对比</div>
+    <div class="chart-container" style="height:220px;">
+      <canvas id="chart-support"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 10: Tools Q10 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>工具使用率</span>
+      <span class="q-tag">Q10</span>
+      <span class="info-icon" title="Q10：你在减脂过程中使用过哪些工具或方式？（多选）">ℹ</span>
+    </div>
+    <div class="chart-subtitle">使用率 (%)</div>
+    <div class="chart-container" style="height:240px;">
+      <canvas id="chart-tools"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 11: Spending Q11 -->
+  <div class="chart-card">
+    <div class="chart-title">
+      <span>年度花费分布</span>
+      <span class="q-tag">Q11</span>
+      <span class="info-icon" title="Q11：过去一年在减脂相关事项上，你大概花费了多少钱？">ℹ</span>
+    </div>
+    <div class="chart-subtitle">各花费段占比 (%)</div>
+    <div class="chart-container" style="height:200px;">
+      <canvas id="chart-spending"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 12: Gender & Age -->
+  <div class="chart-card wide">
+    <div class="chart-title">
+      <span>性别 & 年龄分布</span>
+      <span class="q-tag">基础信息</span>
+      <span class="info-icon" title="受访者性别及年龄段分布（占比 %）">ℹ</span>
+    </div>
+    <div class="chart-subtitle">样本结构 (%)</div>
+    <div class="dual-donut">
+      <div class="donut-item">
+        <div class="donut-label">性别</div>
+        <div class="chart-container" style="height:200px; width:100%;">
+          <canvas id="chart-gender"></canvas>
+        </div>
+      </div>
+      <div class="donut-item">
+        <div class="donut-label">年龄段</div>
+        <div class="chart-container" style="height:200px; width:100%;">
+          <canvas id="chart-age"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Methodology -->
+<details class="methodology">
+  <summary>
+    <span>方法论说明</span>
+    <span class="arrow">▶</span>
+  </summary>
+  <div class="methodology-content">
+    <h4>2×2 分群矩阵定义</h4>
+    <p>行维度：受访者当前是否处于减脂行动中（是→「行动中」，否→「非行动中」）。列维度：过去曾认真尝试减脂的次数（1-2次→「少次」，3次及以上→「多次」）。四象限命名：起步行动者 / 反复行动者 / 轻度脱轨 / 重度脱轨。</p>
+
+    <h4>F 项分类标准</h4>
+    <p>本次调研包含若干「频率选项题」（F 项），受访者选择频率描述词（如"经常""时不时""偶尔""很少"），汇总后以各频率段人数百分比呈现，并计算加权均值 <code>q6_mean</code>（4=经常 → 1=很少）。</p>
+
+    <h4>Borda 评分说明</h4>
+    <p>对于排序题或多选重要性题，采用 Borda Count 方法：将每个选项的排名位置转化为权重分数后加总平均。例如 4 选项题中，排第 1 得 3 分，排第 2 得 2 分，依此类推；未被选中计 0 分。最终分值反映该维度在样本中的相对重要性权重。</p>
+
+    <h4>数据说明与排除标准</h4>
+    <p>原始回收问卷共 91 份，排除 5 份（答题时间 < 90 秒或关键题项缺失），有效样本 N=86。CEIBS 渠道通过校友群投放，公开版通过社交媒体扩散。分群数据已对各子分群内部百分比独立归一化，与全样本「all」数据相互独立。联系方式留存率：CEIBS 37%（14/38），公开版 17%（8/48）。</p>
+  </div>
+</details>
+
+<script>
+// ABOUTME: 嵌入式调研数据 — 全部数据内联，无外部依赖
+const DASHBOARD_DATA = {
+  "quadrants": {"起步行动者": {"count": 22, "ceibs": 7, "contact": 7}, "反复行动者": {"count": 30, "ceibs": 14, "contact": 7}, "轻度脱轨": {"count": 17, "ceibs": 9, "contact": 2}, "重度脱轨": {"count": 17, "ceibs": 8, "contact": 6}},
+  "motivation": {"labels": ["自我不满", "健康信号", "特定场合", "身边人影响"], "all": [3.22, 3.23, 2.1, 1.75], "起步行动者": [3.4, 3.1, 2.06, 1.68], "反复行动者": [3.21, 3.16, 2.26, 1.74], "轻度脱轨": [2.94, 3.44, 1.93, 1.86], "重度脱轨": [3.31, 3.31, 2.08, 1.73]},
+  "hesitation": {"labels": ["心理阻力", "条件不具备", "缺少方向", "缺少紧迫感", "对过去方法失去信心"], "all": [3.32, 3.95, 3.19, 3.84, 1.18], "起步行动者": [3.53, 3.9, 3.21, 3.67, 1.0], "反复行动者": [3.27, 3.93, 3.48, 3.52, 1.4], "轻度脱轨": [2.93, 4.12, 2.8, 4.25, 1.0], "重度脱轨": [3.54, 3.85, 3.0, 4.12, 1.0]},
+  "disruption": {"labels": ["工作压力", "社交饮食", "外出离家", "情绪波动"], "all": [2.69, 2.63, 2.23, 2.33], "起步行动者": [2.18, 2.55, 2.05, 2.14], "反复行动者": [2.97, 2.67, 2.3, 2.57], "轻度脱轨": [2.35, 2.65, 2.0, 1.76], "重度脱轨": [3.18, 2.65, 2.59, 2.71]},
+  "disruption_high": {"labels": ["工作压力", "社交饮食", "外出离家", "情绪波动"], "all": [58, 57, 34, 41], "起步行动者": [36, 55, 18, 32], "反复行动者": [73, 60, 40, 50], "轻度脱轨": [41, 59, 29, 18], "重度脱轨": [76, 53, 47, 59]},
+  "intention_gap": {"labels": ["经常(周几次)", "时不时(周1-2次)", "偶尔(月几次)", "很少"], "all": [19, 44, 23, 14], "起步行动者": [9, 45, 23, 23], "反复行动者": [30, 43, 17, 10], "轻度脱轨": [12, 41, 35, 12], "重度脱轨": [18, 47, 24, 12]},
+  "q6_mean": {"all": 2.67, "起步行动者": 2.41, "反复行动者": 2.93, "轻度脱轨": 2.53, "重度脱轨": 2.71},
+  "ig_reasons": {"labels": ["生理需求", "情绪/习惯", "社交场合", "日程变动"], "all": [2.73, 3.31, 2.48, 1.72], "起步行动者": [2.82, 3.18, 2.81, 1.25], "反复行动者": [2.77, 3.19, 2.44, 1.77], "轻度脱轨": [2.27, 3.5, 2.36, 2.36], "重度脱轨": [3.08, 3.54, 2.29, 1.67]},
+  "lapse_reaction": {"labels": ["几乎没影响", "短暂懊恼", "当天放大", "难以恢复"], "all": [10, 58, 21, 10], "起步行动者": [9, 73, 14, 5], "反复行动者": [10, 37, 37, 17], "轻度脱轨": [6, 76, 18, 0], "重度脱轨": [18, 59, 6, 18]},
+  "preference": {"labels": ["独行", "私密支持", "社交", "公开"], "all": [51, 28, 14, 7], "起步行动者": [59, 32, 5, 5], "反复行动者": [57, 20, 13, 10], "轻度脱轨": [47, 12, 29, 12], "重度脱轨": [35, 53, 12, 0]},
+  "support": {"labels": ["靠自己", "家人朋友", "线上社群", "私教一对一", "社交打卡"],
+    "tried_all": [97, 79, 57, 63, 57], "helpful_all": [23, 32, 14, 33, 16],
+    "tried_起步行动者": [100, 95, 64, 64, 82], "helpful_起步行动者": [23, 43, 7, 50, 6],
+    "tried_反复行动者": [97, 73, 60, 63, 53], "helpful_反复行动者": [31, 36, 22, 26, 25],
+    "tried_轻度脱轨": [88, 82, 41, 53, 41], "helpful_轻度脱轨": [7, 21, 14, 0, 0],
+    "tried_重度脱轨": [100, 65, 59, 71, 47], "helpful_重度脱轨": [24, 18, 10, 50, 38]},
+  "spending": {"labels": ["没花过钱", "数百元", "1k-3k", "3k-1万", "1万以上"], "all": [15, 36, 29, 16, 3], "起步行动者": [9, 32, 41, 18, 0], "反复行动者": [13, 33, 27, 20, 7], "轻度脱轨": [29, 41, 18, 12, 0], "重度脱轨": [12, 41, 29, 12, 6]},
+  "gender": {"labels": ["女", "男", "不愿透露"], "all": [55, 43, 2], "起步行动者": [50, 50, 0], "反复行动者": [47, 50, 3], "轻度脱轨": [53, 47, 0], "重度脱轨": [76, 18, 6]},
+  "age": {"labels": ["18-24", "25-30", "31-40", "41+"], "all": [8, 43, 43, 6], "起步行动者": [9, 41, 45, 5], "反复行动者": [7, 47, 40, 7], "轻度脱轨": [18, 24, 53, 6], "重度脱轨": [0, 59, 35, 6]},
+  "tools": {"labels": ["运动App", "智能硬件", "饮食App", "自媒体", "私教", "付费课程", "社群打卡"], "all": [64, 62, 44, 38, 29, 15, 12], "起步行动者": [73, 68, 59, 50, 23, 18, 18], "反复行动者": [50, 53, 47, 30, 37, 10, 10], "轻度脱轨": [65, 65, 35, 41, 24, 12, 6], "重度脱轨": [76, 65, 29, 35, 29, 24, 12]}
+};
+
+// Color palette
+const COLORS = {
+  copper:  '#B87333',
+  blue:    '#4a6fa5',
+  green:   '#6b8f71',
+  red:     '#c94c4c',
+  gold:    '#c9a96e',
+  purple:  '#8b6f8e',
+};
+
+const QUADRANT_COLORS = {
+  '起步行动者': COLORS.blue,
+  '反复行动者': COLORS.copper,
+  '轻度脱轨':  COLORS.green,
+  '重度脱轨':  COLORS.red,
+};
+
+// Palette array for multi-series
+const PALETTE = [COLORS.copper, COLORS.blue, COLORS.green, COLORS.gold, COLORS.purple, '#e07b6b', '#7ececa'];
+
+// Chart.js defaults
+Chart.defaults.color = '#8899aa';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// State
+let activeQuadrant = null;
+const chartInstances = {};
+
+// --- Helper: get key for current selection ---
+function getKey() {
+  return activeQuadrant || 'all';
+}
+
+// --- Helper: get support keys ---
+function getSupportKeys(q) {
+  const suffix = q ? `_${q}` : '_all';
+  return {
+    tried: DASHBOARD_DATA.support[`tried${suffix}`],
+    helpful: DASHBOARD_DATA.support[`helpful${suffix}`],
+  };
+}
+
+// --- Chart factory helpers ---
+function baseOptions(extra = {}) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#0d1626', titleColor: '#e0e0e0', bodyColor: '#c0c0c0', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 10 },
+      ...extra.plugins,
+    },
+    ...extra,
+  };
+}
+
+// --- Build charts ---
+function buildMotivation() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.motivation;
+  const data = d[key];
+  const color = activeQuadrant ? QUADRANT_COLORS[activeQuadrant] : COLORS.copper;
+  return {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [{ data, backgroundColor: color, borderRadius: 4, barThickness: 18 }],
+    },
+    options: {
+      ...baseOptions(),
+      indexAxis: 'y',
+      scales: {
+        x: { max: 4, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#667788' } },
+        y: { grid: { display: false }, ticks: { color: '#aab8cc' } },
+      },
+    },
+  };
+}
+
+function buildHesitation() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.hesitation;
+  const data = d[key];
+  const color = activeQuadrant ? QUADRANT_COLORS[activeQuadrant] : COLORS.blue;
+  return {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [{ data, backgroundColor: color, borderRadius: 4, barThickness: 18 }],
+    },
+    options: {
+      ...baseOptions(),
+      indexAxis: 'y',
+      scales: {
+        x: { max: 5, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#667788' } },
+        y: { grid: { display: false }, ticks: { color: '#aab8cc' } },
+      },
+    },
+  };
+}
+
+function buildDisruptionRadar() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.disruption;
+  const data = d[key];
+  const color = activeQuadrant ? QUADRANT_COLORS[activeQuadrant] : COLORS.copper;
+  return {
+    type: 'radar',
+    data: {
+      labels: d.labels,
+      datasets: [{
+        data,
+        backgroundColor: hexToRgba(color, 0.2),
+        borderColor: color,
+        borderWidth: 2,
+        pointBackgroundColor: color,
+        pointRadius: 4,
+      }],
+    },
+    options: {
+      ...baseOptions(),
+      scales: {
+        r: {
+          min: 0, max: 4, ticks: { stepSize: 1, color: '#667788', backdropColor: 'transparent' },
+          grid: { color: 'rgba(255,255,255,0.08)' },
+          angleLines: { color: 'rgba(255,255,255,0.08)' },
+          pointLabels: { color: '#aab8cc', font: { size: 11 } },
+        },
+      },
+    },
+  };
+}
+
+function buildDisruptionHigh() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.disruption_high;
+  const data = d[key];
+  const color = activeQuadrant ? QUADRANT_COLORS[activeQuadrant] : COLORS.red;
+  return {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [{ data, backgroundColor: color, borderRadius: 4, barThickness: 28 }],
+    },
+    options: {
+      ...baseOptions(),
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#aab8cc' } },
+        y: { max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#667788', callback: v => v + '%' } },
+      },
+      plugins: {
+        ...baseOptions().plugins,
+        tooltip: { ...baseOptions().plugins.tooltip, callbacks: { label: ctx => ` ${ctx.raw}%` } },
+      },
+    },
+  };
+}
+
+function buildIntentionGap() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.intention_gap;
+  const vals = d[key];
+  const stackColors = [COLORS.red, COLORS.copper, COLORS.gold, COLORS.blue];
+  return {
+    type: 'bar',
+    data: {
+      labels: ['失控频率'],
+      datasets: d.labels.map((label, i) => ({
+        label,
+        data: [vals[i]],
+        backgroundColor: stackColors[i],
+        borderRadius: i === 0 ? { topLeft: 0, topRight: 4, bottomLeft: 0, bottomRight: 4 } : 0,
+      })),
+    },
+    options: {
+      ...baseOptions(),
+      indexAxis: 'y',
+      scales: {
+        x: { stacked: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: v => v + '%', color: '#667788' } },
+        y: { stacked: true, grid: { display: false }, ticks: { display: false } },
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { color: '#8899aa', boxWidth: 12, font: { size: 10 }, padding: 10 },
+        },
+        tooltip: {
+          ...baseOptions().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` },
+        },
+      },
+    },
+  };
+}
+
+function buildIgReasons() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.ig_reasons;
+  const data = d[key];
+  const color = activeQuadrant ? QUADRANT_COLORS[activeQuadrant] : COLORS.purple;
+  return {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [{ data, backgroundColor: color, borderRadius: 4, barThickness: 18 }],
+    },
+    options: {
+      ...baseOptions(),
+      indexAxis: 'y',
+      scales: {
+        x: { max: 4, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#667788' } },
+        y: { grid: { display: false }, ticks: { color: '#aab8cc' } },
+      },
+    },
+  };
+}
+
+function buildLapseReaction() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.lapse_reaction;
+  const vals = d[key];
+  const stackColors = [COLORS.green, COLORS.gold, COLORS.copper, COLORS.red];
+  return {
+    type: 'bar',
+    data: {
+      labels: ['失控后反应'],
+      datasets: d.labels.map((label, i) => ({
+        label,
+        data: [vals[i]],
+        backgroundColor: stackColors[i],
+      })),
+    },
+    options: {
+      ...baseOptions(),
+      indexAxis: 'y',
+      scales: {
+        x: { stacked: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: v => v + '%', color: '#667788' } },
+        y: { stacked: true, grid: { display: false }, ticks: { display: false } },
+      },
+      plugins: {
+        legend: {
+          display: true, position: 'bottom',
+          labels: { color: '#8899aa', boxWidth: 12, font: { size: 10 }, padding: 10 },
+        },
+        tooltip: {
+          ...baseOptions().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` },
+        },
+      },
+    },
+  };
+}
+
+function buildPreference() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.preference;
+  const vals = d[key];
+  const colors = [COLORS.blue, COLORS.copper, COLORS.green, COLORS.gold];
+  return {
+    type: 'doughnut',
+    data: {
+      labels: d.labels,
+      datasets: [{ data: vals, backgroundColor: colors, borderColor: '#16213e', borderWidth: 3, hoverOffset: 6 }],
+    },
+    options: {
+      ...baseOptions(),
+      cutout: '60%',
+      plugins: {
+        legend: {
+          display: true, position: 'right',
+          labels: { color: '#aab8cc', boxWidth: 12, font: { size: 10 }, padding: 8 },
+        },
+        tooltip: {
+          ...baseOptions().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}%` },
+        },
+      },
+    },
+  };
+}
+
+function buildSupport() {
+  const { tried, helpful } = getSupportKeys(activeQuadrant);
+  const d = DASHBOARD_DATA.support;
+  return {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [
+        { label: '尝试率', data: tried, backgroundColor: hexToRgba(COLORS.blue, 0.75), borderRadius: 4, barThickness: 22 },
+        { label: '有效率', data: helpful, backgroundColor: hexToRgba(COLORS.copper, 0.85), borderRadius: 4, barThickness: 22 },
+      ],
+    },
+    options: {
+      ...baseOptions(),
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#aab8cc' } },
+        y: { max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: v => v + '%', color: '#667788' } },
+      },
+      plugins: {
+        legend: {
+          display: true, position: 'top', align: 'end',
+          labels: { color: '#aab8cc', boxWidth: 12, font: { size: 10 }, padding: 10 },
+        },
+        tooltip: {
+          ...baseOptions().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` },
+        },
+      },
+    },
+  };
+}
+
+function buildTools() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.tools;
+  const data = d[key];
+  const color = activeQuadrant ? QUADRANT_COLORS[activeQuadrant] : COLORS.blue;
+  return {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [{ data, backgroundColor: color, borderRadius: 4, barThickness: 18 }],
+    },
+    options: {
+      ...baseOptions(),
+      indexAxis: 'y',
+      scales: {
+        x: { max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: v => v + '%', color: '#667788' } },
+        y: { grid: { display: false }, ticks: { color: '#aab8cc' } },
+      },
+      plugins: {
+        ...baseOptions().plugins,
+        tooltip: { ...baseOptions().plugins.tooltip, callbacks: { label: ctx => ` ${ctx.raw}%` } },
+      },
+    },
+  };
+}
+
+function buildSpending() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.spending;
+  const vals = d[key];
+  const spendColors = [COLORS.blue, COLORS.green, COLORS.gold, COLORS.copper, COLORS.red];
+  return {
+    type: 'bar',
+    data: {
+      labels: ['年度花费'],
+      datasets: d.labels.map((label, i) => ({
+        label,
+        data: [vals[i]],
+        backgroundColor: spendColors[i],
+      })),
+    },
+    options: {
+      ...baseOptions(),
+      indexAxis: 'y',
+      scales: {
+        x: { stacked: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: v => v + '%', color: '#667788' } },
+        y: { stacked: true, grid: { display: false }, ticks: { display: false } },
+      },
+      plugins: {
+        legend: {
+          display: true, position: 'bottom',
+          labels: { color: '#8899aa', boxWidth: 12, font: { size: 10 }, padding: 8 },
+        },
+        tooltip: {
+          ...baseOptions().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` },
+        },
+      },
+    },
+  };
+}
+
+function buildGender() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.gender;
+  const vals = d[key];
+  const colors = [COLORS.purple, COLORS.blue, COLORS.gold];
+  return {
+    type: 'doughnut',
+    data: {
+      labels: d.labels,
+      datasets: [{ data: vals, backgroundColor: colors, borderColor: '#16213e', borderWidth: 3, hoverOffset: 5 }],
+    },
+    options: {
+      ...baseOptions(),
+      cutout: '55%',
+      plugins: {
+        legend: {
+          display: true, position: 'bottom',
+          labels: { color: '#aab8cc', boxWidth: 10, font: { size: 10 }, padding: 6 },
+        },
+        tooltip: {
+          ...baseOptions().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}%` },
+        },
+      },
+    },
+  };
+}
+
+function buildAge() {
+  const key = getKey();
+  const d = DASHBOARD_DATA.age;
+  const vals = d[key];
+  const colors = [COLORS.green, COLORS.copper, COLORS.blue, COLORS.gold];
+  return {
+    type: 'doughnut',
+    data: {
+      labels: d.labels,
+      datasets: [{ data: vals, backgroundColor: colors, borderColor: '#16213e', borderWidth: 3, hoverOffset: 5 }],
+    },
+    options: {
+      ...baseOptions(),
+      cutout: '55%',
+      plugins: {
+        legend: {
+          display: true, position: 'bottom',
+          labels: { color: '#aab8cc', boxWidth: 10, font: { size: 10 }, padding: 6 },
+        },
+        tooltip: {
+          ...baseOptions().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}%` },
+        },
+      },
+    },
+  };
+}
+
+// --- Utility ---
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// --- Chart init/update ---
+const CHART_BUILDERS = {
+  'chart-motivation':       buildMotivation,
+  'chart-hesitation':       buildHesitation,
+  'chart-disruption-radar': buildDisruptionRadar,
+  'chart-disruption-high':  buildDisruptionHigh,
+  'chart-intention-gap':    buildIntentionGap,
+  'chart-ig-reasons':       buildIgReasons,
+  'chart-lapse-reaction':   buildLapseReaction,
+  'chart-preference':       buildPreference,
+  'chart-support':          buildSupport,
+  'chart-tools':            buildTools,
+  'chart-spending':         buildSpending,
+  'chart-gender':           buildGender,
+  'chart-age':              buildAge,
+};
+
+function initAllCharts() {
+  for (const [id, builder] of Object.entries(CHART_BUILDERS)) {
+    const canvas = document.getElementById(id);
+    if (!canvas) continue;
+    const cfg = builder();
+    chartInstances[id] = new Chart(canvas, cfg);
+  }
+}
+
+function updateAllCharts() {
+  for (const [id, builder] of Object.entries(CHART_BUILDERS)) {
+    const chart = chartInstances[id];
+    if (!chart) continue;
+    const cfg = builder();
+    // Update datasets
+    cfg.data.datasets.forEach((ds, i) => {
+      if (chart.data.datasets[i]) {
+        chart.data.datasets[i].data = ds.data;
+        chart.data.datasets[i].backgroundColor = ds.backgroundColor;
+        chart.data.datasets[i].borderColor = ds.borderColor;
+      }
+    });
+    // If dataset count changed, replace entirely
+    if (cfg.data.datasets.length !== chart.data.datasets.length) {
+      chart.data.datasets = cfg.data.datasets;
+    }
+    chart.update('active');
+  }
+}
+
+// --- Quadrant interaction ---
+document.querySelectorAll('.quadrant-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const q = card.dataset.q;
+    if (activeQuadrant === q) {
+      clearFilter();
+    } else {
+      activeQuadrant = q;
+      document.querySelectorAll('.quadrant-card').forEach(c => c.classList.toggle('active', c.dataset.q === q));
+      showBanner(q);
+      updateAllCharts();
+    }
+  });
+});
+
+function clearFilter() {
+  activeQuadrant = null;
+  document.querySelectorAll('.quadrant-card').forEach(c => c.classList.remove('active'));
+  hideBanner();
+  updateAllCharts();
+}
+
+function showBanner(q) {
+  const banner = document.getElementById('filterBanner');
+  document.getElementById('filterLabel').textContent = `筛选中：${q}`;
+  banner.classList.add('visible');
+}
+
+function hideBanner() {
+  document.getElementById('filterBanner').classList.remove('visible');
+}
+
+// --- Init ---
+window.addEventListener('DOMContentLoaded', initAllCharts);
+</script>
+</body>
+</html>

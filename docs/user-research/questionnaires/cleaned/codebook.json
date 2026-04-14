@@ -1,0 +1,22 @@
+{
+  "motivation_options": {
+    "motivation_self_dissatisfaction": "A. self_dissatisfaction",
+    "motivation_health_signal": "B. health_signal",
+    "motivation_specific_occasion": "C. specific_occasion",
+    "motivation_peer_influence": "D. peer_influence"
+  },
+  "hesitation_options": {
+    "hesitation_psychological_barrier": "A. psychological_barrier",
+    "hesitation_conditions_not_ready": "B. conditions_not_ready",
+    "hesitation_lack_of_direction": "C. lack_of_direction",
+    "hesitation_lack_of_urgency": "D. lack_of_urgency",
+    "hesitation_past_failure_distrust": "E. past_failure_distrust"
+  },
+  "intention_gap_options": {
+    "intention_gap_physical_need": "A. physical_need",
+    "intention_gap_emotion_or_habit": "B. emotion_or_habit",
+    "intention_gap_social_situation": "C. social_situation",
+    "intention_gap_schedule_disruption": "D. schedule_disruption"
+  },
+  "scoring_rule": "Borda: rank 1 = N points, rank 2 = N-1, ..., unranked = NaN"
+}
