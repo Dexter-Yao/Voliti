@@ -21,6 +21,7 @@ LIFESIGNS_KEY = "/lifesigns.md"
 TIMELINE_CALENDAR_KEY = "/timeline-calendar.md"
 BRIEFING_DERIVED_KEY = "/user/derived/briefing.md"
 DAY_SUMMARY_PREFIX = "/user/day_summary/"
+CONVERSATION_ARCHIVE_PREFIX = "/user/conversation_archive/"
 INTERVENTIONS_SEGMENT = "interventions"
 
 

@@ -135,6 +135,7 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 /timeline-calendar.md
 /derived/briefing.md
 /day_summary/{yyyy-mm-dd}.md
+/conversation_archive/{yyyy-mm-dd}.md
 ```
 
 ### 6.3 Value
@@ -370,6 +371,7 @@ resume 同时校验以下两类约束：
 1. `/ledger/...` 等事件历史。
 2. `/derived/...` 等候选信号与分析结果。
 3. `/day_summary/...` 日摘要（由日终 Pipeline 生成，≤60 字单句，属于 `archive_source`）。无会话日由 Pipeline 自动回填。
+4. `/conversation_archive/{date}.md` 按天独立的完整会话归档（由日终 Pipeline 写入，属于 `archive_source`）。Coach 通过 `grep` 关键词定位日期后 `read_file` 单日文件，禁止一次性加载全部归档。
 
 约束如下：
 
@@ -401,7 +403,7 @@ resume 同时校验以下两类约束：
 
 1. `/profile/...`、`/chapter/...`、`/coach/AGENTS.md`、`/lifesigns.md`、`/timeline-calendar.md` 属于 `authoritative_semantic`。
 2. `/derived/...` 属于 `candidate_signal`。
-3. `/archive/...`、`/day_summary/...` 属于 `archive_source`。
+3. `/archive/...`、`/day_summary/...`、`/conversation_archive/...` 属于 `archive_source`。
 4. `/ledger/...` 属于 `runtime_only`。
 5. `/observability/...` 属于 `observability_only`。
 6. 该分类同时兼容 backend 视角路径与 `/user/...` 前缀路径，不允许调用方各自维护另一套归一化逻辑。
@@ -514,3 +516,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 2026-04-12 | 编号调整 06 → 05；修正 Store key 示例（dashboardConfig、coping_plans）；移除已删除文档的交叉引用 |
 | 2026-04-13 | §8.3 新增 Reject Reason 语义；原 §8.3 长期存储边界顺延为 §8.4 |
 | 2026-04-14 | §7.4 新增系统触发器契约（daily_checkin / daily_review）；日摘要格式变更为 ≤60 字单句 + 无会话日回填 |
+| 2026-04-14 | 新增 `/conversation_archive/{date}.md` 按天会话归档；Coach 通过 grep→read_file 两步检索，禁止全量加载；语义分类补充 archive_source |
