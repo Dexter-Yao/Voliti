@@ -74,7 +74,7 @@ export function MirrorPanel() {
     return <EmptyState />;
   }
 
-  const { chapter, copingPlans } = data;
+  const { chapter, copingPlans, identity_statement, goal } = data;
 
   return (
     <div className="flex h-full flex-col overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1A1816]/15 [&::-webkit-scrollbar-track]:bg-transparent">
@@ -102,13 +102,19 @@ export function MirrorPanel() {
               </span>
             )}
           </div>
-          {chapter.identity_statement && (
+          {identity_statement && (
             <p className="font-serif-coach text-sm italic text-[#1A1816]/70">
-              &ldquo;{chapter.identity_statement}&rdquo;
+              &ldquo;{identity_statement}&rdquo;
             </p>
           )}
-          {chapter.goal && (
-            <p className="text-xs text-[#1A1816]/50">{chapter.goal}</p>
+          {goal?.description && (
+            <p className="text-xs text-[#1A1816]/50">{goal.description}</p>
+          )}
+          {chapter.title && (
+            <p className="text-xs font-medium text-[#1A1816]/60">{chapter.title}</p>
+          )}
+          {chapter.milestone && (
+            <p className="text-xs text-[#1A1816]/40">{chapter.milestone}</p>
           )}
         </div>
 

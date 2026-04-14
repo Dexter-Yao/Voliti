@@ -8,15 +8,19 @@ const STORE_KEYS = {
   dashboardConfig: "/profile/dashboardConfig",
   chapter: "/chapter/current.json",
   copingPlans: "/coping_plans_index.md",
+  goal: "/goal/current.json",
+  profile: "/profile/context.md",
 } as const;
 
 // --- Types ---
 
 export interface ChapterData {
   chapter_number: number;
-  identity_statement: string;
-  goal: string;
+  goal_id: string;
+  title: string;
+  milestone: string;
   start_date: string;
+  planned_end_date: string;
   north_star: {
     metric: string;
     unit: string;
@@ -25,11 +29,31 @@ export interface ChapterData {
     delta: number | null;
     history: number[];
   };
+  process_goals: Array<{
+    key: string;
+    description: string;
+    target: string;
+    metric_key: string;
+  }>;
   support_metrics: Array<{
     metric: string;
     unit: string;
     current_value: number | null;
   }>;
+}
+
+export interface GoalData {
+  id: string;
+  description: string;
+  north_star_target: {
+    key: string;
+    baseline: number;
+    target: number;
+    unit: string;
+  };
+  start_date: string;
+  target_date: string;
+  status: string;
 }
 
 export interface CopingPlan {
@@ -41,6 +65,8 @@ export interface CopingPlan {
 export interface MirrorData {
   chapter: ChapterData | null;
   copingPlans: CopingPlan[];
+  identity_statement: string | null;
+  goal: GoalData | null;
 }
 
 // --- File value unwrapping (mirrors store_contract.py) ---
@@ -89,18 +115,29 @@ function parseCopingPlans(markdown: string): CopingPlan[] {
 
 // --- Public API ---
 
+// 从 profile/context.md markdown 文本中提取 identity_statement 字段值
+function parseIdentityStatement(markdown: string): string | null {
+  for (const line of markdown.split("\n")) {
+    const match = line.match(/^identity_statement:\s*(.+)$/);
+    if (match) return match[1].trim();
+  }
+  return null;
+}
+
 export async function fetchMirrorData(): Promise<MirrorData> {
   const userId = getUserId();
-  if (!userId) return { chapter: null, copingPlans: [] };
+  if (!userId) return { chapter: null, copingPlans: [], identity_statement: null, goal: null };
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) return { chapter: null, copingPlans: [] };
+  if (!apiUrl) return { chapter: null, copingPlans: [], identity_statement: null, goal: null };
 
   const client = createClient(apiUrl, undefined, undefined);
   const namespace = ["voliti", userId];
 
   let chapter: ChapterData | null = null;
   let copingPlans: CopingPlan[] = [];
+  let identity_statement: string | null = null;
+  let goal: GoalData | null = null;
 
   try {
     const chapterItem = await client.store.getItem(namespace, STORE_KEYS.chapter);
@@ -122,7 +159,27 @@ export async function fetchMirrorData(): Promise<MirrorData> {
     // Store item may not exist yet
   }
 
-  return { chapter, copingPlans };
+  try {
+    const profileItem = await client.store.getItem(namespace, STORE_KEYS.profile);
+    if (profileItem?.value) {
+      const markdown = unwrapFileValue(profileItem.value as Record<string, unknown>);
+      identity_statement = parseIdentityStatement(markdown);
+    }
+  } catch {
+    // Store item may not exist yet
+  }
+
+  try {
+    const goalItem = await client.store.getItem(namespace, STORE_KEYS.goal);
+    if (goalItem?.value) {
+      const parsed = parseJsonFileValue(goalItem.value as Record<string, unknown>);
+      goal = parsed as GoalData;
+    }
+  } catch {
+    // Store item may not exist yet
+  }
+
+  return { chapter, copingPlans, identity_statement, goal };
 }
 
 export async function fetchOnboardingComplete(): Promise<boolean> {
