@@ -129,7 +129,7 @@ const defaultComponents: any = {
   ),
   blockquote: ({ className, ...props }: { className?: string }) => (
     <blockquote
-      className={cn("border-l-2 pl-6 italic", className)}
+      className={cn("border-l-2 border-[#B87333] pl-6 italic", className)}
       {...props}
     />
   ),

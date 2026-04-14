@@ -1,10 +1,10 @@
-# ABOUTME: 日终 Pipeline — 封存 thread、生成日摘要、更新 briefing
+# ABOUTME: 日终 Pipeline — 封存 thread、生成日摘要、回填缺失日、更新 briefing
 # ABOUTME: 使用 LangGraph SDK client 操作 threads/store，GPT-5.4 Nano 生成摘要
 
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -19,16 +19,15 @@ logger = logging.getLogger(__name__)
 _MAX_MESSAGE_CHARS = 500
 
 _SUMMARY_SYSTEM_PROMPT = """\
-你是一个日志摘要助手。根据以下教练会话记录，生成一份简洁的日摘要。
+你是一个日志摘要助手。根据以下教练会话记录，用一句话概括当天的核心内容。
 
 格式要求：
-- 3-5 个要点，每点一行
-- 包含关键数据变动（体重、饮食、运动等，如有）
-- 一句话情绪基调描述
+- 一句话，不超过 60 字
+- 涵盖关键行为或状态（如有数据变动则包含）
 - 使用中文
-- 不超过 300 字
+- 不要加任何前缀、标题或标点列表
 
-只输出摘要内容，不要加任何前缀或标题。"""
+只输出摘要内容。"""
 
 
 def _thread_meta(t: Any) -> dict[str, Any]:
@@ -170,6 +169,86 @@ async def find_unsealed_threads(
     ]
 
 
+_NO_SESSION_TEXT = "当天没有对话记录。"
+
+
+async def backfill_missing_summaries(
+    client: Any,
+    *,
+    namespace: tuple[str, ...],
+    today: str,
+    days_back: int = 7,
+    now: datetime | None = None,
+) -> list[str]:
+    """回填过去 N 天中缺失日期的摘要。
+
+    连续缺失的日期合并为一条（如 "04/10-04/12 期间没有对话记录。"）。
+    返回已回填的日期列表。
+    """
+    now = now or datetime.now(timezone.utc)
+    today_date = datetime.strptime(today, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+
+    # 收集需要检查的日期（不含今天）
+    dates_to_check: list[str] = []
+    for i in range(1, days_back + 1):
+        d = (today_date - timedelta(days=i)).strftime("%Y-%m-%d")
+        dates_to_check.append(d)
+
+    # 检查哪些日期已有摘要
+    missing: list[str] = []
+    for date_str in dates_to_check:
+        key = f"{DAY_SUMMARY_PREFIX}{date_str}.md"
+        try:
+            item = await client.store.get_item(namespace, key)
+            if item and item.get("value"):
+                continue
+        except Exception:  # noqa: BLE001
+            pass
+        missing.append(date_str)
+
+    if not missing:
+        return []
+
+    # 按日期排序（升序），合并连续缺失日期
+    missing.sort()
+    backfilled: list[str] = []
+
+    groups: list[list[str]] = []
+    current_group: list[str] = [missing[0]]
+    for i in range(1, len(missing)):
+        prev = datetime.strptime(missing[i - 1], "%Y-%m-%d")
+        curr = datetime.strptime(missing[i], "%Y-%m-%d")
+        if (curr - prev).days == 1:
+            current_group.append(missing[i])
+        else:
+            groups.append(current_group)
+            current_group = [missing[i]]
+    groups.append(current_group)
+
+    for group in groups:
+        if len(group) == 1:
+            text = _NO_SESSION_TEXT
+        else:
+            start = datetime.strptime(group[0], "%Y-%m-%d").strftime("%m/%d")
+            end = datetime.strptime(group[-1], "%Y-%m-%d").strftime("%m/%d")
+            text = f"{start}-{end} 期间没有对话记录。"
+
+        # 为组内每个日期写入摘要（单日写标准文本，多日每个日期写合并文本）
+        for date_str in group:
+            key = f"{DAY_SUMMARY_PREFIX}{date_str}.md"
+            try:
+                await client.store.put_item(
+                    namespace, key, value=make_file_value(text, now=now),
+                )
+                backfilled.append(date_str)
+            except Exception:  # noqa: BLE001
+                logger.warning("Pipeline: failed to backfill summary for %s", date_str)
+
+    if backfilled:
+        logger.info("Pipeline: backfilled %d missing day summaries", len(backfilled))
+    return backfilled
+
+
 async def run_day_end_pipeline(
     client: Any,
     *,
@@ -234,6 +313,16 @@ async def run_day_end_pipeline(
                 result["summaries"].append(date)
         else:
             result["errors"].append(f"seal failed: {tid}")
+
+    # Step 2.5: 回填缺失日期的摘要
+    try:
+        backfilled = await backfill_missing_summaries(
+            client, namespace=namespace, today=today, now=now,
+        )
+        result["backfilled"] = backfilled
+    except Exception:  # noqa: BLE001
+        logger.warning("Pipeline: failed to backfill missing summaries for user %s", user_id)
+        result["errors"].append("backfill failed")
 
     # Step 3: 更新 briefing（共享 threads 避免重复查询）
     try:

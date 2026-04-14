@@ -222,7 +222,16 @@ Store 在代码中只允许存在两个唯一收口点：
 3. eval 只能基于同一份 backend 定义构造测试输入，不另起一套平行 profile 模型。
 4. 任何会话类型扩展都必须优先修改 backend 的唯一 profile 入口，再扩散到客户端或评估。
 
-### 7.4 客户端边界
+### 7.4 系统触发器
+
+客户端在特定时机自动发送系统触发消息，Coach 根据触发器类型执行对应行为（A2UI fan_out）。
+
+1. `[daily_checkin] {HH:MM}` — 当日首次创建 coaching thread 时由前端自动发送。包含用户本地时间，Coach 执行轻量状态收集（fan_out: 1-2 sliders + optional text_input）。
+2. `[daily_review]` — 日终回顾触发器（当前保留定义，未实现自动触发）。
+
+触发消息使用 `DO_NOT_RENDER_ID_PREFIX`，在消息列表中对用户不可见。
+
+### 7.5 客户端边界
 
 1. onboarding 与 coaching 必须使用不同 thread。
 2. 加载历史、发送消息、resume interrupt 必须使用同一套 thread 选择逻辑。
@@ -360,7 +369,7 @@ resume 同时校验以下两类约束：
 
 1. `/ledger/...` 等事件历史。
 2. `/derived/...` 等候选信号与分析结果。
-3. `/day_summary/...` 日摘要（由日终 Pipeline 生成，属于 `archive_source`）。
+3. `/day_summary/...` 日摘要（由日终 Pipeline 生成，≤60 字单句，属于 `archive_source`）。无会话日由 Pipeline 自动回填。
 
 约束如下：
 
@@ -504,3 +513,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 2026-04-12 | 收紧当前实现状态：`session_type` 改为 fail-closed；Journey Analysis 改为通过共享 backend factory 解析真实 backend；权威语义写入边界改为在 `edit_file` / `write_file` 写入面执行 |
 | 2026-04-12 | 编号调整 06 → 05；修正 Store key 示例（dashboardConfig、coping_plans）；移除已删除文档的交叉引用 |
 | 2026-04-13 | §8.3 新增 Reject Reason 语义；原 §8.3 长期存储边界顺延为 §8.4 |
+| 2026-04-14 | §7.4 新增系统触发器契约（daily_checkin / daily_review）；日摘要格式变更为 ≤60 字单句 + 无会话日回填 |

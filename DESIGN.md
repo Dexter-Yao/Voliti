@@ -155,6 +155,24 @@
 
 **用户消息背景宽度适配内容长度，不使用固定宽度。**
 
+### 思考状态指示器
+
+当 Coach 正在执行工具但尚未产生文字回复时，显示语义化的状态提示。
+
+| 工具名称 | 状态文案（ZH） | 状态文案（EN） |
+|---------|--------------|--------------|
+| fan_out | 正在准备... | Preparing... |
+| task (subagent) | 正在创作... | Creating... |
+| read_file | 正在回顾... | Reviewing... |
+| write_file / edit_file | 正在记录... | Recording... |
+| 其他 / 未知 | （三点脉冲动画，无文字） | （三点脉冲动画，无文字） |
+
+- 字体：Mono 13px
+- 颜色：obsidian-40
+- 动画：文字右侧三点脉冲（与 AssistantMessageLoading 同节奏）
+- 位置：消息流中，替代当前的 skeleton loading
+- 时机：isLoading && !firstTokenReceived && 检测到 tool_calls
+
 ### IF/THEN 标记
 
 - 字体：Mono 13px

@@ -212,13 +212,44 @@ export function AssistantMessage({
   );
 }
 
-export function AssistantMessageLoading() {
+const TOOL_STATUS_MAP: Record<string, { zh: string; en: string }> = {
+  fan_out: { zh: "正在准备", en: "Preparing" },
+  task: { zh: "正在创作", en: "Creating" },
+  read_file: { zh: "正在回顾", en: "Reviewing" },
+  write_file: { zh: "正在记录", en: "Recording" },
+  edit_file: { zh: "正在记录", en: "Recording" },
+};
+
+function PulsingDots() {
+  return (
+    <span className="ml-0.5 inline-flex items-center gap-0.5">
+      <span className="bg-[#1A1816]/40 h-1 w-1 animate-[pulse_1.5s_ease-in-out_infinite] rounded-full" />
+      <span className="bg-[#1A1816]/40 h-1 w-1 animate-[pulse_1.5s_ease-in-out_0.5s_infinite] rounded-full" />
+      <span className="bg-[#1A1816]/40 h-1 w-1 animate-[pulse_1.5s_ease-in-out_1s_infinite] rounded-full" />
+    </span>
+  );
+}
+
+export function AssistantMessageLoading({ toolName }: { toolName?: string } = {}) {
+  const status = toolName ? TOOL_STATUS_MAP[toolName] : undefined;
+
+  if (status) {
+    return (
+      <div className="mr-auto flex items-start gap-2">
+        <div className="flex h-8 items-center px-1 py-2">
+          <span className="font-mono text-[13px] text-[#1A1816]/40">
+            {status.zh}
+          </span>
+          <PulsingDots />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mr-auto flex items-start gap-2">
-      <div className="bg-muted flex h-8 items-center gap-1 rounded-2xl px-4 py-2">
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_infinite] rounded-full"></div>
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_0.5s_infinite] rounded-full"></div>
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_1s_infinite] rounded-full"></div>
+      <div className="flex h-8 items-center gap-1 px-1 py-2">
+        <PulsingDots />
       </div>
     </div>
   );

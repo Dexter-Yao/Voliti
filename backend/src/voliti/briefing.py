@@ -12,6 +12,7 @@ from typing import Any
 from voliti.store_contract import (
     BRIEFING_DERIVED_KEY,
     COPING_PLANS_INDEX_KEY,
+    DAY_SUMMARY_PREFIX,
     TIMELINE_MARKERS_KEY,
     make_file_value,
     unwrap_file_value,
@@ -126,12 +127,42 @@ def extract_lifesign_activity(
     return results
 
 
+async def collect_recent_summaries(
+    client: Any,
+    namespace: tuple[str, ...],
+    *,
+    now: datetime | None = None,
+    days_back: int = 7,
+) -> list[tuple[str, str]]:
+    """收集最近 N 天的日摘要，返回 [(date_str, summary_text), ...]。"""
+    now = now or datetime.now(timezone.utc)
+    results: list[tuple[str, str]] = []
+
+    tasks = []
+    date_strs: list[str] = []
+    for i in range(1, days_back + 1):
+        d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        date_strs.append(d)
+        key = f"/user{DAY_SUMMARY_PREFIX}{d}.md"
+        tasks.append(_read_store_file(client, namespace, key))
+
+    contents = await asyncio.gather(*tasks)
+    for date_str, content in zip(date_strs, contents):
+        if content:
+            results.append((date_str, content.strip()))
+
+    # 按日期降序（最近的在前）
+    results.sort(key=lambda x: x[0], reverse=True)
+    return results
+
+
 def format_briefing(
     *,
     days_since_last: int | None,
     sessions_this_week: int,
     upcoming_markers: list[dict[str, str]],
     lifesign_activity: list[dict[str, Any]],
+    recent_summaries: list[tuple[str, str]] | None = None,
     now: datetime | None = None,
 ) -> str:
     """将计算结果格式化为 briefing 文本。"""
@@ -143,6 +174,13 @@ def format_briefing(
         lines.append(f"距上次会话：{days_since_last} 天")
     lines.append(f"本周会话：{sessions_this_week} 次")
     lines.append("")
+
+    if recent_summaries:
+        lines.append("近期回顾：")
+        for s_date, s_text in recent_summaries:
+            short_date = datetime.strptime(s_date, "%Y-%m-%d").strftime("%m/%d")
+            lines.append(f"- {short_date}: {s_text}")
+        lines.append("")
 
     if upcoming_markers:
         lines.append("近期日程：")
@@ -211,7 +249,10 @@ async def compute_and_write_briefing(
     # 2. 并行读取 Store 数据
     markers_task = _read_store_file(client, namespace, _MARKERS_STORE_KEY)
     coping_task = _read_store_file(client, namespace, _COPING_STORE_KEY)
-    markers_content, coping_content = await asyncio.gather(markers_task, coping_task)
+    summaries_task = collect_recent_summaries(client, namespace, now=now)
+    markers_content, coping_content, recent_summaries = await asyncio.gather(
+        markers_task, coping_task, summaries_task,
+    )
 
     # 3. 计算各项指标
     days_since_last = compute_days_since_last_session(threads, now=now)
@@ -225,6 +266,7 @@ async def compute_and_write_briefing(
         sessions_this_week=sessions_this_week,
         upcoming_markers=upcoming,
         lifesign_activity=lifesigns,
+        recent_summaries=recent_summaries,
         now=now,
     )
 
