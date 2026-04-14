@@ -128,6 +128,8 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 ```text
 /profile/context.md
 /profile/dashboardConfig
+/goal/current.json
+/goal/archive/{id}.json
 /chapter/current.json
 /ledger/{yyyy-mm-dd}/{hhmmss}_{kind}.json
 /coach/AGENTS.md
@@ -360,11 +362,13 @@ resume 同时校验以下两类约束：
 
 1. `/profile/context.md`
 2. `/profile/dashboardConfig`
-3. `/chapter/current.json`
-4. `/chapter/archive/{id}.json`
-5. `/coach/AGENTS.md`
-6. `/lifesigns.md`
-7. `/timeline-calendar.md`
+3. `/goal/current.json`
+4. `/goal/archive/{id}.json`
+5. `/chapter/current.json`
+6. `/chapter/archive/{id}.json`
+7. `/coach/AGENTS.md`
+8. `/lifesigns.md`
+9. `/timeline-calendar.md`
 
 以下内容不属于权威语义记忆：
 
@@ -401,7 +405,7 @@ resume 同时校验以下两类约束：
 
 约束如下：
 
-1. `/profile/...`、`/chapter/...`、`/coach/AGENTS.md`、`/lifesigns.md`、`/timeline-calendar.md` 属于 `authoritative_semantic`。
+1. `/profile/...`、`/goal/...`、`/chapter/...`、`/coach/AGENTS.md`、`/lifesigns.md`、`/timeline-calendar.md` 属于 `authoritative_semantic`。
 2. `/derived/...` 属于 `candidate_signal`。
 3. `/archive/...`、`/day_summary/...`、`/conversation_archive/...` 属于 `archive_source`。
 4. `/ledger/...` 属于 `runtime_only`。
@@ -517,3 +521,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 2026-04-13 | §8.3 新增 Reject Reason 语义；原 §8.3 长期存储边界顺延为 §8.4 |
 | 2026-04-14 | §7.4 新增系统触发器契约（daily_checkin / daily_review）；日摘要格式变更为 ≤60 字单句 + 无会话日回填 |
 | 2026-04-14 | 新增 `/conversation_archive/{date}.md` 按天会话归档；Coach 通过 grep→read_file 两步检索，禁止全量加载；语义分类补充 archive_source |
+| 2026-04-14 | §6.2 新增 `/goal/current.json` 与 `/goal/archive/{id}.json` 路径；§10.3 权威语义记忆路径新增 Goal 相关路径；§10.4 语义分类补充 `/goal/...` 属于 `authoritative_semantic` |
