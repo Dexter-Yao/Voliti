@@ -1,4 +1,4 @@
-# ABOUTME: 日终 Pipeline — 封存 thread、生成日摘要、回填缺失日、更新 briefing
+# ABOUTME: 日终 Pipeline — 封存 thread、生成日摘要、回填缺失日、归档会话、更新 briefing
 # ABOUTME: 使用 LangGraph SDK client 操作 threads/store，GPT-5.4 Nano 生成摘要
 
 from __future__ import annotations
@@ -12,7 +12,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from voliti.briefing import compute_and_write_briefing
 from voliti.config.models import ModelRegistry
-from voliti.store_contract import DAY_SUMMARY_PREFIX, make_file_value
+from voliti.store_contract import (
+    CONVERSATION_ARCHIVE_PREFIX,
+    DAY_SUMMARY_PREFIX,
+    make_file_value,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +147,43 @@ async def generate_day_summary(
     return summary
 
 
+async def archive_conversation(
+    client: Any,
+    *,
+    thread_id: str,
+    date_str: str,
+    namespace: tuple[str, ...],
+    now: datetime | None = None,
+) -> bool:
+    """将封存 thread 的完整会话文本写入按天独立的归档文件。
+
+    存储路径：/user/conversation_archive/{YYYY-MM-DD}.md
+    Coach 通过 grep 关键词定位日期，再 read_file 单日文件。
+    """
+    now = now or datetime.now(timezone.utc)
+
+    try:
+        state = await client.threads.get_state(thread_id)
+    except Exception:  # noqa: BLE001
+        logger.warning("Pipeline: failed to get state for archiving thread %s", thread_id)
+        return False
+
+    conversation_text = _extract_messages_text(state)
+    if not conversation_text:
+        return False
+
+    key = f"{CONVERSATION_ARCHIVE_PREFIX}{date_str}.md"
+    try:
+        await client.store.put_item(
+            namespace, key, value=make_file_value(conversation_text, now=now),
+        )
+        logger.info("Pipeline: archived conversation for %s", date_str)
+        return True
+    except Exception:  # noqa: BLE001
+        logger.warning("Pipeline: failed to archive conversation for %s", date_str)
+        return False
+
+
 async def find_unsealed_threads(
     client: Any,
     *,
@@ -262,8 +303,9 @@ async def run_day_end_pipeline(
 
     步骤（每步独立 fail-open）：
     1. 查找并封存过期 threads
-    2. 为每个封存的 thread 生成日摘要
-    3. 更新 briefing
+    2. 为每个封存的 thread 生成日摘要 + 追加完整会话到归档
+    3. 回填缺失日期的摘要
+    4. 更新 briefing
     """
     now = now or datetime.now(timezone.utc)
     if today is None:
@@ -295,10 +337,11 @@ async def run_day_end_pipeline(
         logger.warning("Pipeline: failed to search threads for user %s", user_id)
         all_threads = []
 
-    # Step 1+2: 封存 + 摘要
+    # Step 1+2: 封存 + 摘要 + 归档
     unsealed = await find_unsealed_threads(
         client, user_id=user_id, before_date=today, threads=all_threads,
     )
+    archived_dates: list[str] = []
     for thread in unsealed:
         tid = _thread_id(thread)
         date = _thread_meta(thread).get("date", "unknown")
@@ -311,8 +354,13 @@ async def run_day_end_pipeline(
             )
             if summary:
                 result["summaries"].append(date)
+            if await archive_conversation(
+                client, thread_id=tid, date_str=date, namespace=namespace, now=now,
+            ):
+                archived_dates.append(date)
         else:
             result["errors"].append(f"seal failed: {tid}")
+    result["archived"] = archived_dates
 
     # Step 2.5: 回填缺失日期的摘要
     try:
