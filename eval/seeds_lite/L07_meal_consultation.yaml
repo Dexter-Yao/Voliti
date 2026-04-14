@@ -48,9 +48,18 @@ pre_state:
     user_goal: "12 周 65kg → 60kg"
   chapter:
     id: "ch_001"
-    identity_statement: "一个用数据辅助但不被数字控制的人"
-    goal: "建立每日饮食记录习惯"
+    goal_id: "goal_001"
+    chapter_number: 1
+    title: "建立每日饮食记录习惯"
+    milestone: "连续 14 天完成三餐记录"
+    process_goals:
+      - key: "pg_001"
+        description: "每日记录三餐"
+        target: "连续 14 天达标"
+        metric_key: "calories"
     start_date: "2026-04-01T00:00:00Z"
+    planned_end_date: "2026-04-28T00:00:00Z"
+    status: "active"
 
 max_turns: 10
 

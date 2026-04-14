@@ -70,9 +70,18 @@ pre_state:
     user_goal: "10 周 63.1kg → 58kg"
   chapter:
     id: "ch_002"
-    identity_statement: "在社交场合能从容做出健康选择的人"
-    goal: "降低社交场景中的冲动进食"
+    goal_id: "goal_001"
+    chapter_number: 2
+    title: "降低社交场景中的冲动进食"
+    milestone: "连续 4 次社交场合主动执行 LifeSign 预案"
+    process_goals:
+      - key: "pg_001"
+        description: "聚餐前主动确认预案"
+        target: "连续 4 次社交场合执行"
+        metric_key: "consistency"
     start_date: "2026-03-20T00:00:00Z"
+    planned_end_date: "2026-04-17T00:00:00Z"
+    status: "active"
   coping_plans:
     - id: "ls_010"
       trigger:

@@ -69,9 +69,18 @@ pre_state:
     user_goal: "12 周 75kg → 70kg"
   chapter:
     id: "ch_002"
-    identity_statement: "在工作日能提前准备午餐的人"
-    goal: "建立工作日饮食节奏"
+    goal_id: "goal_001"
+    chapter_number: 2
+    title: "建立工作日饮食节奏"
+    milestone: "工作日午餐提前准备率达到 80% 以上"
+    process_goals:
+      - key: "pg_001"
+        description: "每周准备便当 4 次以上"
+        target: "连续 6 周达标"
+        metric_key: "consistency"
     start_date: "2026-02-25T00:00:00Z"
+    planned_end_date: "2026-04-07T00:00:00Z"
+    status: "active"
   coping_plans:
     - id: "ls_001"
       trigger:

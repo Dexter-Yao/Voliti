@@ -69,9 +69,18 @@ pre_state:
     user_goal: "8 周 72kg → 68kg"
   chapter:
     id: "ch_003"
-    identity_statement: "享受健康生活方式但不执着的人"
-    goal: "周末饮食节奏与工作日一致"
+    goal_id: "goal_001"
+    chapter_number: 3
+    title: "周末饮食节奏与工作日一致"
+    milestone: "连续 4 个周末的晚餐维持工作日水平"
+    process_goals:
+      - key: "pg_001"
+        description: "周末主动记录饮食"
+        target: "连续 4 周达标"
+        metric_key: "consistency"
     start_date: "2026-03-20T00:00:00Z"
+    planned_end_date: "2026-04-17T00:00:00Z"
+    status: "active"
   coping_plans:
     - id: "ls_003"
       trigger:

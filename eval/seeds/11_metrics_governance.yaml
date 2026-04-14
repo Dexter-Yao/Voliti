@@ -69,9 +69,22 @@ pre_state:
     user_goal: "8 周 73.6kg → 70kg"
   chapter:
     id: "ch_002"
-    identity_statement: "用数据驱动自我管理的分析师"
-    goal: "建立稳定的工作日饮食记录习惯"
+    goal_id: "goal_001"
+    chapter_number: 2
+    title: "建立稳定的工作日饮食记录习惯"
+    milestone: "连续 14 个工作日完成饮食记录"
+    process_goals:
+      - key: "pg_001"
+        description: "每日记录三餐热量"
+        target: "连续 2 周每日达标"
+        metric_key: "calories"
+      - key: "pg_002"
+        description: "维持每周记录一致性"
+        target: "7 天达标率 ≥ 80%"
+        metric_key: "consistency"
     start_date: "2026-03-25T00:00:00Z"
+    planned_end_date: "2026-04-22T00:00:00Z"
+    status: "active"
   coach_memory: |
     ## 晓晴 — Key Observations
     - Data-oriented user, appreciates metrics and trends

@@ -69,9 +69,18 @@ pre_state:
     user_goal: "12 周 74kg → 68kg"
   chapter:
     id: "ch_002"
-    identity_statement: "用系统思维管理身心的产品人"
-    goal: "建立工作日午餐自带习惯"
+    goal_id: "goal_001"
+    chapter_number: 2
+    title: "建立工作日午餐自带习惯"
+    milestone: "连续 10 个工作日自带午餐"
+    process_goals:
+      - key: "pg_001"
+        description: "每周准备 3 次以上便当"
+        target: "连续 2 周达标"
+        metric_key: "consistency"
     start_date: "2026-03-15T00:00:00Z"
+    planned_end_date: "2026-04-12T00:00:00Z"
+    status: "active"
   coping_plans:
     - id: "ls_005"
       trigger:

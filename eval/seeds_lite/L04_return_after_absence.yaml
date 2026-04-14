@@ -27,9 +27,18 @@ pre_state:
     high_risk_time: travel
   chapter:
     id: "ch_001"
-    identity_statement: "一个出差也能保持清醒选择的人"
-    goal: "建立差旅饮食基础习惯"
+    goal_id: "goal_001"
+    chapter_number: 1
+    title: "建立差旅饮食基础习惯"
+    milestone: "连续 3 次出差期间主动选择合理餐食"
+    process_goals:
+      - key: "pg_001"
+        description: "出差期间每餐有意识选择"
+        target: "连续 3 次出差执行"
+        metric_key: "consistency"
     start_date: "2026-03-01T00:00:00Z"
+    planned_end_date: "2026-03-29T00:00:00Z"
+    status: "active"
   coping_plans:
     - id: "ls_002"
       trigger:
