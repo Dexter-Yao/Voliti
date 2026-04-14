@@ -1,5 +1,5 @@
 // ABOUTME: 主页面入口 — Onboarding 欢迎 → Coach 对话
-// ABOUTME: OnboardingWelcome 采集名字后创建 onboarding thread，名字作为首条消息自动发送
+// ABOUTME: OnboardingWelcome 采集名字后在全屏内继续对话，完成后展示确认再切换
 
 "use client";
 
@@ -9,12 +9,15 @@ import { ThreadProvider } from "@/providers/Thread";
 import { ArtifactProvider } from "@/components/thread/artifact";
 import { A2UIInterruptHandler } from "@/components/a2ui/A2UIInterruptHandler";
 import { OnboardingWelcome } from "@/components/OnboardingWelcome";
+import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { getUserId } from "@/lib/user";
 import { fetchOnboardingComplete } from "@/lib/store-sync";
 import { SESSION_TYPE_COACHING } from "@/lib/thread-utils";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryState } from "nuqs";
+
+const ONBOARDING_KEY = "voliti_onboarding_complete";
 
 function resolveUrl(apiUrl: string): string {
   return apiUrl.startsWith("/") && typeof window !== "undefined"
@@ -22,10 +25,33 @@ function resolveUrl(apiUrl: string): string {
     : apiUrl;
 }
 
+function OnboardingComplete({ onConfirm }: { onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F4EDE3]">
+      <div className="mx-auto max-w-md px-8 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight text-[#1A1816]">
+          准备好了
+        </h1>
+        <p className="mt-4 font-serif-coach text-base leading-relaxed text-[#1A1816]/70">
+          我已经记住了你告诉我的一切。从现在开始，我会陪你走这段路。
+        </p>
+        <Button
+          onClick={onConfirm}
+          className="mt-8 w-full bg-[#1A1816] px-8 py-3 text-[#F4F0E8] hover:bg-[#1A1816]/90"
+        >
+          开始旅程
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function MainApp() {
   const [, setThreadId] = useQueryState("threadId");
   const [pendingName, setPendingName] = useState<string | null>(null);
   const [onboardingActive, setOnboardingActive] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
+  const pendingCoachingThreadRef = useRef<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleOnboardingStart = async (name: string) => {
@@ -46,7 +72,7 @@ function MainApp() {
     }
   };
 
-  // Onboarding 完成检测：轮询 Store，检测到 onboarding_complete 后切换 coaching thread
+  // Onboarding 完成检测：轮询 Store，检测到 onboarding_complete 后展示确认
   useEffect(() => {
     if (!onboardingActive) return;
     let cancelled = false;
@@ -62,7 +88,8 @@ function MainApp() {
         resolveUrl(apiUrl), userId, assistantId, SESSION_TYPE_COACHING,
       );
       if (coachingThreadId && !cancelled) {
-        setThreadId(coachingThreadId);
+        pendingCoachingThreadRef.current = coachingThreadId;
+        setOnboardingDone(true);
         setOnboardingActive(false);
       }
     };
@@ -75,12 +102,32 @@ function MainApp() {
     };
   }, [onboardingActive, setThreadId]);
 
+  const handleConfirmJourney = useCallback(() => {
+    localStorage.setItem(ONBOARDING_KEY, "true");
+    if (pendingCoachingThreadRef.current) {
+      setThreadId(pendingCoachingThreadRef.current);
+    }
+    setOnboardingDone(false);
+    window.location.reload();
+  }, [setThreadId]);
+
+  if (onboardingDone) {
+    return <OnboardingComplete onConfirm={handleConfirmJourney} />;
+  }
+
   return (
-    <OnboardingWelcome onStart={handleOnboardingStart}>
+    <OnboardingWelcome
+      onStart={handleOnboardingStart}
+      conversationActive={onboardingActive}
+    >
       <ThreadProvider>
         <StreamProvider>
           <ArtifactProvider>
-            <Thread initialMessage={pendingName} onInitialMessageSent={() => setPendingName(null)} />
+            <Thread
+              initialMessage={pendingName}
+              onInitialMessageSent={() => setPendingName(null)}
+              onboardingMode={onboardingActive}
+            />
             <A2UIInterruptHandler />
           </ArtifactProvider>
         </StreamProvider>

@@ -99,9 +99,11 @@ function ScrollToBottom(props: { className?: string }) {
 export function Thread({
   initialMessage,
   onInitialMessageSent,
+  onboardingMode,
 }: {
   initialMessage?: string | null;
   onInitialMessageSent?: () => void;
+  onboardingMode?: boolean;
 } = {}) {
   const [artifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
@@ -114,11 +116,12 @@ export function Thread({
     return thread ? isThreadSealed(thread) : false;
   }, [threadId, threads]);
   const sessionType = useMemo(() => {
+    if (onboardingMode) return "onboarding" as SessionType;
     if (!threadId) return SESSION_TYPE_COACHING;
     const thread = threads.find((t) => t.thread_id === threadId);
     const meta = thread?.metadata as Record<string, unknown> | undefined;
     return (meta?.session_type as SessionType) ?? SESSION_TYPE_COACHING;
-  }, [threadId, threads]);
+  }, [onboardingMode, threadId, threads]);
   const submitConfig = useMemo(() => ({
     configurable: {
       user_id: getUserId() ?? "",
@@ -543,6 +546,18 @@ export function Thread({
       )}
     </div>
   );
+
+  // Onboarding: immersive single-column chat, no sidebar/mirror/settings
+  if (onboardingMode) {
+    return (
+      <div className="flex h-full w-full flex-col overflow-hidden">
+        <div className="flex items-center justify-center border-b border-[#1A1816]/5 p-3">
+          <span className="text-xl font-semibold tracking-tight">Voliti</span>
+        </div>
+        {chatContent}
+      </div>
+    );
+  }
 
   // Mobile layout: single column, sheet for history
   if (isMobile) {

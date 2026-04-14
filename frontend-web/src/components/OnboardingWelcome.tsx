@@ -1,5 +1,5 @@
 // ABOUTME: Onboarding 欢迎层 — Coach 自我介绍 + 名字采集
-// ABOUTME: 名字提交后以 session_type=onboarding 创建 thread，完成后由 Store 驱动退出
+// ABOUTME: 名字提交后在全屏沉浸式界面内继续对话，后端标记完成后由 page.tsx 控制退出
 
 "use client";
 
@@ -26,7 +26,6 @@ export function useOnboardingState() {
     const done = localStorage.getItem(ONBOARDING_KEY);
     if (done) return;
 
-    // localStorage 未标记完成时，查询后端确认
     fetchOnboardingComplete().then((backendDone) => {
       if (backendDone) {
         localStorage.setItem(ONBOARDING_KEY, "true");
@@ -49,23 +48,35 @@ export function useOnboardingState() {
 export function OnboardingWelcome({
   children,
   onStart,
+  conversationActive,
 }: {
   children: React.ReactNode;
   onStart?: (name: string) => void;
+  conversationActive?: boolean;
 }) {
-  const { needsOnboarding, mounted, markComplete } = useOnboardingState();
+  const { needsOnboarding, mounted } = useOnboardingState();
   const [name, setName] = useState("");
+  const [started, setStarted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
     onStart?.(trimmed);
-    markComplete();
+    setStarted(true);
   };
 
   if (!mounted) return <>{children}</>;
   if (!needsOnboarding) return <>{children}</>;
+
+  // 名字已提交或对话进行中：全屏沉浸式容器包裹 children
+  if (started || conversationActive) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-[#F4EDE3]">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F4EDE3]">
@@ -97,7 +108,7 @@ export function OnboardingWelcome({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="输入你的名字"
-            className="mt-2 w-full rounded-lg border border-[#1A1816]/10 bg-white px-4 py-3 text-sm text-[#1A1816] placeholder:text-[#1A1816]/30 focus:border-[#1A1816]/30 focus:outline-none"
+            className="mt-2 w-full rounded-[4px] border border-[#1A1816]/10 bg-white px-4 py-3 text-sm text-[#1A1816] placeholder:text-[#1A1816]/30 focus:border-[#1A1816]/30 focus:outline-none"
           />
           <Button
             type="submit"
