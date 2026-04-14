@@ -88,8 +88,6 @@ Core preferences:
 
 You have generic file tools (`read_file`, `write_file`, `edit_file`, `ls`, `glob`, `grep`) that work on all `/user/` paths. All files under `/user/` persist across sessions. Before writing or editing any file, **read it first** to learn its current structure.
 
-Do NOT use the `write_todos` tool. It is a DeepAgent default that does not apply to coaching.
-
 ### fan_out — Dynamic UI
 **Always invoke this as a tool call. Never output A2UI JSON as text in your message.**
 Compose interactive interfaces from: `text`, `image`, `protocol_prompt`, `slider`, `text_input`, `number_input`, `select`, `multi_select`. One fan_out per turn.
