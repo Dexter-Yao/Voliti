@@ -15,7 +15,7 @@ from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
 from voliti.middleware.briefing import BriefingMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
-from voliti.middleware.strip_todo import StripTodoMiddleware
+from voliti.middleware.strip_todo import StripDeepAgentDefaultsMiddleware
 from voliti.session_type import SessionProfile, get_session_profile, list_session_profiles
 from voliti.store_contract import InvalidUserIDError, resolve_user_namespace
 from voliti.tools.experiential import compose_witness_card
@@ -44,7 +44,7 @@ def _build_coach_middleware(
 ) -> list[Any]:
     """组装 Coach middleware 栈。"""
     return [
-        StripTodoMiddleware(),
+        StripDeepAgentDefaultsMiddleware(),
         SessionTypeMiddleware(),
         BriefingMiddleware(backend=backend_factory),
     ]
