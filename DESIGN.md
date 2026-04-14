@@ -155,22 +155,11 @@
 
 **用户消息背景宽度适配内容长度，不使用固定宽度。**
 
-### ThinkingCard
-
-- 左边框：2px solid obsidian-10
-- 文字：Sans 13px · obsidian-40
-- 默认折叠，点击展开
-
 ### IF/THEN 标记
 
 - 字体：Mono 13px
 - 颜色：copper
 - 用于 LifeSign 预案展示
-
-### 建议回复
-
-- Pill 样式：Sans 13px · obsidian-10 边框 · Capsule 圆角
-- 水平滚动
 
 ### 时间戳规则
 
@@ -399,8 +388,6 @@ Onboarding 使用独立的 `onboardingThreadID`，与日常 coaching 的 `thread
 | StarpathTypography | 全局 | .starpathSerif / .starpathSans / .starpathMono |
 | TimestampSeparator | Coach | 时间戳组件，按间隔规则显示 |
 | ChatMessage | Coach | Coach/User 双样式 |
-| ThinkingCard | Coach | 折叠式思路卡片 |
-| SuggestedReplies | Coach | 水平 Pill 滚动 |
 | FilterBar | Mirror | 动态标签 + 计数 |
 | NorthStarMetric | Mirror | 36px 数值 + 趋势图 |
 | SupportMetric | Mirror | 3 列等宽 |

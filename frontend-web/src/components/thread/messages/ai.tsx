@@ -12,13 +12,8 @@ import { Fragment } from "react/jsx-runtime";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { GenericInterruptView } from "./generic-interrupt";
 import { useArtifact } from "../artifact";
-import {
-  stripFencedBlocks,
-  extractCoachThinking,
-  extractSuggestedReplies,
-} from "@/lib/stream-sanitize";
-import { ThinkingCard } from "../ThinkingCard";
-import { useEffect, useMemo } from "react";
+import { stripInternalOutput } from "@/lib/stream-sanitize";
+import { useMemo } from "react";
 
 function CustomComponent({
   message,
@@ -98,12 +93,10 @@ export function AssistantMessage({
   message,
   isLoading,
   handleRegenerate,
-  onSuggestedReplies,
 }: {
   message: Message | undefined;
   isLoading: boolean;
   handleRegenerate: (parentCheckpoint: Checkpoint | null | undefined) => void;
-  onSuggestedReplies?: (replies: string[]) => void;
 }) {
   const content = message?.content ?? [];
   const rawContentString = getContentString(content);
@@ -112,24 +105,10 @@ export function AssistantMessage({
     parseAsBoolean.withDefault(false),
   );
 
-  // 流式内容清洗：移除 fenced blocks，提取 thinking 和 suggested replies
-  const { contentString, thinking, suggestedReplies } = useMemo(() => {
-    const cleaned = stripFencedBlocks(rawContentString);
-    const [, thinkingData] = extractCoachThinking(rawContentString);
-    const [, replies] = extractSuggestedReplies(rawContentString);
-    return {
-      contentString: cleaned,
-      thinking: thinkingData,
-      suggestedReplies: replies,
-    };
-  }, [rawContentString]);
-
-  // 最后一条消息的 suggested replies 传给 Thread 渲染为药丸
-  useEffect(() => {
-    if (onSuggestedReplies && suggestedReplies.length > 0) {
-      onSuggestedReplies(suggestedReplies);
-    }
-  }, [suggestedReplies, onSuggestedReplies]);
+  const contentString = useMemo(
+    () => stripInternalOutput(rawContentString),
+    [rawContentString],
+  );
 
   const thread = useStreamContext();
   const lastMsg = thread.messages[thread.messages.length - 1];
@@ -176,8 +155,6 @@ export function AssistantMessage({
           </>
         ) : (
           <>
-            {thinking && <ThinkingCard thinking={thinking} />}
-
             {contentString.length > 0 && (
               <div className="py-1">
                 <MarkdownText>{contentString}</MarkdownText>

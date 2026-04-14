@@ -130,7 +130,6 @@ export function Thread({
   }), [sessionType]);
   const [input, setInput] = useState("");
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
-  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
   const [mobileMirrorOpen, setMobileMirrorOpen] = useState(false);
@@ -391,11 +390,6 @@ export function Thread({
                     message={message}
                     isLoading={isLoading}
                     handleRegenerate={handleRegenerate}
-                    onSuggestedReplies={
-                      index === visible.length - 1
-                        ? setSuggestedReplies
-                        : undefined
-                    }
                   />
                 ),
               );
@@ -428,23 +422,6 @@ export function Thread({
             <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-full left-1/2 mb-4 -translate-x-1/2" />
 
             {/* Suggested reply pills */}
-            {suggestedReplies.length > 0 && !isLoading && (
-              <div className="mx-auto flex w-full max-w-3xl flex-wrap gap-2 px-1">
-                {suggestedReplies.map((reply) => (
-                  <button
-                    key={reply}
-                    onClick={() => {
-                      setInput(reply);
-                      setSuggestedReplies([]);
-                    }}
-                    className="rounded-pill border border-[#1A1816]/10 bg-white px-4 py-2 text-sm text-[#1A1816]/70 transition-colors hover:border-[#B87333] hover:text-[#1A1816]"
-                  >
-                    {reply}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {/* Input area */}
             <div className="relative z-10 mx-auto mb-6 w-full max-w-3xl">
               <form
