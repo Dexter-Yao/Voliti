@@ -5,7 +5,7 @@
 > 机器可读 tokens 见 [`docs/design-system/design-tokens.json`](docs/design-system/design-tokens.json)。
 
 ## 产品上下文
-- **产品定义：** AI 减脂领导力教练，训练用户在真实生活场景中的决策能力
+- **产品定义：** AI 减脂行为教练，帮助用户在真实生活场景中维持行为一致性
 - **目标用户：** 理性、上进的知识工作者/管理者。信息储备充足，但压力/疲劳/社交持续打断节奏
 - **支持语言：** 中文、英文
 - **产品类型：** iOS 原生 App（SwiftUI）+ Web 端 MVP（Next.js），三栏可折叠布局
