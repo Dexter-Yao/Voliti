@@ -108,7 +108,11 @@ function MainApp() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
     const userId = getUserId();
-    if (!apiUrl || !assistantId || !userId) return;
+    if (!apiUrl || !assistantId || !userId) {
+      console.error("[onboarding] guard failed:", { apiUrl: !!apiUrl, assistantId: !!assistantId, userId });
+      toast.error(`无法启动引导：${!apiUrl ? "缺少 API_URL" : !assistantId ? "缺少 ASSISTANT_ID" : "未获取到用户身份，请刷新页面"}`);
+      return;
+    }
 
     setStartingOnboarding(true);
 
