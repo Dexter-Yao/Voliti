@@ -4,7 +4,7 @@
 "use client";
 
 import { Thread } from "@/components/thread";
-import { StreamProvider, startOnboardingThread, ensureTodayThread } from "@/providers/Stream";
+import { StreamProvider } from "@/providers/Stream";
 import { ThreadProvider } from "@/providers/Thread";
 import { ArtifactProvider } from "@/components/thread/artifact";
 import { A2UIInterruptHandler } from "@/components/a2ui/A2UIInterruptHandler";
@@ -13,9 +13,19 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { getUserId } from "@/lib/user";
 import { fetchOnboardingComplete } from "@/lib/store-sync";
-import { SESSION_TYPE_COACHING } from "@/lib/thread-utils";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  type OnboardingEntryIntent,
+  shouldAutoStartReentrySession,
+  shouldAutoEnsureCoachingThread,
+  resolveOnboardingSurface,
+  shouldMountPrimaryWorkspace,
+  shouldUseOnboardingThreadShell,
+} from "@/lib/onboarding-surface";
+import { ensureTodayThread, startOnboardingThread } from "@/lib/thread-bootstrap";
+import { SESSION_TYPE_COACHING, SESSION_TYPE_ONBOARDING } from "@/lib/thread-utils";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQueryState } from "nuqs";
+import { toast } from "sonner";
 
 const ONBOARDING_KEY = "voliti_onboarding_complete";
 
@@ -53,13 +63,46 @@ function buildCheckinTrigger(): string {
 }
 
 function MainApp() {
-  const [, setThreadId] = useQueryState("threadId");
+  const [threadId, setThreadId] = useQueryState("threadId");
+  const [onboardingEntry, setOnboardingEntry] = useQueryState("onboarding");
   const [pendingName, setPendingName] = useState<string | null>(null);
   const [checkinTrigger, setCheckinTrigger] = useState<string | null>(null);
+  const [onboardingResolved, setOnboardingResolved] = useState(false);
+  const [requiresOnboarding, setRequiresOnboarding] = useState(false);
   const [onboardingActive, setOnboardingActive] = useState(false);
+  const [startingOnboarding, setStartingOnboarding] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(false);
   const pendingCoachingThreadRef = useRef<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onboardingEntryIntent: OnboardingEntryIntent = onboardingEntry === "reentry" ? "reentry" : "none";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOnboardingState = async () => {
+      try {
+        const backendDone = await fetchOnboardingComplete();
+        if (cancelled) return;
+        if (backendDone) {
+          localStorage.setItem(ONBOARDING_KEY, "true");
+        }
+        setRequiresOnboarding(!backendDone);
+      } catch {
+        if (cancelled) return;
+        setRequiresOnboarding(true);
+      } finally {
+        if (!cancelled) {
+          setOnboardingResolved(true);
+        }
+      }
+    };
+
+    loadOnboardingState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleOnboardingStart = async (name: string) => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -67,21 +110,30 @@ function MainApp() {
     const userId = getUserId();
     if (!apiUrl || !assistantId || !userId) return;
 
-    const result = await startOnboardingThread(
-      resolveUrl(apiUrl),
-      userId,
-      assistantId,
-    );
-    if (result) {
+    setStartingOnboarding(true);
+
+    try {
+      const result = await startOnboardingThread(
+        resolveUrl(apiUrl),
+        userId,
+        assistantId,
+      );
+      if (!result) {
+        toast.error("暂时无法进入引导对话，请重试");
+        return;
+      }
+
       setPendingName(name);
       setThreadId(result.threadId);
       setOnboardingActive(true);
+    } finally {
+      setStartingOnboarding(false);
     }
   };
 
   // Onboarding 完成检测：轮询 Store，检测到 onboarding_complete 后展示确认
   useEffect(() => {
-    if (!onboardingActive) return;
+    if (!onboardingActive || !requiresOnboarding) return;
     let cancelled = false;
 
     const check = async () => {
@@ -97,6 +149,7 @@ function MainApp() {
       if (result && !cancelled) {
         pendingCoachingThreadRef.current = result.threadId;
         if (result.isNew) setCheckinTrigger(buildCheckinTrigger());
+        setRequiresOnboarding(false);
         setOnboardingDone(true);
         setOnboardingActive(false);
       }
@@ -108,7 +161,51 @@ function MainApp() {
       cancelled = true;
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [onboardingActive, setThreadId]);
+  }, [onboardingActive, requiresOnboarding, setThreadId]);
+
+  const onboardingInput = useMemo(() => ({
+    onboardingResolved,
+    requiresOnboarding,
+    onboardingConversationActive: onboardingActive,
+    onboardingEntryIntent,
+    onboardingThreadReady: Boolean(threadId),
+  }), [
+    onboardingResolved,
+    requiresOnboarding,
+    onboardingActive,
+    onboardingEntryIntent,
+    threadId,
+  ]);
+
+  useEffect(() => {
+    if (!shouldAutoStartReentrySession(onboardingInput) || startingOnboarding) return;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
+    const userId = getUserId();
+    if (!apiUrl || !assistantId || !userId) return;
+
+    let cancelled = false;
+    setStartingOnboarding(true);
+
+    startOnboardingThread(resolveUrl(apiUrl), userId, assistantId)
+      .then((result) => {
+        if (!result || cancelled) {
+          toast.error("暂时无法进入补充引导，请稍后重试");
+          return;
+        }
+        setThreadId(result.threadId);
+        setOnboardingActive(true);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setStartingOnboarding(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onboardingInput, setThreadId, startingOnboarding]);
 
   const handleConfirmJourney = useCallback(() => {
     localStorage.setItem(ONBOARDING_KEY, "true");
@@ -131,27 +228,75 @@ function MainApp() {
     setCheckinTrigger(null);
   }, []);
 
+  const onboardingSurface = resolveOnboardingSurface(onboardingInput);
+  const autoEnsureCoachingThread = shouldAutoEnsureCoachingThread({
+    surface: onboardingSurface,
+    onboardingEntryIntent,
+  });
+  const mountPrimaryWorkspace = shouldMountPrimaryWorkspace(onboardingSurface);
+  const onboardingThreadShell = shouldUseOnboardingThreadShell(onboardingSurface);
+
+  const handleExitReentry = useCallback(async () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
+    const userId = getUserId();
+    if (!apiUrl || !assistantId || !userId) return;
+
+    const result = await ensureTodayThread(
+      resolveUrl(apiUrl), userId, assistantId, SESSION_TYPE_COACHING,
+    );
+    if (!result) {
+      toast.error("暂时无法返回教练主页，请重试");
+      return;
+    }
+    if (result.isNew) {
+      setCheckinTrigger(buildCheckinTrigger());
+    }
+    setOnboardingActive(false);
+    setOnboardingEntry(null);
+    setThreadId(result.threadId);
+  }, [setOnboardingEntry, setThreadId]);
+
   if (onboardingDone) {
     return <OnboardingComplete onConfirm={handleConfirmJourney} />;
   }
 
   return (
     <OnboardingWelcome
+      surface={onboardingSurface}
       onStart={handleOnboardingStart}
-      conversationActive={onboardingActive}
+      isStarting={startingOnboarding}
+      toolbar={onboardingEntryIntent === "reentry" ? (
+        <div className="flex justify-end px-4 pt-4">
+          <Button
+            variant="ghost"
+            className="text-[#1A1816]/60 hover:text-[#1A1816]"
+            onClick={handleExitReentry}
+          >
+            返回主页
+          </Button>
+        </div>
+      ) : undefined}
     >
-      <ThreadProvider>
-        <StreamProvider onNewThread={handleNewThread}>
-          <ArtifactProvider>
-            <Thread
-              initialMessage={initialMessage}
-              onInitialMessageSent={handleInitialMessageSent}
-              onboardingMode={onboardingActive}
-            />
-            <A2UIInterruptHandler />
-          </ArtifactProvider>
-        </StreamProvider>
-      </ThreadProvider>
+      {mountPrimaryWorkspace ? (
+        <ThreadProvider>
+          <StreamProvider
+            autoEnsureThread={autoEnsureCoachingThread}
+            onNewThread={handleNewThread}
+          >
+            <ArtifactProvider>
+              <Thread
+                initialMessage={initialMessage}
+                onInitialMessageSent={handleInitialMessageSent}
+                onboardingMode={onboardingThreadShell}
+              />
+              <A2UIInterruptHandler
+                sessionType={onboardingThreadShell ? SESSION_TYPE_ONBOARDING : SESSION_TYPE_COACHING}
+              />
+            </ArtifactProvider>
+          </StreamProvider>
+        </ThreadProvider>
+      ) : null}
     </OnboardingWelcome>
   );
 }

@@ -1,13 +1,11 @@
-// ABOUTME: Onboarding 欢迎层 — Coach 自我介绍 + 名字采集
-// ABOUTME: 名字提交后在全屏沉浸式界面内继续对话，后端标记完成后由 page.tsx 控制退出
+// ABOUTME: Onboarding 桌面入口层
+// ABOUTME: 仅根据外部 surface 契约决定欢迎页、等待态与全屏对话容器
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "./ui/button";
-import { fetchOnboardingComplete } from "@/lib/store-sync";
-
-const ONBOARDING_KEY = "voliti_onboarding_complete";
+import { type OnboardingSurface } from "@/lib/onboarding-surface";
 
 const GREETING_ZH = `你好。
 
@@ -17,63 +15,50 @@ const GREETING_ZH = `你好。
 
 我会记住你的习惯、你容易失控的场景、你在意的那个身份。然后在关键时候提醒你——你想成为的那个人会怎么做。`;
 
-export function useOnboardingState() {
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const done = localStorage.getItem(ONBOARDING_KEY);
-    if (done) return;
-
-    fetchOnboardingComplete().then((backendDone) => {
-      if (backendDone) {
-        localStorage.setItem(ONBOARDING_KEY, "true");
-      } else {
-        setNeedsOnboarding(true);
-      }
-    }).catch(() => {
-      setNeedsOnboarding(true);
-    });
-  }, []);
-
-  const markComplete = useCallback(() => {
-    localStorage.setItem(ONBOARDING_KEY, "true");
-    setNeedsOnboarding(false);
-  }, []);
-
-  return { needsOnboarding, mounted, markComplete };
-}
-
 export function OnboardingWelcome({
   children,
+  surface,
   onStart,
-  conversationActive,
+  isStarting = false,
+  toolbar,
 }: {
   children: React.ReactNode;
+  surface: OnboardingSurface;
   onStart?: (name: string) => void;
-  conversationActive?: boolean;
+  isStarting?: boolean;
+  toolbar?: React.ReactNode;
 }) {
-  const { needsOnboarding, mounted } = useOnboardingState();
   const [name, setName] = useState("");
-  const [started, setStarted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    onStart?.(trimmed);
-    setStarted(true);
+    await onStart?.(trimmed);
   };
 
-  if (!mounted) return <>{children}</>;
-  if (!needsOnboarding) return <>{children}</>;
+  if (surface === "coaching") return <>{children}</>;
 
-  // 名字已提交或对话进行中：全屏沉浸式容器包裹 children
-  if (started || conversationActive) {
+  if (surface === "conversation") {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-[#F4EDE3]">
+        {toolbar}
         {children}
+      </div>
+    );
+  }
+
+  if (surface === "checking") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F4EDE3]">
+        <div className="mx-auto max-w-md px-8 text-center">
+          <h1 className="text-3xl font-semibold tracking-tight text-[#1A1816]">
+            Voliti
+          </h1>
+          <p className="mt-4 font-serif-coach text-base leading-relaxed text-[#1A1816]/70">
+            正在准备你的教练空间。
+          </p>
+        </div>
       </div>
     );
   }
@@ -106,16 +91,17 @@ export function OnboardingWelcome({
             type="text"
             autoFocus
             value={name}
+            disabled={isStarting}
             onChange={(e) => setName(e.target.value)}
             placeholder="输入你的名字"
             className="mt-2 w-full rounded-[4px] border border-[#1A1816]/10 bg-white px-4 py-3 text-sm text-[#1A1816] placeholder:text-[#1A1816]/30 focus:border-[#1A1816]/30 focus:outline-none"
           />
           <Button
             type="submit"
-            disabled={!name.trim()}
+            disabled={!name.trim() || isStarting}
             className="mt-4 w-full bg-[#1A1816] px-8 py-3 text-[#F4F0E8] hover:bg-[#1A1816]/90 disabled:opacity-40"
           >
-            开始对话
+            {isStarting ? "正在进入对话..." : "开始对话"}
           </Button>
         </form>
       </div>

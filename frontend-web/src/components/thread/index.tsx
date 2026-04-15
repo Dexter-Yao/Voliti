@@ -54,6 +54,7 @@ import { SettingsDrawer } from "../settings/SettingsDrawer";
 import { isThreadSealed, SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
 import { useThreads } from "@/providers/Thread";
 import { getUserId } from "@/lib/user";
+import { buildSubmitConfig } from "@/lib/stream-config";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -122,12 +123,10 @@ export function Thread({
     const meta = thread?.metadata as Record<string, unknown> | undefined;
     return (meta?.session_type as SessionType) ?? SESSION_TYPE_COACHING;
   }, [onboardingMode, threadId, threads]);
-  const submitConfig = useMemo(() => ({
-    configurable: {
-      user_id: getUserId() ?? "",
-      session_type: sessionType,
-    },
-  }), [sessionType]);
+  const submitConfig = useMemo(
+    () => buildSubmitConfig(getUserId(), sessionType),
+    [sessionType],
+  );
   const [input, setInput] = useState("");
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const isMobile = useMediaQuery("(max-width: 767px)");

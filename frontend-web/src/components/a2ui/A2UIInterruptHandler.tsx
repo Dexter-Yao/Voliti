@@ -9,9 +9,14 @@ import { isA2UIPayload, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
 import { A2UIDrawer } from "./A2UIDrawer";
 import { toast } from "sonner";
 import { getUserId } from "@/lib/user";
-import { SESSION_TYPE_COACHING } from "@/lib/thread-utils";
+import { SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
+import { buildSubmitConfig } from "@/lib/stream-config";
 
-export function A2UIInterruptHandler() {
+export function A2UIInterruptHandler({
+  sessionType = SESSION_TYPE_COACHING,
+}: {
+  sessionType?: SessionType;
+}) {
   const stream = useStreamContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pendingResumeRef = useRef(false);
@@ -37,9 +42,10 @@ export function A2UIInterruptHandler() {
     return (interrupt as { id?: string })?.id ?? null;
   }, [stream.interrupt]);
 
-  const submitConfig = useMemo(() => ({
-    configurable: { user_id: getUserId() ?? "", session_type: SESSION_TYPE_COACHING },
-  }), []);
+  const submitConfig = useMemo(
+    () => buildSubmitConfig(getUserId(), sessionType),
+    [sessionType],
+  );
 
   useEffect(() => {
     if (!stream.error || !pendingResumeRef.current) return;

@@ -76,6 +76,55 @@ Purpose: Ensure all required data is written, trigger the departure ceremony, gu
 - Ask one question at a time. Never batch multiple questions.
 - Use suggested replies (2-3 buttons) at narrative transitions to guide direction.
 - Always invoke fan_out as a tool call. Never output A2UI JSON as text.
+- Never call fan_out with only `layout`. Every fan_out call must include a non-empty `components` array.
+- For every input component, include all required fields:
+  - `select`: `kind`, `key`, `label`, `options`
+  - `multi_select`: `kind`, `key`, `label`, `options`
+  - `text_input`: `kind`, `key`, `label`
+- Every option in `select` / `multi_select` must include both `label` and `value`.
+- Phase 1 depth choice should follow this shape exactly:
+```json
+{
+  "layout": "full",
+  "components": [
+    {"kind": "text", "text": "先选一个开始方式。"},
+    {
+      "kind": "select",
+      "key": "depth_choice",
+      "label": "你想怎么开始？",
+      "options": [
+        {"label": "完整对话（约15分钟）", "value": "full"},
+        {"label": "快速开始（约5分钟）", "value": "quick"}
+      ]
+    }
+  ]
+}
+```
+- Phase 3 danger scenario collection should follow this shape exactly:
+```json
+{
+  "layout": "full",
+  "components": [
+    {
+      "kind": "multi_select",
+      "key": "danger_scenarios",
+      "label": "哪些场景最容易让你失守？",
+      "options": [
+        {"label": "节假日", "value": "holiday"},
+        {"label": "聚餐社交", "value": "social_meal"},
+        {"label": "出差差旅", "value": "travel"},
+        {"label": "情绪低谷", "value": "low_mood"},
+        {"label": "疲劳睡眠不足", "value": "fatigue"}
+      ]
+    },
+    {
+      "kind": "text_input",
+      "key": "danger_scenarios_custom",
+      "label": "如果还有别的高风险场景，也可以补充"
+    }
+  ]
+}
+```
 - If the user's engagement drops (shorter replies, skipping), gracefully converge toward Phase N.
 
 **Inference authorization (quick path):**

@@ -1,4 +1,4 @@
-// ABOUTME: 设置抽屉，包含重置引导流程和退出登录操作
+// ABOUTME: 设置抽屉，包含 Onboarding 补采入口与退出登录操作
 // ABOUTME: 退出登录通过 server action 清除 httpOnly cookie
 
 "use client";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/app/login/actions";
+import { useQueryState } from "nuqs";
 
 interface SettingsDrawerProps {
   open: boolean;
@@ -19,9 +20,13 @@ interface SettingsDrawerProps {
 }
 
 export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
-  const handleResetOnboarding = () => {
-    localStorage.removeItem("voliti_onboarding_complete");
-    window.location.reload();
+  const [, setThreadId] = useQueryState("threadId");
+  const [, setOnboardingEntry] = useQueryState("onboarding");
+
+  const handleReenterOnboarding = async () => {
+    onOpenChange(false);
+    await setThreadId(null);
+    await setOnboardingEntry("reentry");
   };
 
   return (
@@ -41,9 +46,9 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps) {
             <Button
               variant="ghost"
               className="w-full justify-start text-sm text-[#1A1816]/60"
-              onClick={handleResetOnboarding}
+              onClick={handleReenterOnboarding}
             >
-              重置引导流程
+              继续了解我
             </Button>
             <form action={logoutAction}>
               <Button

@@ -77,3 +77,15 @@ class TestPromptRegistry:
 
         assert "day_summary" in result
         assert "read_file" in result
+
+    def test_onboarding_prompt_defines_fan_out_input_schema(self) -> None:
+        """onboarding prompt 应明确 fan_out 输入组件的必填字段。"""
+        prompts_dir = Path(__file__).resolve().parents[1] / "prompts"
+        PromptRegistry.load(prompts_dir)
+
+        result = PromptRegistry.get("onboarding")
+
+        assert '"kind": "select"' in result
+        assert '"key": "depth_choice"' in result
+        assert '"kind": "multi_select"' in result
+        assert '"key": "danger_scenarios"' in result

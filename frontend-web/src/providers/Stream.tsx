@@ -20,9 +20,8 @@ import {
 import { useQueryState } from "nuqs";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
-import { getUserId, getTodayDateString } from "@/lib/user";
-import { createClient } from "./client";
-import { SessionType, SESSION_TYPE_COACHING, SEGMENT_STATUS_ACTIVE } from "@/lib/thread-utils";
+import { getUserId } from "@/lib/user";
+import { ensureTodayThread } from "@/lib/thread-bootstrap";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -55,60 +54,6 @@ async function checkGraphStatus(apiUrl: string): Promise<boolean> {
   }
 }
 
-export type EnsureThreadResult = { threadId: string; isNew: boolean };
-
-/**
- * 查找或创建今天的 Thread。
- * 按 user_id + date metadata 搜索；不存在则新建。
- */
-export async function ensureTodayThread(
-  apiUrl: string,
-  userId: string,
-  assistantId: string,
-  sessionType: SessionType = SESSION_TYPE_COACHING,
-): Promise<EnsureThreadResult | null> {
-  const client = createClient(apiUrl, undefined, undefined);
-  const today = getTodayDateString();
-
-  try {
-    const existing = await client.threads.search({
-      metadata: { user_id: userId, date: today, session_type: sessionType },
-      limit: 1,
-    });
-
-    if (existing.length > 0) {
-      return { threadId: existing[0].thread_id, isNew: false };
-    }
-
-    const thread = await client.threads.create({
-      metadata: {
-        user_id: userId,
-        date: today,
-        session_type: sessionType,
-        graph_id: assistantId,
-        segment_status: SEGMENT_STATUS_ACTIVE,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      },
-    });
-
-    return { threadId: thread.thread_id, isNew: true };
-  } catch (e) {
-    console.error("Failed to ensure today thread:", e);
-    return null;
-  }
-}
-
-/**
- * 创建 onboarding thread。
- */
-export async function startOnboardingThread(
-  apiUrl: string,
-  userId: string,
-  assistantId: string,
-): Promise<EnsureThreadResult | null> {
-  return ensureTodayThread(apiUrl, userId, assistantId, "onboarding");
-}
-
 function resolveApiUrl(url: string): string {
   if (url.startsWith("/") && typeof window !== "undefined") {
     return `${window.location.origin}${url}`;
@@ -120,11 +65,13 @@ const StreamSession = ({
   children,
   apiUrl: rawApiUrl,
   assistantId,
+  autoEnsureThread = true,
   onNewThread,
 }: {
   children: ReactNode;
   apiUrl: string;
   assistantId: string;
+  autoEnsureThread?: boolean;
   onNewThread?: () => void;
 }) => {
   const apiUrl = resolveApiUrl(rawApiUrl);
@@ -134,6 +81,7 @@ const StreamSession = ({
   // 首次加载时，若无 threadId，尝试复用/创建今日 Thread
   const ensureInFlight = useRef(false);
   useEffect(() => {
+    if (!autoEnsureThread) return;
     if (threadId || ensureInFlight.current) return;
     const userId = getUserId();
     if (!userId) return;
@@ -149,7 +97,7 @@ const StreamSession = ({
       .finally(() => {
         ensureInFlight.current = false;
       });
-  }, [threadId, apiUrl, assistantId, setThreadId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [threadId, apiUrl, assistantId, autoEnsureThread, setThreadId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const streamValue = useTypedStream({
     apiUrl,
@@ -196,8 +144,9 @@ const StreamSession = ({
 
 export const StreamProvider: React.FC<{
   children: ReactNode;
+  autoEnsureThread?: boolean;
   onNewThread?: () => void;
-}> = ({ children, onNewThread }) => {
+}> = ({ children, autoEnsureThread = true, onNewThread }) => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
 
@@ -212,7 +161,12 @@ export const StreamProvider: React.FC<{
   }
 
   return (
-    <StreamSession apiUrl={apiUrl} assistantId={assistantId} onNewThread={onNewThread}>
+    <StreamSession
+      apiUrl={apiUrl}
+      assistantId={assistantId}
+      autoEnsureThread={autoEnsureThread}
+      onNewThread={onNewThread}
+    >
       {children}
     </StreamSession>
   );
