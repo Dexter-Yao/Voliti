@@ -68,7 +68,7 @@ Voliti/
 - 添加依赖：`cd frontend-web && pnpm add <package>`
 - 设计系统：Starpath v2（obsidian/parchment/copper + LXGW WenKai/DM Sans/JetBrains Mono）
 - 三栏可拖拽布局：react-resizable-panels v4（History | Chat | Mirror）
-- 密码认证：VOLITI_USER_MAP 环境变量映射 password:user_id
+- 当前 Web 临时访问门禁：`VOLITI_USER_MAP` 环境变量映射 `password:user_id`
 - QA 测试密码：`voliti2026`（user_id: dexter，配置于 `.env.local`）
 - A2UI 组件库：8 种组件类型 + 拒绝理由 + 重置 + Cmd+Enter 快捷键，精确镜像 `backend/src/voliti/a2ui.py`
 
@@ -160,5 +160,6 @@ Key routing rules:
 | 2026-04-13 | A2UI 增强（reject reason + 重置 + Cmd+Enter）；删除 agent-inbox 脚手架（~2000 行）和死代码（api-key / ContentBlocksPreview）；架构文档新增 Web MVP 客户端章节 |
 | 2026-04-13 | Eval lite profile 设为默认（10 维 10 seed）；Web QA 修复 6 项（tool 泄漏 + 设置面板 + onboarding 状态） |
 | 2026-04-14 | 会话体验增强 5 项：记忆可见性 prompt 治理、daily_checkin 自动触发（A2UI）、Markdown 层次感引导 + blockquote copper 色、思考过渡态设计规格与实现、日摘要精简至 60 字 + 7 天滚动窗口注入 briefing |
-| 2026-04-14 | 统一概念模型：Identity → Goal → Chapter → Process Goal → LifeSign 五层结构；Coach/Onboarding prompt 引入新概念；Mirror 面板适配；Store 契约新增 Goal 路径；eval 数据模型与 seeds 同步 |
 | 2026-04-14 | 新增按天会话归档（conversation_archive/{date}.md）；Coach 三级记忆检索（memory/briefing → day_summary → grep archive）；禁止全量加载归档 |
+| 2026-04-14 | 统一概念模型：Identity → Goal → Chapter → Process Goal → LifeSign 五层结构；Coach/Onboarding prompt 引入新概念；Mirror 面板适配；Store 契约新增 Goal 路径；eval 数据模型与 seeds 同步 |
+| 2026-04-15 | onboarding surface、thread 语义与 Mirror 契约收口；运行时文档补齐外部认证边界；CLAUDE.md 将 `VOLITI_USER_MAP` 明确标注为临时访问门禁 |
