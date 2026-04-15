@@ -1,5 +1,5 @@
 // ABOUTME: 设置抽屉，包含 Onboarding 补采入口与退出登录操作
-// ABOUTME: 退出登录通过 server action 清除 httpOnly cookie
+// ABOUTME: 退出登录通过 server action 调用 Supabase signOut
 
 "use client";
 

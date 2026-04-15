@@ -1,5 +1,5 @@
-// ABOUTME: 从 cookie 读取当前登录用户的 user_id
-// ABOUTME: voliti_access cookie 在登录时由 server action 设置
+// ABOUTME: 从 cookie 读取当前登录用户的 user_id（Supabase Auth UUID）
+// ABOUTME: voliti_user_id cookie 由 middleware 在验证 Supabase session 后同步设置
 
 export function getUserId(): string | null {
   if (typeof document === "undefined") return null;
