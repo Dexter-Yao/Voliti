@@ -51,7 +51,7 @@ import {
 } from "../ui/sheet";
 import { MirrorPanel } from "../mirror/MirrorPanel";
 import { SettingsDrawer } from "../settings/SettingsDrawer";
-import { isThreadSealed, SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
+import { isThreadSealed, ONBOARDING_GREETING, SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
 import { useThreads } from "@/providers/Thread";
 import { getUserId } from "@/lib/user";
 import { buildSubmitConfig } from "@/lib/stream-config";
@@ -193,6 +193,7 @@ export function Thread({
   }, [stream.error]);
 
   // Auto-send initial message (e.g. user name from onboarding, or [daily_checkin] trigger)
+  // Onboarding: 前端问候语作为 assistant message 一并写入 thread，保持 Phase 0 → Phase 1 视觉连续性
   const initialSent = useRef(false);
   useEffect(() => {
     if (!initialMessage || initialSent.current || isLoading) return;
@@ -200,13 +201,25 @@ export function Thread({
     initialSent.current = true;
 
     const isSystemTrigger = initialMessage.startsWith("[daily_");
-    const msg: Message = {
+
+    const messages: Message[] = [];
+
+    if (onboardingMode) {
+      messages.push({
+        id: uuidv4(),
+        type: "ai",
+        content: ONBOARDING_GREETING,
+      } as Message);
+    }
+
+    messages.push({
       id: isSystemTrigger ? `${DO_NOT_RENDER_ID_PREFIX}${uuidv4()}` : uuidv4(),
       type: "human",
       content: [{ type: "text", text: initialMessage }] as Message["content"],
-    };
+    });
+
     stream.submit(
-      { messages: [msg] },
+      { messages },
       { config: submitConfig, streamMode: ["values"], streamSubgraphs: true, streamResumable: true },
     );
     onInitialMessageSent?.();
@@ -419,8 +432,8 @@ export function Thread({
         }
         footer={
           <div className="sticky bottom-0 flex flex-col items-center gap-4 bg-[#F4F0E8]">
-            {/* Empty state welcome */}
-            {!chatStarted && (
+            {/* Empty state welcome (coaching only; onboarding has greeting in thread) */}
+            {!chatStarted && !onboardingMode && (
               <div className="flex flex-col items-center gap-2 pb-4">
                 <h1 className="font-serif-coach text-2xl text-[#1A1816]">
                   Voliti

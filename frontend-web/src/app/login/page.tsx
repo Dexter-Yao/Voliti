@@ -27,7 +27,7 @@ export default function LoginPage() {
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold text-[#1A1816]">Voliti</h1>
           <p className="mt-1 font-serif-coach text-sm text-[#1A1816]/60">
-            AI 减脂教练
+            AI 减脂行为教练
           </p>
         </div>
 

@@ -6,14 +6,7 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { type OnboardingSurface } from "@/lib/onboarding-surface";
-
-const GREETING_ZH = `你好。
-
-我是 Voliti Coach——你的减脂教练。
-
-无论是每天该怎么吃、怎么动，还是突然想放弃时该怎么办，我都会陪着你。不过我最擅长的，是帮你在压力、疲劳、冲动来袭的那些时刻，守住你自己已经做出的选择。
-
-我会记住你的习惯、你容易失控的场景、你在意的那个身份。然后在关键时候提醒你——你想成为的那个人会怎么做。`;
+import { ONBOARDING_GREETING } from "@/lib/thread-utils";
 
 export function OnboardingWelcome({
   children,
@@ -70,11 +63,11 @@ export function OnboardingWelcome({
           Voliti
         </h1>
         <p className="mt-3 text-center font-serif-coach text-lg text-[#1A1816]/70">
-          AI 减脂教练
+          AI 减脂行为教练
         </p>
 
         <div className="mt-8 space-y-4 text-sm leading-relaxed text-[#1A1816]/80">
-          {GREETING_ZH.split("\n\n").map((paragraph, i) => (
+          {ONBOARDING_GREETING.split("\n\n").map((paragraph, i) => (
             <p key={i}>{paragraph}</p>
           ))}
         </div>
