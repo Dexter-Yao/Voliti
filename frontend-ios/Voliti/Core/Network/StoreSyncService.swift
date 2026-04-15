@@ -217,8 +217,8 @@ final class StoreSyncService: StoreSyncing {
             let json = try StoreContract.unwrapJSONDictionary(from: value)
 
             guard let chapterId = json["id"] as? String,
-                  let identityStatement = json["identity_statement"] as? String,
-                  let goal = json["goal"] as? String else {
+                  let title = json["title"] as? String,
+                  let milestone = json["milestone"] as? String else {
                 logger.error("Chapter data missing required fields")
                 return false
             }
@@ -236,20 +236,20 @@ final class StoreSyncService: StoreSyncing {
             descriptor.fetchLimit = 1
 
             if let existing = try modelContext.fetch(descriptor).first {
-                existing.identityStatement = identityStatement
-                existing.goal = goal
+                existing.title = title
+                existing.milestone = milestone
                 existing.startDate = startDate
             } else {
                 let chapter = Chapter(
                     id: chapterId,
-                    identityStatement: identityStatement,
-                    goal: goal,
+                    title: title,
+                    milestone: milestone,
                     startDate: startDate
                 )
                 modelContext.insert(chapter)
             }
 
-            logger.info("Chapter sync: \(chapterId) — \(identityStatement)")
+            logger.info("Chapter sync: \(chapterId) — \(title)")
             return true
         } catch {
             logger.error("Chapter sync failed: \(error.localizedDescription)")

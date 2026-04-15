@@ -1,5 +1,5 @@
 # ABOUTME: Voliti 运行时 Store 契约辅助函数
-# ABOUTME: 定义用户标识校验、namespace、正式路径和文件封装值解包规则
+# ABOUTME: 定义用户标识校验、Store key、Agent 文件路径和文件封装值解包规则
 
 from __future__ import annotations
 
@@ -21,9 +21,10 @@ TIMELINE_MARKERS_KEY = "/timeline/markers.json"
 COACH_MEMORY_KEY = "/coach/AGENTS.md"
 LIFESIGNS_KEY = "/lifesigns.md"
 TIMELINE_CALENDAR_KEY = "/timeline-calendar.md"
-BRIEFING_DERIVED_KEY = "/user/derived/briefing.md"
-DAY_SUMMARY_PREFIX = "/user/day_summary/"
-CONVERSATION_ARCHIVE_PREFIX = "/user/conversation_archive/"
+BRIEFING_STORE_KEY = "/derived/briefing.md"
+DAY_SUMMARY_PREFIX = "/day_summary/"
+CONVERSATION_ARCHIVE_PREFIX = "/conversation_archive/"
+BRIEFING_FILE_PATH = "/user/derived/briefing.md"
 INTERVENTIONS_SEGMENT = "interventions"
 
 

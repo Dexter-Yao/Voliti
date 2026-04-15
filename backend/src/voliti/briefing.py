@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from voliti.store_contract import (
-    BRIEFING_DERIVED_KEY,
+    BRIEFING_STORE_KEY,
     COPING_PLANS_INDEX_KEY,
     DAY_SUMMARY_PREFIX,
     TIMELINE_MARKERS_KEY,
@@ -20,9 +20,8 @@ from voliti.store_contract import (
 
 logger = logging.getLogger(__name__)
 
-# Store keys 使用 /user/ 前缀（client SDK 视角）
-_MARKERS_STORE_KEY = f"/user{TIMELINE_MARKERS_KEY}"
-_COPING_STORE_KEY = f"/user{COPING_PLANS_INDEX_KEY}"
+_MARKERS_STORE_KEY = TIMELINE_MARKERS_KEY
+_COPING_STORE_KEY = COPING_PLANS_INDEX_KEY
 
 
 def compute_days_since_last_session(
@@ -143,7 +142,7 @@ async def collect_recent_summaries(
     for i in range(1, days_back + 1):
         d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
         date_strs.append(d)
-        key = f"/user{DAY_SUMMARY_PREFIX}{d}.md"
+        key = f"{DAY_SUMMARY_PREFIX}{d}.md"
         tasks.append(_read_store_file(client, namespace, key))
 
     contents = await asyncio.gather(*tasks)
@@ -273,7 +272,7 @@ async def compute_and_write_briefing(
     try:
         await client.store.put_item(
             namespace,
-            BRIEFING_DERIVED_KEY,
+            BRIEFING_STORE_KEY,
             value=make_file_value(briefing, now=now),
         )
         logger.info("Briefing: written for user %s", user_id)

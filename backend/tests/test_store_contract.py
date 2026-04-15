@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from voliti.store_contract import (
+    BRIEFING_FILE_PATH,
+    BRIEFING_STORE_KEY,
     CHAPTER_CURRENT_KEY,
+    CONVERSATION_ARCHIVE_PREFIX,
+    DAY_SUMMARY_PREFIX,
     InvalidStoreValueError,
     InvalidUserIDError,
     PROFILE_CONTEXT_KEY,
@@ -76,6 +80,13 @@ def test_store_keys_are_stable() -> None:
     assert PROFILE_CONTEXT_KEY == "/profile/context.md"
     assert PROFILE_DASHBOARD_CONFIG_KEY == "/profile/dashboardConfig"
     assert CHAPTER_CURRENT_KEY == "/chapter/current.json"
+    assert BRIEFING_STORE_KEY == "/derived/briefing.md"
+    assert DAY_SUMMARY_PREFIX == "/day_summary/"
+    assert CONVERSATION_ARCHIVE_PREFIX == "/conversation_archive/"
+
+
+def test_briefing_file_path_uses_agent_vfs_prefix() -> None:
+    assert BRIEFING_FILE_PATH == "/user/derived/briefing.md"
 
 
 def test_shared_profile_fixture_round_trip() -> None:

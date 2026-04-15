@@ -49,7 +49,7 @@ Voliti 由四部分组成：
 2. 管理天级 Thread（一天一个会话，自动创建/复用）。
 3. 持有设备本地状态（localStorage）：Onboarding 完成标记、Witness Card 缓存。
 4. Mirror 面板从 LangGraph Store 同步数据：Identity 从 `profile` 读取，Goal 从 `/goal/current.json` 读取，Chapter/指标/LifeSign 从相应路径读取。
-5. 密码认证（VOLITI_USER_MAP）+ `configurable` 注入（user_id + session_type）。
+5. 外部认证边界 + 服务端 `configurable` 注入（graph_user_id + session_type）。
 
 ### 3.2 iOS 原生客户端
 
@@ -272,3 +272,4 @@ cd backend && uv run langgraph dev --port 2025
 | 2026-04-10 | 同步原始会话记录主线：以 `Runtime Session History` 与 `Conversation Archive Access Layer` 取代 archive 双写叙述，并补充 live integration 验证入口 |
 | 2026-04-12 | 合并原 `08_Runtime_Harness_Control_Plane.md` 的 DeepAgent 复用边界与守护清单到技术选型章节；交叉引用更新为 `05_Runtime_Contracts.md` |
 | 2026-04-14 | 更新 Mirror 面板数据源描述：Identity 从 `profile` 读取，Goal 从 `/goal/current.json` 读取 |
+| 2026-04-15 | 更新 Web 客户端认证职责描述：应用层外部认证负责身份验证，服务端向 LangGraph 运行时注入稳定 `graph_user_id` 与 `session_type` |

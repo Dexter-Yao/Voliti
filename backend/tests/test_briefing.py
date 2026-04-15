@@ -5,8 +5,12 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
+
+import pytest
 
 from voliti.briefing import (
+    collect_recent_summaries,
     compute_days_since_last_session,
     compute_sessions_this_week,
     extract_lifesign_activity,
@@ -156,3 +160,23 @@ class TestFormatBriefing:
         assert "打卡" not in result
         assert "streak" not in result.lower()
         assert "连续" not in result
+
+
+class TestCollectRecentSummaries:
+    @pytest.mark.asyncio
+    async def test_reads_canonical_day_summary_keys(self) -> None:
+        client = AsyncMock()
+        client.store.get_item = AsyncMock(return_value=None)
+
+        await collect_recent_summaries(
+            client,
+            ("voliti", "testuser"),
+            now=datetime(2026, 4, 14, 10, 0, tzinfo=timezone.utc),
+            days_back=2,
+        )
+
+        requested_keys = [call.args[1] for call in client.store.get_item.await_args_list]
+        assert requested_keys == [
+            "/day_summary/2026-04-13.md",
+            "/day_summary/2026-04-12.md",
+        ]

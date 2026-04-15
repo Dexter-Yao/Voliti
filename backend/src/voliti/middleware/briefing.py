@@ -1,5 +1,5 @@
 # ABOUTME: BriefingMiddleware — 每次请求重新加载预计算的 Coach Briefing
-# ABOUTME: 从 Store 读取 /user/derived/briefing.md，fail-open 设计，onboarding 跳过
+# ABOUTME: 从 Agent 文件路径读取 briefing，fail-open 设计，onboarding 跳过
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from deepagents.backends.protocol import BACKEND_TYPES, BackendProtocol
 from langchain.tools import ToolRuntime
 
 from voliti.middleware.base import PromptInjectionMiddleware, get_session_type
-from voliti.store_contract import BRIEFING_DERIVED_KEY
+from voliti.store_contract import BRIEFING_FILE_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class BriefingMiddleware(PromptInjectionMiddleware):
     def _download_briefing(self, backend: BackendProtocol) -> str | None:
         """同步读取 briefing（用于 wrap_model_call）。"""
         try:
-            results = backend.download_files([BRIEFING_DERIVED_KEY])
+            results = backend.download_files([BRIEFING_FILE_PATH])
             if results and results[0].error is None and results[0].content is not None:
                 text = results[0].content.decode("utf-8").strip()
                 return text if text else None
@@ -74,7 +74,7 @@ class BriefingMiddleware(PromptInjectionMiddleware):
     async def _adownload_briefing(self, backend: BackendProtocol) -> str | None:
         """异步读取 briefing（用于 awrap_model_call）。"""
         try:
-            results = await backend.adownload_files([BRIEFING_DERIVED_KEY])
+            results = await backend.adownload_files([BRIEFING_FILE_PATH])
             if results and results[0].error is None and results[0].content is not None:
                 text = results[0].content.decode("utf-8").strip()
                 return text if text else None

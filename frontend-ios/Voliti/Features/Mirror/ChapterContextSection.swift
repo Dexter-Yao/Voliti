@@ -1,5 +1,5 @@
 // ABOUTME: MIRROR 页 Chapter Context 区域
-// ABOUTME: 展示当前 Chapter 身份宣言、目标、Day N
+// ABOUTME: 展示当前 Chapter 标题、里程碑和 Day N
 
 import SwiftUI
 
@@ -12,12 +12,10 @@ struct ChapterContextSection: View {
             Text("CHAPTER · DAY \(chapter.currentDay)")
                 .starpathMono()
 
-            // 身份宣言
-            Text(chapter.identityStatement)
+            Text(chapter.title)
                 .starpathSerif(size: StarpathTokens.fontSizeXL)
 
-            // 目标
-            Text(chapter.goal)
+            Text(chapter.milestone)
                 .starpathSans()
                 .foregroundStyle(StarpathTokens.obsidian40)
         }

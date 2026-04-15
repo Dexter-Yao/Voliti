@@ -95,7 +95,14 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 
 ### 5.1 `user_id` 来源
 
-当前阶段的 `user_id` 由客户端生成并持久化为设备本地稳定匿名标识。未来如引入账号体系，应通过独立迁移策略完成身份合并，不在当前契约内预置多层身份模型。
+`user_id` 是 LangGraph 运行时与 Store namespace 使用的应用级稳定身份标识。它必须来自受信任的应用边界，而不是来自任意前端输入。
+
+当前约束如下：
+
+1. beta 阶段允许通过受控的应用层门禁把稳定 `user_id` 注入运行时。
+2. 如引入外部认证供应商，身份验证由供应商负责，Voliti 仍需保留独立的稳定应用级 `user_id`。
+3. 应用级 `user_id` 与外部认证供应商的账户主键允许不同；两者的映射关系必须由服务端维护。
+4. 客户端只能消费已经解析完成的应用级 `user_id`，不能自行生成或重写共享持久化身份。
 
 ### 5.2 `user_id` 约束
 
@@ -110,6 +117,15 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 2. Reset 除 `user_id` 外，还必须携带显式 destructive intent。
 3. Reset 清空所有会影响产品状态的设备本地状态。
 4. Reset 不触碰系统级授权状态。
+
+### 5.4 外部认证边界
+
+如接入外部认证系统，必须满足以下边界：
+
+1. 外部认证负责账号验证、密码重置、邮箱或手机号验证、会话签发与失效。
+2. Voliti backend 与 LangGraph runtime 只消费稳定的应用级 `user_id`，不直接依赖外部供应商 token 结构作为 Store namespace。
+3. `configurable.user_id` 必须由服务端在受信任边界注入，不能由浏览器脚本自由拼装。
+4. 若需要从外部认证用户迁移或合并到既有 `user_id`，必须通过显式迁移流程执行，不允许在运行时静默改写 namespace。
 
 ## 六、Store 契约
 
@@ -240,6 +256,12 @@ Store 在代码中只允许存在两个唯一收口点：
 2. 加载历史、发送消息、resume interrupt 必须使用同一套 thread 选择逻辑。
 3. 本地不得以启发式消息数量写入 durable 完成态。
 4. thread 选择失败时必须进入明确错误态，不允许隐式回退到其他 thread 或静默新建默认 thread。
+5. 桌面端在 `onboarding_complete: true` 成功写入前，必须保持 onboarding 专属全屏 surface，不得暴露标准 coaching workspace。
+6. 标准 coaching workspace 包括历史栏、Mirror、设置入口，以及面向 `coaching` 的默认 thread 自动选择与挂载。
+7. onboarding 判定未收敛前，客户端不得抢先挂载标准 workspace，也不得预先创建 `coaching` thread。
+8. 桌面端 onboarding surface、thread 选择与 `session_type` 必须由同一已解析状态驱动，不得由彼此独立的本地启发式分别决定。
+9. 设置页的补采入口属于 `Re-entry`，必须创建 `session_type: onboarding` 的独立 thread，并保持全屏 onboarding surface。
+10. `Re-entry` 不得通过清空 `onboarding_complete` 或伪造 reset 达成；其 durable 前提是 profile 仍保持 `onboarding_complete: true`。
 
 ## 八、A2UI 契约
 
@@ -522,3 +544,6 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 2026-04-14 | §7.4 新增系统触发器契约（daily_checkin / daily_review）；日摘要格式变更为 ≤60 字单句 + 无会话日回填 |
 | 2026-04-14 | 新增 `/conversation_archive/{date}.md` 按天会话归档；Coach 通过 grep→read_file 两步检索，禁止全量加载；语义分类补充 archive_source |
 | 2026-04-14 | §6.2 新增 `/goal/current.json` 与 `/goal/archive/{id}.json` 路径；§10.3 权威语义记忆路径新增 Goal 相关路径；§10.4 语义分类补充 `/goal/...` 属于 `authoritative_semantic` |
+| 2026-04-15 | §5 更新 `user_id` 身份边界：应用级稳定身份必须来自受信任应用边界；新增外部认证供应商与稳定 `user_id` 解耦约束 |
+| 2026-04-15 | §7.5 收紧桌面 onboarding 客户端边界：在 `onboarding_complete` 写入前保持全屏 onboarding surface，禁止抢先挂载标准 coaching workspace 或预建 coaching thread |
+| 2026-04-15 | §7.5 新增设置页 Re-entry 约束：补采入口必须保持 `onboarding_complete: true`，通过独立 onboarding thread 进入全屏补采对话，不得伪造 reset |

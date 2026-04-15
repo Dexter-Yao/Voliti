@@ -45,11 +45,11 @@ struct MapView: View {
 
     private func chapterHeader(_ chapter: Chapter) -> some View {
         VStack(alignment: .leading, spacing: StarpathTokens.spacingSM) {
-            Text(chapter.identityStatement)
+            Text(chapter.title)
                 .starpathSerif(size: StarpathTokens.fontSizeXL)
 
             HStack {
-                Text(chapter.goal)
+                Text(chapter.milestone)
                     .starpathSans()
                 Spacer()
                 Text("Day \(chapter.currentDay)")

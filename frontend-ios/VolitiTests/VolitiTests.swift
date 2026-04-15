@@ -643,22 +643,42 @@ struct RuntimeContractTests {
     }
 
     @Test func storeContractUnwrapsJSONEnvelope() throws {
-        let value: [String: Any] = [
-            "version": "1",
-            "content": ["{\"id\":\"chapter_1\",\"goal\":\"walk\"}"],
-            "created_at": "2026-04-09T10:00:00Z",
-            "modified_at": "2026-04-09T10:00:00Z",
-        ]
+        let value = try loadFixture(named: "chapter_current.value.json")
 
         let json = try StoreContract.unwrapJSONDictionary(from: value)
-        #expect(json["id"] as? String == "chapter_1")
-        #expect(json["goal"] as? String == "walk")
+        #expect(json["id"] as? String == "chapter_fixture_001")
+        #expect(json["title"] as? String == "建立工作日饮食节奏")
     }
 
     @Test func storeContractLoadsSharedDashboardFixture() throws {
         let value = try loadFixture(named: "dashboard_config.value.json")
         let json = try StoreContract.unwrapJSONDictionary(from: value)
         #expect(json["fixture_type"] as? String == "dashboard_config")
+    }
+
+    @Test func syncChapterAcceptsUnifiedConceptFixture() async throws {
+        let modelContext = ModelContext(try makeInMemoryContainer())
+        let fixture = try loadFixture(named: "chapter_current.value.json")
+        let expectedNamespace = StoreContract.userNamespace
+        let expectedKey = StoreContract.chapterCurrentKey
+        let service = StoreSyncService(
+            modelContext: modelContext,
+            fetchStoreItem: { namespace, key in
+                #expect(namespace == expectedNamespace)
+                #expect(key == expectedKey)
+                return fixture
+            }
+        )
+
+        let success = await service.syncChapter()
+        #expect(success == true)
+
+        let descriptor = FetchDescriptor<Chapter>(
+            predicate: #Predicate { $0.id == "chapter_fixture_001" }
+        )
+        let chapter = try #require(modelContext.fetch(descriptor).first)
+        #expect(chapter.title == "建立工作日饮食节奏")
+        #expect(chapter.milestone == "养成每日饮食记录习惯，蛋白质达标率 ≥ 70%")
     }
 
     @Test func storeContractBuildsInterventionsNamespace() {

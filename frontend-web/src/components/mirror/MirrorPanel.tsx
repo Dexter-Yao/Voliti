@@ -8,27 +8,6 @@ import { fetchMirrorData, type MirrorData } from "@/lib/store-sync";
 import { getWitnessCards, type WitnessCard } from "@/lib/witness-card-store";
 import { RefreshCw, X } from "lucide-react";
 
-function NorthStarChart({ history }: { history: number[] }) {
-  if (history.length === 0) return null;
-  const max = Math.max(...history);
-  const min = Math.min(...history);
-  const range = max - min || 1;
-
-  return (
-    <div className="flex h-12 items-end gap-0.5">
-      {history.slice(-7).map((val, i) => (
-        <div
-          key={i}
-          className="flex-1 bg-[#B87333]/60"
-          style={{
-            height: `${Math.max(((val - min) / range) * 100, 8)}%`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 function EmptyState() {
   return (
     <div className="flex h-full items-center justify-center p-8">
@@ -74,7 +53,11 @@ export function MirrorPanel() {
     return <EmptyState />;
   }
 
-  const { chapter, copingPlans, identity_statement, goal } = data;
+  const { chapter, copingPlans, dashboardConfig, identity_statement, goal } = data;
+  const processGoalTargets = new Map(
+    chapter?.process_goals.map((processGoal) => [processGoal.metric_key, processGoal.target]) ?? [],
+  );
+  const supportMetrics = dashboardConfig?.support_metrics ?? [];
 
   return (
     <div className="flex h-full flex-col overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1A1816]/15 [&::-webkit-scrollbar-track]:bg-transparent">
@@ -119,62 +102,55 @@ export function MirrorPanel() {
         </div>
 
         {/* North Star metric */}
-        {chapter.north_star && (
+        {dashboardConfig?.north_star && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-medium text-[#1A1816]/60">
-                {chapter.north_star.metric}
+                {dashboardConfig.north_star.label}
               </span>
-              {chapter.north_star.delta != null && (
-                <span
-                  className={`text-xs font-medium ${chapter.north_star.delta <= 0 ? "text-green-600" : "text-red-500"}`}
-                >
-                  {chapter.north_star.delta > 0 ? "+" : ""}
-                  {chapter.north_star.delta}
-                  {chapter.north_star.unit}
-                </span>
-              )}
             </div>
             <div className="flex items-end gap-3">
-              {chapter.north_star.current_value != null && (
+              {goal?.north_star_target ? (
                 <span className="text-2xl font-semibold text-[#1A1816]">
-                  {chapter.north_star.current_value}
+                  {goal.north_star_target.baseline}
                   <span className="text-sm font-normal text-[#1A1816]/40">
-                    {chapter.north_star.unit}
+                    {goal.north_star_target.unit}
                   </span>
                 </span>
+              ) : (
+                <span className="text-2xl font-semibold text-[#1A1816]">—</span>
               )}
-              {chapter.north_star.target_value != null && (
+              {goal?.north_star_target && (
                 <span className="text-xs text-[#1A1816]/30">
-                  → {chapter.north_star.target_value}
-                  {chapter.north_star.unit}
+                  → {goal.north_star_target.target}
+                  {goal.north_star_target.unit}
                 </span>
               )}
             </div>
-            {chapter.north_star.history?.length > 0 && (
-              <NorthStarChart history={chapter.north_star.history} />
-            )}
           </div>
         )}
 
         {/* Support metrics */}
-        {chapter.support_metrics?.length > 0 && (
+        {supportMetrics.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <span className="text-xs font-medium text-[#1A1816]/40">
               辅助指标
             </span>
             <div className="grid gap-2">
-              {chapter.support_metrics.map((m, i) => (
+              {supportMetrics.map((metric) => (
                 <div
-                  key={i}
+                  key={metric.key}
                   className="flex items-center justify-between text-sm"
                 >
-                  <span className="text-[#1A1816]/60">{m.metric}</span>
+                  <span className="text-[#1A1816]/60">{metric.label}</span>
                   <span className="font-medium text-[#1A1816]">
-                    {m.current_value ?? "—"}
-                    <span className="text-xs font-normal text-[#1A1816]/40">
-                      {m.unit}
-                    </span>
+                    {processGoalTargets.get(metric.key) ?? "—"}
+                    {metric.unit && (
+                      <span className="text-xs font-normal text-[#1A1816]/40">
+                        {" "}
+                        {metric.unit}
+                      </span>
+                    )}
                   </span>
                 </div>
               ))}
