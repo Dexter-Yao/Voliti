@@ -102,6 +102,12 @@ Voliti/
 - Feature-based 项目结构分组
 - Swift Testing 框架单元测试（VolitiTests target），XCUITest UI 测试
 
+## 开发优先级
+
+- **当前阶段以 Web 版（浏览器桌面端）为唯一开发目标**，iOS 版暂时搁置
+- 所有设计、讨论、mockup 默认针对桌面浏览器（≥1280px），除非明确指定移动端
+- UI 设计和交互方案以桌面宽屏比例为基准
+
 ## 架构约定
 
 - 用户只面对单一 Coach Agent，后台分析对用户透明
