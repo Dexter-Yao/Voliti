@@ -99,9 +99,9 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 
 当前约束如下：
 
-1. beta 阶段允许通过受控的应用层门禁把稳定 `user_id` 注入运行时。
-2. 如引入外部认证供应商，身份验证由供应商负责，Voliti 仍需保留独立的稳定应用级 `user_id`。
-3. 应用级 `user_id` 与外部认证供应商的账户主键允许不同；两者的映射关系必须由服务端维护。
+1. 身份验证由 Supabase Auth 负责（邮箱+密码）。`user_id` 直接使用 Supabase Auth 的 UUID，无需额外映射层。
+2. Next.js middleware 在验证 Supabase session 后，将 UUID 同步写入 `voliti_user_id` cookie，供客户端代码读取。
+3. 服务端通过 `configurable.user_id` 向 LangGraph 运行时注入该 UUID。
 4. 客户端只能消费已经解析完成的应用级 `user_id`，不能自行生成或重写共享持久化身份。
 
 ### 5.2 `user_id` 约束
@@ -118,14 +118,12 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 3. Reset 清空所有会影响产品状态的设备本地状态。
 4. Reset 不触碰系统级授权状态。
 
-### 5.4 外部认证边界
+### 5.4 Supabase Auth 边界
 
-如接入外部认证系统，必须满足以下边界：
-
-1. 外部认证负责账号验证、密码重置、邮箱或手机号验证、会话签发与失效。
-2. Voliti backend 与 LangGraph runtime 只消费稳定的应用级 `user_id`，不直接依赖外部供应商 token 结构作为 Store namespace。
-3. `configurable.user_id` 必须由服务端在受信任边界注入，不能由浏览器脚本自由拼装。
-4. 若需要从外部认证用户迁移或合并到既有 `user_id`，必须通过显式迁移流程执行，不允许在运行时静默改写 namespace。
+1. Supabase Auth 负责账号注册、登录、密码重置、会话签发与失效。
+2. Voliti backend 与 LangGraph runtime 只消费 Supabase UUID 作为 `user_id`，不直接依赖 JWT token 结构作为 Store namespace。
+3. `configurable.user_id` 由 Next.js 服务端在受信任边界注入（middleware 验证 session → 设置 `voliti_user_id` cookie → 客户端读取并注入 `configurable`），不能由浏览器脚本自由拼装。
+4. 若需要用户迁移或合并，必须通过显式迁移流程执行，不允许在运行时静默改写 namespace。
 
 ## 六、Store 契约
 
@@ -547,3 +545,4 @@ LangSmith 不替代结构化日志，也不替代 contract tests。
 | 2026-04-15 | §5 更新 `user_id` 身份边界：应用级稳定身份必须来自受信任应用边界；新增外部认证供应商与稳定 `user_id` 解耦约束 |
 | 2026-04-15 | §7.5 收紧桌面 onboarding 客户端边界：在 `onboarding_complete` 写入前保持全屏 onboarding surface，禁止抢先挂载标准 coaching workspace 或预建 coaching thread |
 | 2026-04-15 | §7.5 新增设置页 Re-entry 约束：补采入口必须保持 `onboarding_complete: true`，通过独立 onboarding thread 进入全屏补采对话，不得伪造 reset |
+| 2026-04-15 | §5.1 认证落地：`VOLITI_USER_MAP` 门禁 → Supabase Auth；§5.4 从"预见外部认证"更新为"Supabase Auth 边界"；`user_id` = Supabase UUID，无映射层 |
