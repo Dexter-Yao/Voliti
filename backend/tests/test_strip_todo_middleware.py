@@ -1,5 +1,5 @@
 # ABOUTME: StripDeepAgentDefaultsMiddleware 单元测试
-# ABOUTME: 验证 BASE_AGENT_PROMPT / write_todos prompt / write_todos 工具的剥离行为
+# ABOUTME: 验证 BASE_AGENT_PROMPT / write_todos prompt / write_todos 工具 / memory_guidelines 的剥离行为
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from voliti.middleware.strip_todo import (
     StripTodoMiddleware,
     _strip_base_agent_prompt,
     _strip_blocks,
+    _strip_memory_guidelines,
     _strip_todo_tools,
 )
 
@@ -108,6 +109,74 @@ class TestStripBlocks:
         msg = _make_system_message("`write_todos` only block")
         result = _strip_blocks(msg)
         assert result is None
+
+
+# ── memory_guidelines 剥离 ──────────────────────────────────────────
+
+
+_AGENT_MEMORY_BLOCK = "<agent_memory>\nweight: 75kg\ngoal: lose 5kg\n</agent_memory>"
+_MEMORY_GUIDELINES_BLOCK = (
+    "<memory_guidelines>\n"
+    "    The above <agent_memory> was loaded in from files in your filesystem...\n"
+    "    Use write_memory tool to persist facts.\n"
+    "</memory_guidelines>"
+)
+
+
+class TestStripMemoryGuidelines:
+    """_strip_memory_guidelines 行为测试。"""
+
+    def test_removes_guidelines_preserves_agent_memory(self) -> None:
+        text = f"{_AGENT_MEMORY_BLOCK}\n\n{_MEMORY_GUIDELINES_BLOCK}"
+        result = _strip_memory_guidelines(text)
+        assert "<memory_guidelines>" not in result
+        assert "</memory_guidelines>" not in result
+        assert "<agent_memory>" in result
+        assert "weight: 75kg" in result
+
+    def test_returns_original_when_no_tags_present(self) -> None:
+        text = "Some prompt text without any memory tags."
+        assert _strip_memory_guidelines(text) is text
+
+    def test_returns_original_when_only_open_tag_present(self) -> None:
+        text = "text <memory_guidelines> no closing tag"
+        assert _strip_memory_guidelines(text) is text
+
+    def test_returns_original_when_only_close_tag_present(self) -> None:
+        text = "text </memory_guidelines> no opening tag"
+        assert _strip_memory_guidelines(text) is text
+
+    def test_strips_preceding_blank_lines(self) -> None:
+        text = f"{_AGENT_MEMORY_BLOCK}\n\n{_MEMORY_GUIDELINES_BLOCK}"
+        result = _strip_memory_guidelines(text)
+        # No trailing blank lines between agent_memory end and string end
+        assert result.rstrip("\n") == _AGENT_MEMORY_BLOCK
+
+
+class TestStripBlocksWithMemoryGuidelines:
+    """_strip_blocks 对 memory_guidelines 的端到端集成测试。
+
+    DeepAgent 的实际注入结构：
+    - block[0]: Coach system prompt + BASE_AGENT_PROMPT（字符串拼接）
+    - block[1]: <agent_memory>...</agent_memory>\n\n<memory_guidelines>...</memory_guidelines>
+                （MemoryMiddleware 在独立 content_block 注入）
+    """
+
+    _BASE_PROMPT = "You are a Deep Agent, an AI assistant..."
+
+    def test_strips_base_prompt_and_memory_guidelines_together(self) -> None:
+        # block[0]: Coach prompt 与 BASE_AGENT_PROMPT 拼接
+        coach_block = f"Coach prompt\n\n{self._BASE_PROMPT}"
+        # block[1]: MemoryMiddleware 独立注入的记忆块（agent_memory + guidelines 在同一 block）
+        memory_block = f"{_AGENT_MEMORY_BLOCK}\n\n{_MEMORY_GUIDELINES_BLOCK}"
+        msg = _make_system_message(coach_block, memory_block)
+        result = _strip_blocks(msg)
+        assert result is not None
+        all_text = " ".join(b["text"] for b in result.content_blocks)
+        assert "Deep Agent" not in all_text
+        assert "<memory_guidelines>" not in all_text
+        assert "<agent_memory>" in all_text
+        assert "Coach prompt" in all_text
 
 
 # ── 工具剥离 ────────────────────────────────────────────────────────

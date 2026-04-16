@@ -1,5 +1,5 @@
 # ABOUTME: StripDeepAgentDefaultsMiddleware — 剥离 DeepAgent 内置的无关 prompt 和工具
-# ABOUTME: 移除 BASE_AGENT_PROMPT (~1,650 chars) 和 TodoList prompt+工具 (~4,728 chars)
+# ABOUTME: 移除 BASE_AGENT_PROMPT、TodoList prompt+工具、MemoryMiddleware 的泛用 memory_guidelines
 
 from __future__ import annotations
 
@@ -18,6 +18,9 @@ _TODO_MARKER = "`write_todos`"
 _BASE_PROMPT_MARKER = "You are a Deep Agent,"
 """BASE_AGENT_PROMPT 的开头标记，用于子串匹配移除。"""
 
+_MEMORY_GUIDELINES_OPEN = "<memory_guidelines>"
+_MEMORY_GUIDELINES_CLOSE = "</memory_guidelines>"
+
 
 def _strip_base_agent_prompt(text: str) -> str:
     """从字符串中移除 BASE_AGENT_PROMPT 子串。
@@ -35,6 +38,33 @@ def _strip_base_agent_prompt(text: str) -> str:
     removed_len = len(text) - start
     logger.debug("StripDefaultsMW: removed BASE_AGENT_PROMPT (%d chars)", removed_len)
     return text[:start]
+
+
+def _strip_memory_guidelines(text: str) -> str:
+    """从字符串中移除 <memory_guidelines> 块。
+
+    MemoryMiddleware 在同一 content_block 内拼接 <agent_memory> 和
+    <memory_guidelines>，后者是代码助手场景专用的记忆读写指南，与 Coach
+    自定义的记忆写入协议冲突。<agent_memory> 内容本身保留不动。
+    """
+    open_idx = text.find(_MEMORY_GUIDELINES_OPEN)
+    close_idx = text.find(_MEMORY_GUIDELINES_CLOSE)
+    if open_idx < 0 or close_idx < 0:
+        return text
+
+    # 结束位置：结束标签之后的一个换行符（若存在）也一并移除
+    end = close_idx + len(_MEMORY_GUIDELINES_CLOSE)
+    if end < len(text) and text[end] == "\n":
+        end += 1
+
+    # 移除开始标签前面的空行（与 _strip_base_agent_prompt 处理方式一致）
+    start = open_idx
+    while start > 0 and text[start - 1] in "\n":
+        start -= 1
+
+    removed_len = end - start
+    logger.debug("StripDefaultsMW: removed <memory_guidelines> (%d chars)", removed_len)
+    return text[:start] + text[end:]
 
 
 def _strip_blocks(system_message: SystemMessage | None) -> SystemMessage | None:
@@ -57,8 +87,9 @@ def _strip_blocks(system_message: SystemMessage | None) -> SystemMessage | None:
             changed = True
             continue
 
-        # 从拼接块中移除 BASE_AGENT_PROMPT（子串）
+        # 从拼接块中移除 BASE_AGENT_PROMPT（子串）和 <memory_guidelines>（子串）
         cleaned = _strip_base_agent_prompt(text)
+        cleaned = _strip_memory_guidelines(cleaned)
         if cleaned != text:
             changed = True
             if cleaned.strip():
@@ -92,8 +123,8 @@ class StripDeepAgentDefaultsMiddleware(AgentMiddleware):
        与 Coach 自有的身份定义和语调冲突
     2. TodoListMiddleware 的 system prompt (~1,074 chars) 和
        write_todos 工具 (~3,654 chars tool schema) — Coach 不需要 todo 管理
-
-    总计节省 ~6,378 chars per LLM call。
+    3. MemoryMiddleware 的 <memory_guidelines> 代码助手场景记忆指南 —
+       与 Coach 自定义的记忆写入协议冲突
     """
 
     tools: list = []

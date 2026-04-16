@@ -169,3 +169,4 @@ Key routing rules:
 | 2026-04-14 | 统一概念模型：Identity → Goal → Chapter → Process Goal → LifeSign 五层结构；Coach/Onboarding prompt 引入新概念；Mirror 面板适配；Store 契约新增 Goal 路径；eval 数据模型与 seeds 同步 |
 | 2026-04-15 | onboarding surface、thread 语义与 Mirror 契约收口；运行时文档补齐外部认证边界 |
 | 2026-04-15 | 认证重构：`VOLITI_USER_MAP` 密码门禁 → Supabase Auth（邮箱+密码）；`user_id` 使用 Supabase UUID；middleware 验证 session 并同步 `voliti_user_id` cookie；运行时契约与架构文档同步 |
+| 2026-04-16 | 记忆体系重构：六维用户画像（profile/context.md）、四分区 Coach 记忆协议（coach/AGENTS.md）、剥离 DeepAgent 默认 memory_guidelines、Briefing 纳入 Goal/Chapter 摘要、Onboarding 扩展六维采集 |

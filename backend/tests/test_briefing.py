@@ -13,6 +13,7 @@ from voliti.briefing import (
     collect_recent_summaries,
     compute_days_since_last_session,
     compute_sessions_this_week,
+    extract_goal_chapter_summary,
     extract_lifesign_activity,
     extract_upcoming_markers,
     format_briefing,
@@ -160,6 +161,93 @@ class TestFormatBriefing:
         assert "打卡" not in result
         assert "streak" not in result.lower()
         assert "连续" not in result
+
+
+class TestExtractGoalChapterSummary:
+    def test_normal_goal_and_chapter(self) -> None:
+        goal = json.dumps({
+            "description": "减重 10kg",
+            "target_date": "2026-09-01T00:00:00Z",
+        })
+        chapter = json.dumps({
+            "title": "建立基础",
+            "milestone": "体重稳定在 75kg",
+            "process_goals": [
+                {"description": "每日步数", "target": "8000步"},
+                {"description": "蛋白质摄入", "target": "120g"},
+                {"description": "睡眠", "target": "7小时"},
+            ],
+        })
+        result = extract_goal_chapter_summary(goal, chapter)
+        assert result is not None
+        assert "减重 10kg" in result
+        assert "2026-09-01" in result
+        assert "建立基础" in result
+        assert "体重稳定在 75kg" in result
+        assert "每日步数(8000步)" in result
+        assert "蛋白质摄入(120g)" in result
+
+    def test_invalid_json_returns_none(self) -> None:
+        result = extract_goal_chapter_summary("not json", "{broken")
+        assert result is None
+
+    def test_both_none_returns_none(self) -> None:
+        assert extract_goal_chapter_summary(None, None) is None
+
+    def test_goal_only(self) -> None:
+        goal = json.dumps({"description": "减重 5kg", "target_date": ""})
+        result = extract_goal_chapter_summary(goal, None)
+        assert result is not None
+        assert "减重 5kg" in result
+        assert "阶段" not in result
+
+    def test_chapter_only(self) -> None:
+        chapter = json.dumps({"title": "冲刺期", "milestone": "", "process_goals": []})
+        result = extract_goal_chapter_summary(None, chapter)
+        assert result is not None
+        assert "冲刺期" in result
+        assert "目标" not in result
+
+    def test_process_goals_capped_at_three(self) -> None:
+        chapter = json.dumps({
+            "title": "测试",
+            "milestone": "",
+            "process_goals": [
+                {"description": f"目标{i}", "target": f"{i}次"} for i in range(5)
+            ],
+        })
+        result = extract_goal_chapter_summary(None, chapter)
+        assert result is not None
+        # 最多只展示前 3 个
+        assert "目标3" not in result
+        assert "目标4" not in result
+
+
+class TestFormatBriefingWithGoalChapter:
+    def test_goal_chapter_section_appears_before_briefing(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        result = format_briefing(
+            days_since_last=1,
+            sessions_this_week=3,
+            upcoming_markers=[],
+            lifesign_activity=[],
+            goal_chapter_summary="目标：减重 10kg（2026-09-01）\n阶段：建立基础",
+            now=now,
+        )
+        goal_pos = result.index("当前阶段")
+        briefing_pos = result.index("Coach Briefing")
+        assert goal_pos < briefing_pos
+
+    def test_no_goal_chapter_omits_section(self) -> None:
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        result = format_briefing(
+            days_since_last=None,
+            sessions_this_week=0,
+            upcoming_markers=[],
+            lifesign_activity=[],
+            now=now,
+        )
+        assert "当前阶段" not in result
 
 
 class TestCollectRecentSummaries:

@@ -191,7 +191,7 @@ Voliti 在此基础上仅补四类最小产品语义定制：
 1. `SessionProfile`：轻量配置对象，定义会话类型的 prompt、middleware、memory 差异。
 2. Prompt Layering Policy：五层提示词结构的分层与优先级规则。
 3. Semantic Boundary Policy：权威语义、候选信号、archive 证据、运行时状态、可观测性的统一分类。
-4. Memory Lifecycle Policy：记忆的捕获、蒸馏、注入、整理与观测规则。
+4. Memory Lifecycle Policy：记忆的捕获、蒸馏、注入与整理规则。当前包括六维用户画像结构、四分区 Coach 记忆协议、信息凝练原则、Chapter 转移时的强制 review，以及从原始事件到长期语义的分层蒸馏链路（ledger → day_summary → briefing → profile/coach memory）。
 
 ### 5.5 架构守护清单
 

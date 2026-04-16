@@ -372,6 +372,8 @@ resume 同时校验以下两类约束：
 用于保存长期教练关系所需的高信号记忆，例如：
 
 1. 用户画像与偏好。
+   - `/profile/context.md` 采用六维画像结构（Basics / Environment / Identity / Habits / Rhythm / Triggers），存储稳定生活事实。
+   - `/coach/AGENTS.md` 采用四分区协议（Verified Patterns / Hypotheses / Coaching Notes / Claimed vs Revealed），存储 Coach 跨时间观察推断。
 2. chapter、LifeSign、timeline markers。
 3. 未来节日、行程计划等对长期陪伴有持续价值的信息。
 4. `Coach` 明确认定并写入的长期语义结论。
@@ -396,6 +398,7 @@ resume 同时校验以下两类约束：
 2. `/derived/...` 等候选信号与分析结果。
 3. `/day_summary/...` 日摘要（由日终 Pipeline 生成，≤60 字单句，属于 `archive_source`）。无会话日由 Pipeline 自动回填。
 4. `/conversation_archive/{date}.md` 按天独立的完整会话归档（由日终 Pipeline 写入，属于 `archive_source`）。Coach 通过 `grep` 关键词定位日期后 `read_file` 单日文件，禁止一次性加载全部归档。
+5. `/derived/briefing.md` 现纳入 Goal / Chapter / Process Goals 预计算摘要，作为 Coach 每日上下文的只读来源。
 
 约束如下：
 
@@ -405,6 +408,7 @@ resume 同时校验以下两类约束：
 4. 当前实现中，`/derived/` 路径下的所有内容只能作为 `candidate_signal` 使用，不得直接 promotion 到权威语义。
 5. 当前实现中，archive summary / excerpt、`runtime_only` 与 `observability_only` 内容一律不得直接 promotion 到权威语义。
 6. 当前实现中，`authoritative_semantic` 路径的直接文件写入必须经过显式确认上下文，不允许未确认写入。
+7. Coach 写入权威语义记忆时遵循信息凝练原则：最少 token 传递最大决策价值。记忆文件是索引和摘要，不是叙述。
 
 当前实现使用以下运行时字段表达显式确认写入上下文：
 

@@ -41,11 +41,21 @@ Purpose: Respect user autonomy by letting them choose the onboarding depth.
 Purpose: Understand who the user wants to become (identity, not numbers).
 - Core (both paths): desired identity vision (write as `identity_statement` in profile); perceived distance from that vision.
 - Full path extras: what triggered them to start; multiple identity dimensions; intrinsic motivation depth.
+- Both paths: After identity questions, collect life structure with two select components:
+  1. Work rhythm: 朝九晚五 / 弹性时间 / 轮班制 / 自由职业 / 学生 / 其他（请填写）
+  2. Primary meal source: 外卖为主 / 公司或学校食堂 / 自己做饭 / 家人做饭 / 混合 / 其他（请填写）
+  Each select must include an "其他" option with a companion text_input for custom input.
 
 **Phase 3: Context & Danger Scenarios**
 Purpose: Map the user's real-world risk landscape.
 - Core (both paths): Call fan_out with a `multi_select` of common high-risk scenarios (节假日 / 聚餐社交 / 出差差旅 / 情绪低谷 / 疲劳睡眠不足) plus a `text_input` for custom scenarios. After selection, follow up on the chosen scenarios with specific questions.
-- Full path extras: past diet history; upcoming 2-4 week events (write as forward markers); daily rhythm.
+- Core path addition: After danger scenario selection, follow up with a text_input: "这些情况通常在什么时候、什么环境下发生？" — this contextualizes triggers and seeds Environment/Rhythm dimensions.
+- Full path extras (additional components):
+  1. multi_select: "你减脂的动力主要来自？" — 外表形象 / 健康长期 / 他人期待 / 自我掌控感 / 职业需要 / 其他（请填写）
+  2. select: "过去减脂时，一次破功会不会变成连续几天的崩溃？" — 经常会 / 偶尔会 / 很少 / 第一次减脂
+  3. multi_select: "你有哪些已经坚持了很久的好习惯？" — 规律运动 / 不喝含糖饮料 / 定时三餐 / 充足睡眠 / 不吃宵夜 / 其他（请填写）
+  4. select: "有没有饮食限制？" — 无 / 乳糖不耐受 / 素食 / 清真 / 过敏（请注明）/ 其他（请填写）
+- Full path extras (narrative): past diet history; upcoming 2-4 week events (write as forward markers); daily rhythm.
 
 **Phase 4: Personal System (full path explicit, quick path inferred)**
 Purpose: Establish the user's first LifeSign and north-star metric.
@@ -153,6 +163,7 @@ Purpose: Ensure all required data is written, trigger the departure ceremony, gu
 - **The first words after losing control determine restart success.** Curiosity, not judgment.
 - **Limit initial commitment size.** Prevent over-promising during the enthusiasm phase that leads to 6-8 week collapse.
 - **Privacy is an implicit promise.** The 1-on-1 coaching architecture reduces social pressure.
+- **Revealed > Claimed.** Ask "what do you actually order most often?" not "what do you like to eat?" — users idealize their habits. Record both when they diverge.
 
 ---
 
@@ -160,7 +171,55 @@ Purpose: Ensure all required data is written, trigger the departure ceremony, gu
 
 **Minimum dataset (both paths must produce):**
 
-1. `/user/profile/context.md` — name, depth_choice, scene data, `identity_statement`, onboarding_complete: true
+1. `/user/profile/context.md` — Write using the six-dimension template structure:
+
+   **Full path must populate**: all six dimensions.
+   - Basics: name, depth_choice, identity_statement, onboarding_complete: true
+   - Environment: primary_meal_source (from Phase 2 select)
+   - Identity & Motivation: motivation_type (inferred from motivation multi_select)
+   - Habits: dietary_restrictions, established_good_habits (from Phase 3 full path components)
+   - Rhythm: work_rhythm (from Phase 2 select)
+   - Triggers: emotional_triggers, physical_triggers, social_triggers (from danger scenarios), post_lapse_pattern (from Phase 3 select)
+
+   **Quick path must populate**: Basics + Environment (primary_meal_source) + Rhythm (work_rhythm) + Triggers (from danger scenarios). Other dimensions: Coach fills during natural coaching conversation.
+
+   Example (full path):
+   ```
+   # User Profile
+
+   ## Basics
+   - name: 小明
+   - depth_choice: full
+   - identity_statement: 正在成为一个能在压力下做出清醒选择的人
+   - onboarding_complete: true
+
+   ## Environment
+   - primary_meal_source: delivery
+   - available_options:
+   - cooking_ability:
+
+   ## Identity & Motivation
+   - motivation_type: health, self_mastery
+   - motivation_intensity: medium
+   - privacy_attitude: private
+
+   ## Habits
+   - dietary_restrictions: none
+   - established_good_habits: regular exercise, no sugary drinks
+   - exercise_type_freq:
+   - medical_boundaries:
+
+   ## Rhythm
+   - work_rhythm: nine_to_five
+   - social_rhythm:
+
+   ## Triggers
+   - emotional_triggers: low_mood, fatigue
+   - physical_triggers:
+   - social_triggers: social_meal
+   - post_lapse_pattern: sometimes
+   - known_recovery_strategy:
+   ```
 
 2. `/user/goal/current.json` — first Goal:
 ```json
@@ -205,3 +264,5 @@ Metric types: `numeric` (continuous), `scale` (bounded integer), `ordinal` (cate
 ```
 
 8. `/user/timeline/markers.json` — forward markers from upcoming events
+
+9. `/user/coach/AGENTS.md` — Initialize with four-zone template. Verified/Coaching Notes/Claimed vs Revealed: empty. Hypotheses: write 1-2 initial observations from the onboarding conversation (e.g., "[04-16] User chose quick path and avoided number questions (watch: may be number-averse)").

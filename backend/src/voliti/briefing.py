@@ -11,8 +11,10 @@ from typing import Any
 
 from voliti.store_contract import (
     BRIEFING_STORE_KEY,
+    CHAPTER_CURRENT_KEY,
     COPING_PLANS_INDEX_KEY,
     DAY_SUMMARY_PREFIX,
+    GOAL_CURRENT_KEY,
     TIMELINE_MARKERS_KEY,
     make_file_value,
     unwrap_file_value,
@@ -126,6 +128,45 @@ def extract_lifesign_activity(
     return results
 
 
+def extract_goal_chapter_summary(
+    goal_content: str | None,
+    chapter_content: str | None,
+) -> str | None:
+    """Extract concise goal/chapter context for briefing."""
+    if not goal_content and not chapter_content:
+        return None
+    lines = []
+    if goal_content:
+        try:
+            goal = json.loads(goal_content)
+            desc = goal.get("description", "")
+            target_date = goal.get("target_date", "")
+            if desc:
+                # 只取日期部分
+                date_short = target_date[:10] if target_date else ""
+                lines.append(f"目标：{desc}（{date_short}）" if date_short else f"目标：{desc}")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if chapter_content:
+        try:
+            ch = json.loads(chapter_content)
+            title = ch.get("title", "")
+            milestone = ch.get("milestone", "")
+            if title:
+                lines.append(f"阶段：{title}" + (f" — {milestone}" if milestone else ""))
+            pgs = ch.get("process_goals", [])
+            if pgs:
+                pg_parts = []
+                for pg in pgs[:3]:
+                    d = pg.get("description", "")
+                    t = pg.get("target", "")
+                    pg_parts.append(f"{d}({t})" if t else d)
+                lines.append(f"重点：{'  /  '.join(pg_parts)}")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return "\n".join(lines) if lines else None
+
+
 async def collect_recent_summaries(
     client: Any,
     namespace: tuple[str, ...],
@@ -162,12 +203,18 @@ def format_briefing(
     upcoming_markers: list[dict[str, str]],
     lifesign_activity: list[dict[str, Any]],
     recent_summaries: list[tuple[str, str]] | None = None,
+    goal_chapter_summary: str | None = None,
     now: datetime | None = None,
 ) -> str:
     """将计算结果格式化为 briefing 文本。"""
     now = now or datetime.now(timezone.utc)
     date_str = now.strftime("%Y-%m-%d")
-    lines = [f"## Coach Briefing (auto-generated, {date_str})", ""]
+    lines: list[str] = []
+    if goal_chapter_summary:
+        lines.append("## 当前阶段")
+        lines.append(goal_chapter_summary)
+        lines.append("")
+    lines += [f"## Coach Briefing (auto-generated, {date_str})", ""]
 
     if days_since_last is not None:
         lines.append(f"距上次会话：{days_since_last} 天")
@@ -249,8 +296,10 @@ async def compute_and_write_briefing(
     markers_task = _read_store_file(client, namespace, _MARKERS_STORE_KEY)
     coping_task = _read_store_file(client, namespace, _COPING_STORE_KEY)
     summaries_task = collect_recent_summaries(client, namespace, now=now)
-    markers_content, coping_content, recent_summaries = await asyncio.gather(
-        markers_task, coping_task, summaries_task,
+    goal_task = _read_store_file(client, namespace, GOAL_CURRENT_KEY)
+    chapter_task = _read_store_file(client, namespace, CHAPTER_CURRENT_KEY)
+    markers_content, coping_content, recent_summaries, goal_content, chapter_content = await asyncio.gather(
+        markers_task, coping_task, summaries_task, goal_task, chapter_task,
     )
 
     # 3. 计算各项指标
@@ -258,6 +307,7 @@ async def compute_and_write_briefing(
     sessions_this_week = compute_sessions_this_week(threads, now=now)
     upcoming = extract_upcoming_markers(markers_content, now=now)
     lifesigns = extract_lifesign_activity(coping_content)
+    goal_chapter = extract_goal_chapter_summary(goal_content, chapter_content)
 
     # 4. 格式化并写入
     briefing = format_briefing(
@@ -266,6 +316,7 @@ async def compute_and_write_briefing(
         upcoming_markers=upcoming,
         lifesign_activity=lifesigns,
         recent_summaries=recent_summaries,
+        goal_chapter_summary=goal_chapter,
         now=now,
     )
 
