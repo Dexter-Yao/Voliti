@@ -28,14 +28,6 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 
-const ONBOARDING_KEY = "voliti_onboarding_complete";
-
-function resolveUrl(apiUrl: string): string {
-  return apiUrl.startsWith("/") && typeof window !== "undefined"
-    ? `${window.location.origin}${apiUrl}`
-    : apiUrl;
-}
-
 function OnboardingComplete({ onConfirm }: { onConfirm: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F4EDE3]">
@@ -84,9 +76,6 @@ function MainApp() {
       try {
         const backendDone = await fetchOnboardingComplete();
         if (cancelled) return;
-        if (backendDone) {
-          localStorage.setItem(ONBOARDING_KEY, "true");
-        }
         setRequiresOnboarding(!backendDone);
       } catch {
         if (cancelled) return;
@@ -119,7 +108,7 @@ function MainApp() {
 
     try {
       const result = await startOnboardingThread(
-        resolveUrl(apiUrl),
+        apiUrl,
         userId,
         assistantId,
       );
@@ -149,7 +138,7 @@ function MainApp() {
       const userId = getUserId();
       if (!apiUrl || !assistantId || !userId) return;
       const result = await ensureTodayThread(
-        resolveUrl(apiUrl), userId, assistantId, SESSION_TYPE_COACHING,
+        apiUrl, userId, assistantId, SESSION_TYPE_COACHING,
       );
       if (result && !cancelled) {
         pendingCoachingThreadRef.current = result.threadId;
@@ -192,7 +181,7 @@ function MainApp() {
     let cancelled = false;
     setStartingOnboarding(true);
 
-    startOnboardingThread(resolveUrl(apiUrl), userId, assistantId)
+    startOnboardingThread(apiUrl, userId, assistantId)
       .then((result) => {
         if (!result || cancelled) {
           toast.error("暂时无法进入补充引导，请稍后重试");
@@ -213,7 +202,6 @@ function MainApp() {
   }, [onboardingInput, setThreadId, startingOnboarding]);
 
   const handleConfirmJourney = useCallback(() => {
-    localStorage.setItem(ONBOARDING_KEY, "true");
     if (pendingCoachingThreadRef.current) {
       setThreadId(pendingCoachingThreadRef.current);
     }
@@ -250,7 +238,7 @@ function MainApp() {
     if (!apiUrl || !assistantId || !userId) return;
 
     const result = await ensureTodayThread(
-      resolveUrl(apiUrl), userId, assistantId, SESSION_TYPE_COACHING,
+      apiUrl, userId, assistantId, SESSION_TYPE_COACHING,
     );
     if (!result) {
       toast.error("暂时无法返回教练主页，请重试");

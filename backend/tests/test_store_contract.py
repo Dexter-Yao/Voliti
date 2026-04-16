@@ -93,5 +93,5 @@ def test_shared_profile_fixture_round_trip() -> None:
     fixture = FIXTURES_DIR / "profile_context.value.json"
     value = json.loads(fixture.read_text(encoding="utf-8"))
     content = unwrap_file_value(value)
-    assert "fixture_type: profile_context" in content
+    assert "# User Profile" in content
     assert "onboarding_complete: true" in content

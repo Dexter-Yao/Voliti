@@ -9,7 +9,7 @@ import {
   shouldAutoEnsureCoachingThread,
   shouldAutoStartReentrySession,
   shouldMountPrimaryWorkspace,
-  shouldUseOnboardingThreadShell,
+  shouldMountOnboardingConversation,
 } from "./onboarding-surface";
 
 function makeInput(
@@ -34,7 +34,7 @@ describe("onboarding surface contract", () => {
     expect(shouldAutoEnsureCoachingThread({ surface, onboardingEntryIntent: input.onboardingEntryIntent })).toBe(false);
     expect(shouldAutoStartReentrySession(input)).toBe(false);
     expect(shouldMountPrimaryWorkspace(surface)).toBe(false);
-    expect(shouldUseOnboardingThreadShell(surface)).toBe(false);
+    expect(shouldMountOnboardingConversation(surface)).toBe(false);
   });
 
   it("keeps new users on the welcome surface before the onboarding thread starts", () => {
@@ -45,7 +45,7 @@ describe("onboarding surface contract", () => {
     expect(shouldAutoEnsureCoachingThread({ surface, onboardingEntryIntent: input.onboardingEntryIntent })).toBe(false);
     expect(shouldAutoStartReentrySession(input)).toBe(false);
     expect(shouldMountPrimaryWorkspace(surface)).toBe(false);
-    expect(shouldUseOnboardingThreadShell(surface)).toBe(false);
+    expect(shouldMountOnboardingConversation(surface)).toBe(false);
   });
 
   it("switches to the full-screen onboarding conversation surface after the onboarding thread starts", () => {
@@ -59,7 +59,7 @@ describe("onboarding surface contract", () => {
     expect(shouldAutoEnsureCoachingThread({ surface, onboardingEntryIntent: input.onboardingEntryIntent })).toBe(false);
     expect(shouldAutoStartReentrySession(input)).toBe(false);
     expect(shouldMountPrimaryWorkspace(surface)).toBe(true);
-    expect(shouldUseOnboardingThreadShell(surface)).toBe(true);
+    expect(shouldMountOnboardingConversation(surface)).toBe(true);
   });
 
   it("allows the standard coaching workspace only after onboarding is no longer required", () => {
@@ -70,7 +70,7 @@ describe("onboarding surface contract", () => {
     expect(shouldAutoEnsureCoachingThread({ surface, onboardingEntryIntent: input.onboardingEntryIntent })).toBe(true);
     expect(shouldAutoStartReentrySession(input)).toBe(false);
     expect(shouldMountPrimaryWorkspace(surface)).toBe(true);
-    expect(shouldUseOnboardingThreadShell(surface)).toBe(false);
+    expect(shouldMountOnboardingConversation(surface)).toBe(false);
   });
 
   it("suppresses the standard workspace while settings re-entry is waiting to start", () => {
@@ -93,6 +93,6 @@ describe("onboarding surface contract", () => {
     expect(surface).toBe("conversation");
     expect(shouldAutoEnsureCoachingThread({ surface, onboardingEntryIntent: input.onboardingEntryIntent })).toBe(false);
     expect(shouldAutoStartReentrySession(input)).toBe(false);
-    expect(shouldUseOnboardingThreadShell(surface)).toBe(true);
+    expect(shouldMountOnboardingConversation(surface)).toBe(true);
   });
 });

@@ -22,10 +22,6 @@ from voliti.store_contract import (
 
 logger = logging.getLogger(__name__)
 
-_MARKERS_STORE_KEY = TIMELINE_MARKERS_KEY
-_COPING_STORE_KEY = COPING_PLANS_INDEX_KEY
-
-
 def compute_days_since_last_session(
     threads: list[dict[str, Any]],
     *,
@@ -132,7 +128,7 @@ def extract_goal_chapter_summary(
     goal_content: str | None,
     chapter_content: str | None,
 ) -> str | None:
-    """Extract concise goal/chapter context for briefing."""
+    """提取目标与当前阶段的摘要，用于 briefing 上下文。"""
     if not goal_content and not chapter_content:
         return None
     lines = []
@@ -242,7 +238,7 @@ def format_briefing(
             lines.append(f"- {trigger}")
         lines.append("")
 
-    lines.append(f"完整日历：read_file {_MARKERS_STORE_KEY}")
+    lines.append(f"完整日历：read_file {TIMELINE_MARKERS_KEY}")
     return "\n".join(lines)
 
 
@@ -293,8 +289,8 @@ async def compute_and_write_briefing(
             threads = []
 
     # 2. 并行读取 Store 数据
-    markers_task = _read_store_file(client, namespace, _MARKERS_STORE_KEY)
-    coping_task = _read_store_file(client, namespace, _COPING_STORE_KEY)
+    markers_task = _read_store_file(client, namespace, TIMELINE_MARKERS_KEY)
+    coping_task = _read_store_file(client, namespace, COPING_PLANS_INDEX_KEY)
     summaries_task = collect_recent_summaries(client, namespace, now=now)
     goal_task = _read_store_file(client, namespace, GOAL_CURRENT_KEY)
     chapter_task = _read_store_file(client, namespace, CHAPTER_CURRENT_KEY)

@@ -1,5 +1,5 @@
 # ABOUTME: 日终 Pipeline — 封存 thread、生成日摘要、回填缺失日、归档会话、更新 briefing
-# ABOUTME: 使用 LangGraph SDK client 操作 threads/store，GPT-5.4 Nano 生成摘要
+# ABOUTME: 使用 LangGraph SDK client 操作 threads/store，轻量模型生成摘要
 
 from __future__ import annotations
 

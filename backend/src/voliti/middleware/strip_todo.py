@@ -33,7 +33,7 @@ def _strip_base_agent_prompt(text: str) -> str:
         return text
     # 移除标记之前的 \n\n 分隔符
     start = idx
-    while start > 0 and text[start - 1] in "\n":
+    while start > 0 and text[start - 1] == "\n":
         start -= 1
     removed_len = len(text) - start
     logger.debug("StripDefaultsMW: removed BASE_AGENT_PROMPT (%d chars)", removed_len)
@@ -49,7 +49,7 @@ def _strip_memory_guidelines(text: str) -> str:
     """
     open_idx = text.find(_MEMORY_GUIDELINES_OPEN)
     close_idx = text.find(_MEMORY_GUIDELINES_CLOSE)
-    if open_idx < 0 or close_idx < 0:
+    if open_idx < 0 or close_idx < 0 or close_idx < open_idx:
         return text
 
     # 结束位置：结束标签之后的一个换行符（若存在）也一并移除
@@ -59,7 +59,7 @@ def _strip_memory_guidelines(text: str) -> str:
 
     # 移除开始标签前面的空行（与 _strip_base_agent_prompt 处理方式一致）
     start = open_idx
-    while start > 0 and text[start - 1] in "\n":
+    while start > 0 and text[start - 1] == "\n":
         start -= 1
 
     removed_len = end - start

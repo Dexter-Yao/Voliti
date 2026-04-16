@@ -11,9 +11,6 @@ from langgraph.config import get_config
 SessionType = Literal["coaching", "onboarding"]
 """Voliti 当前支持的会话类型。"""
 
-DEFAULT_SESSION_TYPE: SessionType = "coaching"
-"""默认会话类型。"""
-
 
 class InvalidSessionTypeError(ValueError):
     """session_type 不满足运行时契约。"""
