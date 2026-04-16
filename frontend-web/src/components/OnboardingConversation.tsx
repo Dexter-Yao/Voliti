@@ -7,7 +7,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type { Message } from "@langchain/langgraph-sdk";
 import { useStreamContext } from "@/providers/Stream";
-import { isA2UIPayload, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
+import { extractA2UIPayload, extractInterruptId, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
 import { A2UIRenderer } from "./a2ui/A2UIRenderer";
 import { getUserId } from "@/lib/user";
 import { ONBOARDING_GREETING, SESSION_TYPE_ONBOARDING } from "@/lib/thread-utils";
@@ -60,27 +60,19 @@ export function OnboardingConversation({
       { config: submitConfig, streamMode: ["values"], streamSubgraphs: true, streamResumable: true },
     );
     onNameSent();
+    // stream/submitConfig/onNameSent 刻意排除：initialSent ref 保证单次触发
   }, [pendingName, threadId, stream.isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- A2UI interrupt 检测 ---
-  const a2uiPayload = useMemo((): A2UIPayload | null => {
-    const interrupt = stream.interrupt;
-    if (!interrupt) return null;
-    const rawValue = Array.isArray(interrupt)
-      ? interrupt[0]?.value ?? interrupt[0]
-      : (interrupt as { value?: unknown })?.value ?? interrupt;
-    if (isA2UIPayload(rawValue)) return rawValue;
-    return null;
-  }, [stream.interrupt]);
+  const a2uiPayload = useMemo(
+    (): A2UIPayload | null => extractA2UIPayload(stream.interrupt),
+    [stream.interrupt],
+  );
 
-  const interruptId = useMemo(() => {
-    const interrupt = stream.interrupt;
-    if (!interrupt) return null;
-    if (Array.isArray(interrupt) && interrupt.length > 0) {
-      return interrupt[0]?.id ?? interrupt[0]?.ns ?? null;
-    }
-    return (interrupt as { id?: string })?.id ?? null;
-  }, [stream.interrupt]);
+  const interruptId = useMemo(
+    () => extractInterruptId(stream.interrupt),
+    [stream.interrupt],
+  );
 
   // --- A2UI resume ---
   const resumeWithAction = useCallback(
@@ -141,21 +133,19 @@ export function OnboardingConversation({
 
   // --- 提取最新 Coach 消息文本 ---
   const coachText = useMemo(() => {
-    const msgs = stream.messages;
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      const m = msgs[i];
+    const extractText = (content: Message["content"]): string =>
+      typeof content === "string"
+        ? content
+        : (content ?? [])
+            .filter((c): c is { type: "text"; text: string } => c.type === "text")
+            .map((c) => c.text)
+            .join("");
+
+    for (let i = stream.messages.length - 1; i >= 0; i--) {
+      const m = stream.messages[i];
       if (m.type !== "ai") continue;
       if (m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX)) continue;
-      if ("tool_calls" in m && m.tool_calls?.length) {
-        const text = typeof m.content === "string"
-          ? m.content
-          : (m.content ?? []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
-        if (!text.trim()) continue;
-        return text;
-      }
-      const text = typeof m.content === "string"
-        ? m.content
-        : (m.content ?? []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
+      const text = extractText(m.content);
       if (text.trim()) return text;
     }
     return null;
@@ -163,7 +153,7 @@ export function OnboardingConversation({
 
   // --- 自由文本输入（无 interrupt 时） ---
   const [freeInput, setFreeInput] = useState("");
-  const showFreeInput = !stream.isLoading && !a2uiPayload && coachText && initialSent.current;
+  const showFreeInput = !stream.isLoading && !a2uiPayload && !!coachText && initialSent.current;
 
   const handleFreeSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -185,16 +175,13 @@ export function OnboardingConversation({
     [freeInput, stream, submitConfig],
   );
 
-  // --- 是否正在等待（思考态） ---
-  const isWaiting = stream.isLoading;
-
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* 内容区：居中 */}
       <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-8">
         <div className="w-full max-w-[480px]">
           {/* Coach 标识（首步） */}
-          {!coachText && !isWaiting && (
+          {!coachText && !stream.isLoading && (
             <div className="mb-5 text-center">
               <span className="font-mono-system text-xs uppercase tracking-[2px] text-[#B87333]">
                 VOLITI COACH
@@ -203,7 +190,7 @@ export function OnboardingConversation({
           )}
 
           {/* 思考态 */}
-          {isWaiting && !coachText && (
+          {stream.isLoading && !coachText && (
             <div className="flex flex-col items-center gap-4">
               <span className="font-mono-system text-xs uppercase tracking-[2px] text-[#B87333]">
                 VOLITI COACH
@@ -214,22 +201,20 @@ export function OnboardingConversation({
 
           {/* Coach 问题文本 */}
           {coachText && (
-            <div className="text-center">
-              <p className="font-serif-coach text-base leading-[1.7] text-[#1A1816] whitespace-pre-line">
-                {coachText}
-              </p>
-            </div>
+            <p className="font-serif-coach text-center text-base leading-[1.7] text-[#1A1816] whitespace-pre-line">
+              {coachText}
+            </p>
           )}
 
           {/* 步骤间思考态 */}
-          {isWaiting && coachText && (
+          {stream.isLoading && coachText && (
             <div className="mt-6 flex justify-center">
               <div className="h-[2px] w-24 animate-pulse rounded-full bg-[#B87333]/30" />
             </div>
           )}
 
           {/* A2UI 内联渲染 */}
-          {a2uiPayload && !isWaiting && (
+          {a2uiPayload && !stream.isLoading && (
             <div className="mt-8">
               <A2UIRenderer
                 components={a2uiPayload.components}

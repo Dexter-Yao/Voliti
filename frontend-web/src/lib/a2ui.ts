@@ -185,3 +185,24 @@ const A2UIPayloadSchema = z.object({
 export function isA2UIPayload(value: unknown): value is A2UIPayload {
   return A2UIPayloadSchema.safeParse(value).success;
 }
+
+// ---------------------------------------------------------------------------
+// Interrupt 解析工具（LangGraph interrupt 结构 → A2UI payload / id）
+// ---------------------------------------------------------------------------
+
+export function extractA2UIPayload(interrupt: unknown): A2UIPayload | null {
+  if (!interrupt) return null;
+  const rawValue = Array.isArray(interrupt)
+    ? interrupt[0]?.value ?? interrupt[0]
+    : (interrupt as { value?: unknown })?.value ?? interrupt;
+  if (isA2UIPayload(rawValue)) return rawValue;
+  return null;
+}
+
+export function extractInterruptId(interrupt: unknown): string | null {
+  if (!interrupt) return null;
+  if (Array.isArray(interrupt) && interrupt.length > 0) {
+    return interrupt[0]?.id ?? interrupt[0]?.ns ?? null;
+  }
+  return (interrupt as { id?: string })?.id ?? null;
+}

@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useStreamContext } from "@/providers/Stream";
-import { isA2UIPayload, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
+import { extractA2UIPayload, extractInterruptId, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
 import { A2UIDrawer } from "./A2UIDrawer";
 import { toast } from "sonner";
 import { getUserId } from "@/lib/user";
@@ -21,26 +21,15 @@ export function A2UIInterruptHandler({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pendingResumeRef = useRef(false);
 
-  const a2uiPayload = useMemo((): A2UIPayload | null => {
-    const interrupt = stream.interrupt;
-    if (!interrupt) return null;
+  const a2uiPayload = useMemo(
+    (): A2UIPayload | null => extractA2UIPayload(stream.interrupt),
+    [stream.interrupt],
+  );
 
-    const rawValue = Array.isArray(interrupt)
-      ? interrupt[0]?.value ?? interrupt[0]
-      : (interrupt as { value?: unknown })?.value ?? interrupt;
-
-    if (isA2UIPayload(rawValue)) return rawValue;
-    return null;
-  }, [stream.interrupt]);
-
-  const interruptId = useMemo(() => {
-    const interrupt = stream.interrupt;
-    if (!interrupt) return null;
-    if (Array.isArray(interrupt) && interrupt.length > 0) {
-      return interrupt[0]?.id ?? interrupt[0]?.ns ?? null;
-    }
-    return (interrupt as { id?: string })?.id ?? null;
-  }, [stream.interrupt]);
+  const interruptId = useMemo(
+    () => extractInterruptId(stream.interrupt),
+    [stream.interrupt],
+  );
 
   const submitConfig = useMemo(
     () => buildSubmitConfig(getUserId(), sessionType),
