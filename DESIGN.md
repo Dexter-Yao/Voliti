@@ -192,84 +192,110 @@
 - 字体：Mono 11px · obsidian-40 · 居中
 - 需要实现为独立的时间戳组件
 
-## Onboarding — 全屏对话
+## Onboarding — 全屏居中引导
 
 ### 设计意图
 
-Onboarding 是 Coach 的独白时刻。视觉上把 Coach 升格为前景，把界面降格为背景。用户感受到的是"一位教练在关注我"，而不是"一个表单要我填"。
+Onboarding 是 Coach 的独白时刻。视觉上把 Coach 升格为前景，把界面降格为背景。用户感受到的是"一位教练在面对面关注我"，而不是"一个聊天窗口在等我输入"。
+
+**全程居中，不进入聊天界面**。从第一步到 `onboarding_complete: true` 写入前，用户始终处于全屏居中引导模式。不暴露标准 Coach 聊天界面、不显示消息历史列、不出现输入框等待态。
+
+### 是什么
+
+- 每步只呈现一个问题，占满浏览器全屏，居中排版
+- Coach 问题在屏幕垂直居中偏上位置，用户输入在问题下方或屏幕底部
+- 选择题（select / multi_select）渲染为居中 pill 按钮，选择后自动推进
+- 文本输入题渲染为底部输入区域，确认后推进
+- 每步之间以淡入淡出过渡，视觉节奏平稳
+
+### 不是什么
+
+- 不是聊天界面。没有消息气泡、没有消息滚动列表、没有输入框等待态
+- 不是弹窗/抽屉。A2UI 组件在 onboarding 中不以 Sheet/Drawer/Modal 形式渲染
+- 不是向导进度条。没有 "Step 1 of 5" 进度指示器（Coach 控制节奏，用户不需要知道总步数）
+- 不是表单。每步只有一个焦点，不出现多字段并排
 
 ### 布局
 
-- 全屏覆盖（fullScreenCover），无 Tab 栏，无导航栏
+- 全屏覆盖，无 Tab 栏、无导航栏、无侧边栏
 - 背景：onboardingWarm (#F4EDE3，比 parchment 微暖偏移)
 - 顶部 copper 渐变呼吸线（1px，60% 屏宽居中，opacity 0.1-0.3 缓慢循环）
-- 内容垂直居中偏上（top 30% 留白）
-- 左右 padding：spacingXL (32px)
-
-### 两个视觉阶段
-
-| 阶段 | Coach 消息 | 用户回复 | InputBar |
-|------|-----------|---------|----------|
-| 居中模式（Step 1-2） | Serif 18px · 居中 | Quick Reply pills（垂直排列） | 隐藏 |
-| 对话模式（Step 3+） | Serif 16px · 左对齐 | 自由输入 + 语音 | 显示 |
-
-过渡动画：300ms ease-out（Starpath fanout token）
+- 内容区域垂直居中偏上（top 30% 留白），水平居中
+- 内容最大宽度：480px（桌面端），移动端全宽 padding spacingXL (32px)
 
 ### Coach 标识
 
 - "VOLITI COACH" — Mono 12px · copper · uppercase · letter-spacing 2px
-- 位于屏幕垂直 30% 处，居中
-- 仅在 Step 1 显示，后续消息流中不重复
+- 位于 Coach 问题上方，居中
+- 仅在首步显示，后续步骤不重复
 
-### Quick Reply pills
+### Coach 问题
 
-- 垂直排列，居中对齐
-- Sans 14px · obsidian-10 边框 · Capsule 圆角
+- Serif (LXGW WenKai) 16px · line-height 1.7 · 居中对齐
+- 颜色：obsidian
+- 多段落之间 spacingMD (16px) 间距
+
+### 用户输入区域
+
+根据后端 A2UI 组件类型渲染为不同的居中控件：
+
+**选择题（select）**
+- 垂直排列 pill 按钮，居中对齐
+- Sans 14px · obsidian-10 边框 · Capsule 999px 圆角
 - 间距 spacingSM (8px)
-- 底部 padding spacingXL (32px)
-- 最后一个选项触发 InputBar 出现（"让我想想" / "我想说说"）
+- 选中状态：obsidian 背景 + parchment 文字
+- 选择后自动推进到下一步（无需点击确认按钮）
 
-### 语音输入
+**多选题（multi_select）**
+- 垂直排列 pill 按钮，居中对齐，允许多选
+- 选中状态同上，可切换
+- 底部显示"确认"按钮（ObsidianPill），至少选一项后启用
 
-InputBar 和 Quick Reply 区域均支持语音按钮（麦克风图标，语音转文字后作为文本输入）。
+**文本输入（text_input）**
+- 输入区域位于屏幕底部（与名字输入页同布局）
+- 输入框：Sans 14px · obsidian-10 边框 · 4px 圆角 · transparent 背景
+- 下方"确认"按钮（ObsidianPill，全宽）
+- label 文字：Sans 12px · obsidian-40 · 位于输入框上方
 
-### 三步对话内容
+**数字输入（number_input）**
+- 同文本输入布局，增加单位标签
 
-**Step 1：称呼**
-```
-ZH: "你好。
-     我是你的教练，将陪你走接下来这段旅程。
-     怎么称呼你？"
+**滑块（slider）**
+- 居中显示，宽度与内容区一致
+- Mono 标签显示当前值
+- 下方"确认"按钮
 
-EN: "Hi there.
-     I'm your coach, and I'll be walking this next stretch of the road with you.
-     What should I call you?"
-```
-回复方式：文本输入框 + 语音
-语言选择：跟随 @AppStorage("preferredLanguage")，默认跟随系统
+**混合组件（一次 fan_out 包含多种类型）**
+- 按组件顺序垂直排列在内容区域内，居中
+- 各组件之间 spacingLG (24px) 间距
+- 底部统一"确认"按钮
 
-**Step 2：Future Self（场景）**
-```
-"[名字]，闭上眼想一下 —
- 你最享受的自己是什么样的？"
-```
-Quick Reply: "精力充沛，从容不迫" / "穿上喜欢的衣服，很自信" / "能掌控自己的节奏" / "让我想想"
+### 步骤过渡
 
-**Step 3：State（当前距离）**
-```
-"那现在呢 —
- 你觉得离那个状态有多远？"
-```
-Quick Reply: "差一点点" / "有距离，但方向清楚" / "挺远的，不知道从哪开始"
+- 用户完成当前步骤 → 当前内容淡出（200ms ease-in）
+- 等待后端响应（显示思考过渡态）
+- 新步骤内容淡入（300ms ease-out）
+- 过渡期间背景色保持不变，无闪烁
 
-三步完成后，Coach 自主判断是否发送 fan_out 结构化表单深入采集，或直接完成 Onboarding。
+### 思考过渡态
+
+后端处理期间（用户已提交、等待 Coach 下一个问题）：
+- Coach 标识区域显示微妙的 copper 呼吸动画
+- 不显示文字（如"正在思考"），保持安静等待感
+
+### Phase 0：前端硬编码问候
+
+- Phase 0（Coach 自我介绍 + 名字采集）由前端硬编码，不走后端
+- 问候文案作为 AI message 写入 onboarding thread（保持线程上下文完整）
+- 用户名字作为 human message 紧随其后提交
+- 名字提交后，后端从 Phase 1 开始响应
 
 ### Onboarding 完成过渡
 
 1. Coach 完成 profile / dashboardConfig / chapter 写入
-2. 触发 `future_self` ceremony image（A2UI 全屏面板）
-3. StoreSyncService.syncAll() 确认数据到位
-4. Tab 栏从底部滑入（300ms ease-out）
+2. 触发 `future_self` ceremony image（全屏居中显示）
+3. 显示"准备好了"确认页（全屏居中，含"开始旅程"按钮）
+4. 用户点击确认 → 写入 `onboarding_complete: true` → 切换到标准 Coach 工作区
 
 ### 独立会话
 
@@ -277,7 +303,7 @@ Onboarding 使用独立的 `onboardingThreadID`，与日常 coaching 的 `thread
 
 ### 采集模式 re-entry
 
-设置页"继续了解我"可重新进入 Onboarding 采集界面（`isReEntry: true`），跳过 Step 1-2，直接进入对话模式。Coach 通过 `configurable.session_mode = "onboarding"` 感知当前为采集模式。
+设置页"继续了解我"可重新进入 Onboarding 采集界面（`isReEntry: true`）。re-entry 同样使用全屏居中引导模式。Coach 通过 `configurable.session_type = "onboarding"` 感知当前为采集模式，并基于已有 profile 数据判断从哪里继续。
 
 ## MIRROR Tab — 展示层
 
@@ -491,13 +517,24 @@ iOS 只有 tap/no-tap。Web 端需要完整的交互状态链：
 - Fallback 链：`LXGW WenKai` → `KaiTi` → `STKaiti` → `serif`
 - 图标库：Lucide React（替代 iOS SF Symbols）
 
-### A2UI 抽屉（Web 适配）
+### A2UI 渲染（Web 适配）
+
+**Coaching 模式（标准对话中）**
 
 - 形态：底部抽屉（shadcn Sheet），`max-width: 480px`，居中
 - 背景遮罩：`rgba(26, 24, 22, 0.4)`
 - 尺寸映射：`half` → 50vh, `three-quarter` → 75vh, `full` → 100vh
 - 关闭手势：Escape 键、点击遮罩
 - 容错：网络失败时显示横幅 + 重试，无法 resume 时发送带 `_network_failure` 标记的 fallback resume
+
+**Onboarding 模式（全屏居中引导中）**
+
+- A2UI 组件不以抽屉/弹窗形式渲染
+- 而是作为全屏居中页面的一部分，内联在 Coach 问题下方
+- 选择题（select / multi_select）渲染为居中 pill 按钮
+- 文本/数字输入渲染为底部输入区域
+- 混合组件按顺序垂直排列，底部统一确认按钮
+- 详见「Onboarding — 全屏居中引导 / 用户输入区域」
 
 ### Web 特有组件
 
@@ -569,3 +606,5 @@ iOS 只有 tap/no-tap。Web 端需要完整的交互状态链：
 | 2026-04-12 | 响应式断点 768px（移动/桌面两档） | MVP 阶段简化，避免过度断点 |
 | 2026-04-12 | A2UI 底部抽屉 max-width 480px | 桌面端居中避免过宽，手机端全宽 |
 | 2026-04-12 | Web 交互状态表（hover/focus/active/disabled） | iOS 无 hover，Web 必须定义 |
+| 2026-04-16 | Onboarding 全程居中引导（替代居中+对话双阶段） | 用户测试反馈"对话模式"退化为普通聊天体验；全程居中保持"教练面对面"感知 |
+| 2026-04-16 | A2UI onboarding 模式：内联居中（替代底部抽屉） | 抽屉弹窗打断居中引导的沉浸感；onboarding 中 A2UI 组件渲染为页面内容的一部分 |

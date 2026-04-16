@@ -252,32 +252,63 @@
     },
 
     "FanOutPanel": {
-      "description": "扇出半 UI 面板，从底部滑入覆盖对话区域",
-      "token_refs": {
-        "bg": "color.parchment (semi-transparent)",
-        "border_top": "border.separator (obsidian-20)",
-        "animation": "animation.fanout_duration"
+      "description": "A2UI 面板，coaching 模式下从底部滑入，onboarding 模式下内联居中",
+      "coaching_mode": {
+        "description": "标准对话中：底部抽屉覆盖对话区域",
+        "token_refs": {
+          "bg": "color.parchment (semi-transparent)",
+          "border_top": "border.separator (obsidian-20)",
+          "animation": "animation.fanout_duration"
+        },
+        "css_rules": {
+          "background": "rgba(245, 241, 235, 0.98)",
+          "border-top": "1px solid var(--color-obsidian-20)",
+          "box-shadow": "none",
+          "padding": "var(--spacing-md)"
+        },
+        "sizes": {
+          "half": "50vh",
+          "three_quarter": "75vh",
+          "full": "100vh"
+        },
+        "animation": {
+          "enter": "slide-up 300ms ease-out",
+          "exit": "slide-down 200ms ease-in"
+        },
+        "header": {
+          "font-family": "var(--font-serif)",
+          "font-size": "18px"
+        },
+        "forbidden": ["drop-shadow", "border-radius on top corners", "backdrop blur (keep clean)"]
       },
-      "css_rules": {
-        "background": "rgba(245, 241, 235, 0.98)",
-        "border-top": "1px solid var(--color-obsidian-20)",
-        "box-shadow": "none",
-        "padding": "var(--spacing-md)"
-      },
-      "sizes": {
-        "half": "50vh",
-        "three_quarter": "75vh",
-        "full": "100vh"
-      },
-      "animation": {
-        "enter": "slide-up 300ms ease-out",
-        "exit": "slide-down 200ms ease-in"
-      },
-      "header": {
-        "font-family": "var(--font-serif)",
-        "font-size": "18px"
-      },
-      "forbidden": ["drop-shadow", "border-radius on top corners", "backdrop blur (keep clean)"]
+      "onboarding_mode": {
+        "description": "全屏居中引导中：A2UI 组件内联在 Coach 问题下方，不弹出抽屉",
+        "rendering": "inline-centered",
+        "container": {
+          "max-width": "480px",
+          "margin": "0 auto",
+          "text-align": "center"
+        },
+        "select": {
+          "layout": "vertical pills, centered",
+          "auto_advance": true,
+          "note": "选择后自动推进，无需确认按钮"
+        },
+        "multi_select": {
+          "layout": "vertical pills, centered, toggleable",
+          "confirm_button": true,
+          "note": "至少选一项后启用确认按钮"
+        },
+        "text_input": {
+          "layout": "bottom input area",
+          "confirm_button": true
+        },
+        "animation": {
+          "step_exit": "fade-out 200ms ease-in",
+          "step_enter": "fade-in 300ms ease-out"
+        },
+        "forbidden": ["Sheet/Drawer/Modal", "background overlay", "close button", "skip/reject buttons in onboarding flow"]
+      }
     },
 
     "ThinkingCard": {
