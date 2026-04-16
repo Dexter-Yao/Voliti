@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents (Codex, Claude Code, etc.) when 
 
 ## 产品上下文
 
-Voliti 是基于教练协议的长期行为对齐系统，减脂为首个落地场景。核心方法论：**S-PDCA（State → Plan → Do → Check → Act）**。
+Voliti 是 AI 减脂行为教练。底层提供饮食指导、运动建议、方案制定与每日跟进；差异化价值在于帮助用户在失控前预防、失控后防止螺旋、跨时间识别行为模式。核心方法论：**S-PDCA（State → Plan → Do → Check → Act）**。
 
 本仓库为 Monorepo，包含 Web MVP、iOS 原生客户端和 Python/LangGraph 云端后端。
 
