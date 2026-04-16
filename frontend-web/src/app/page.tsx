@@ -19,10 +19,11 @@ import {
   shouldAutoEnsureCoachingThread,
   resolveOnboardingSurface,
   shouldMountPrimaryWorkspace,
-  shouldUseOnboardingThreadShell,
+  shouldMountOnboardingConversation,
 } from "@/lib/onboarding-surface";
+import { OnboardingConversation } from "@/components/OnboardingConversation";
 import { ensureTodayThread, startOnboardingThread } from "@/lib/thread-bootstrap";
-import { SESSION_TYPE_COACHING, SESSION_TYPE_ONBOARDING } from "@/lib/thread-utils";
+import { SESSION_TYPE_COACHING } from "@/lib/thread-utils";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
@@ -226,10 +227,12 @@ function MainApp() {
     }
   }, [onboardingActive]);
 
-  const initialMessage = pendingName ?? checkinTrigger;
-  const handleInitialMessageSent = useCallback(() => {
-    setPendingName(null);
+  const coachingInitialMessage = checkinTrigger;
+  const handleCoachingInitialMessageSent = useCallback(() => {
     setCheckinTrigger(null);
+  }, []);
+  const handleOnboardingNameSent = useCallback(() => {
+    setPendingName(null);
   }, []);
 
   const onboardingSurface = resolveOnboardingSurface(onboardingInput);
@@ -238,7 +241,7 @@ function MainApp() {
     onboardingEntryIntent,
   });
   const mountPrimaryWorkspace = shouldMountPrimaryWorkspace(onboardingSurface);
-  const onboardingThreadShell = shouldUseOnboardingThreadShell(onboardingSurface);
+  const mountOnboardingConversation = shouldMountOnboardingConversation(onboardingSurface);
 
   const handleExitReentry = useCallback(async () => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -282,7 +285,14 @@ function MainApp() {
         </div>
       ) : undefined}
     >
-      {mountPrimaryWorkspace ? (
+      {mountOnboardingConversation ? (
+        <StreamProvider autoEnsureThread={false}>
+          <OnboardingConversation
+            pendingName={pendingName}
+            onNameSent={handleOnboardingNameSent}
+          />
+        </StreamProvider>
+      ) : mountPrimaryWorkspace ? (
         <ThreadProvider>
           <StreamProvider
             autoEnsureThread={autoEnsureCoachingThread}
@@ -290,13 +300,10 @@ function MainApp() {
           >
             <ArtifactProvider>
               <Thread
-                initialMessage={initialMessage}
-                onInitialMessageSent={handleInitialMessageSent}
-                onboardingMode={onboardingThreadShell}
+                initialMessage={coachingInitialMessage}
+                onInitialMessageSent={handleCoachingInitialMessageSent}
               />
-              <A2UIInterruptHandler
-                sessionType={onboardingThreadShell ? SESSION_TYPE_ONBOARDING : SESSION_TYPE_COACHING}
-              />
+              <A2UIInterruptHandler />
             </ArtifactProvider>
           </StreamProvider>
         </ThreadProvider>

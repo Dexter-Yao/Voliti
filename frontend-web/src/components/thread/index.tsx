@@ -51,7 +51,7 @@ import {
 } from "../ui/sheet";
 import { MirrorPanel } from "../mirror/MirrorPanel";
 import { SettingsDrawer } from "../settings/SettingsDrawer";
-import { isThreadSealed, ONBOARDING_GREETING, SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
+import { isThreadSealed, SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
 import { useThreads } from "@/providers/Thread";
 import { getUserId } from "@/lib/user";
 import { buildSubmitConfig } from "@/lib/stream-config";
@@ -100,11 +100,9 @@ function ScrollToBottom(props: { className?: string }) {
 export function Thread({
   initialMessage,
   onInitialMessageSent,
-  onboardingMode,
 }: {
   initialMessage?: string | null;
   onInitialMessageSent?: () => void;
-  onboardingMode?: boolean;
 } = {}) {
   const [artifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
@@ -117,12 +115,11 @@ export function Thread({
     return thread ? isThreadSealed(thread) : false;
   }, [threadId, threads]);
   const sessionType = useMemo(() => {
-    if (onboardingMode) return "onboarding" as SessionType;
     if (!threadId) return SESSION_TYPE_COACHING;
     const thread = threads.find((t) => t.thread_id === threadId);
     const meta = thread?.metadata as Record<string, unknown> | undefined;
     return (meta?.session_type as SessionType) ?? SESSION_TYPE_COACHING;
-  }, [onboardingMode, threadId, threads]);
+  }, [threadId, threads]);
   const submitConfig = useMemo(
     () => buildSubmitConfig(getUserId(), sessionType),
     [sessionType],
@@ -192,8 +189,7 @@ export function Thread({
     }
   }, [stream.error]);
 
-  // Auto-send initial message (e.g. user name from onboarding, or [daily_checkin] trigger)
-  // Onboarding: 前端问候语作为 assistant message 一并写入 thread，保持 Phase 0 → Phase 1 视觉连续性
+  // Auto-send initial message (e.g. [daily_checkin] trigger for coaching)
   const initialSent = useRef(false);
   useEffect(() => {
     if (!initialMessage || initialSent.current || isLoading) return;
@@ -201,25 +197,13 @@ export function Thread({
     initialSent.current = true;
 
     const isSystemTrigger = initialMessage.startsWith("[daily_");
-
-    const messages: Message[] = [];
-
-    if (onboardingMode) {
-      messages.push({
-        id: uuidv4(),
-        type: "ai",
-        content: ONBOARDING_GREETING,
-      } as Message);
-    }
-
-    messages.push({
+    const msg: Message = {
       id: isSystemTrigger ? `${DO_NOT_RENDER_ID_PREFIX}${uuidv4()}` : uuidv4(),
       type: "human",
       content: [{ type: "text", text: initialMessage }] as Message["content"],
-    });
-
+    };
     stream.submit(
-      { messages },
+      { messages: [msg] },
       { config: submitConfig, streamMode: ["values"], streamSubgraphs: true, streamResumable: true },
     );
     onInitialMessageSent?.();
@@ -432,8 +416,8 @@ export function Thread({
         }
         footer={
           <div className="sticky bottom-0 flex flex-col items-center gap-4 bg-[#F4F0E8]">
-            {/* Empty state welcome (coaching only; onboarding has greeting in thread) */}
-            {!chatStarted && !onboardingMode && (
+            {/* Empty state welcome */}
+            {!chatStarted && (
               <div className="flex flex-col items-center gap-2 pb-4">
                 <h1 className="font-serif-coach text-2xl text-[#1A1816]">
                   Voliti
@@ -548,18 +532,6 @@ export function Thread({
       )}
     </div>
   );
-
-  // Onboarding: immersive single-column chat, no sidebar/mirror/settings
-  if (onboardingMode) {
-    return (
-      <div className="flex h-full w-full flex-col overflow-hidden">
-        <div className="flex items-center justify-center border-b border-[#1A1816]/5 p-3">
-          <span className="text-xl font-semibold tracking-tight">Voliti</span>
-        </div>
-        {chatContent}
-      </div>
-    );
-  }
 
   // Mobile layout: single column, sheet for history
   if (isMobile) {

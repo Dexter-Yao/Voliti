@@ -43,10 +43,10 @@ export function resolveOnboardingSurface(
 export function shouldMountPrimaryWorkspace(
   surface: OnboardingSurface,
 ): boolean {
-  return surface === "conversation" || surface === "coaching";
+  return surface === "coaching";
 }
 
-export function shouldUseOnboardingThreadShell(
+export function shouldMountOnboardingConversation(
   surface: OnboardingSurface,
 ): boolean {
   return surface === "conversation";
