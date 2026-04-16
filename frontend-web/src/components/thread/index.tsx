@@ -435,7 +435,7 @@ export function Thread({
             <div className="relative z-10 mx-auto mb-6 w-full max-w-3xl">
               <form
                 onSubmit={handleSubmit}
-                className="flex items-end gap-2 rounded-2xl border border-[#1A1816]/10 bg-white px-4 py-3 shadow-sm"
+                className="flex items-end gap-2 rounded-[4px] border border-[#1A1816]/10 bg-transparent px-4 py-3"
               >
                 <textarea
                   value={input}
