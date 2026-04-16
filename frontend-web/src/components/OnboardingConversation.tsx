@@ -222,6 +222,7 @@ export function OnboardingConversation({
                 onReject={handleReject}
                 onSkip={handleSkip}
                 isSubmitting={isSubmitting}
+                mode="onboarding"
               />
             </div>
           )}

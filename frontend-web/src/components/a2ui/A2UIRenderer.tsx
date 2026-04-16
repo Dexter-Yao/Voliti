@@ -165,15 +165,17 @@ function SelectInput({
   component,
   value,
   onChange,
+  vertical,
 }: {
   component: SelectComponent;
   value: string;
   onChange: (v: string) => void;
+  vertical?: boolean;
 }) {
   return (
     <div className="space-y-2">
       <Label className="text-sm text-[#1A1816]/80">{component.label}</Label>
-      <div className="flex flex-wrap gap-2">
+      <div className={vertical ? "flex flex-col items-center gap-2" : "flex flex-wrap gap-2"}>
         {component.options.map((opt) => (
           <button
             key={opt.value}
@@ -241,6 +243,7 @@ interface A2UIRendererProps {
   onReject: (reason: string) => void;
   onSkip: () => void;
   isSubmitting: boolean;
+  mode?: "coaching" | "onboarding";
 }
 
 export function A2UIRenderer({
@@ -249,7 +252,9 @@ export function A2UIRenderer({
   onReject,
   onSkip,
   isSubmitting,
+  mode = "coaching",
 }: A2UIRendererProps) {
+  const isOnboarding = mode === "onboarding";
   const initialDataRef = useRef<Record<string, unknown>>(buildInitialData(components));
   const [formData, setFormData] = useState<Record<string, unknown>>(() => ({ ...initialDataRef.current }));
   const [showRejectInput, setShowRejectInput] = useState(false);
@@ -301,6 +306,7 @@ export function A2UIRenderer({
   }, [handleSubmit, isSubmitting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasInputs = components.some((c) => "key" in c);
+  const onlyAutoAdvance = isOnboarding && components.filter((c) => "key" in c).every((c) => c.kind === "select");
 
   return (
     <div className="flex flex-col gap-5">
@@ -353,7 +359,19 @@ export function A2UIRenderer({
                 key={component.key}
                 component={component}
                 value={formData[component.key] as string}
-                onChange={(v) => updateField(component.key, v)}
+                onChange={(v) => {
+                  updateField(component.key, v);
+                  if (isOnboarding) {
+                    // auto-advance: select 后立即提交
+                    const data: Record<string, unknown> = { ...formData, [component.key]: v };
+                    const processed: Record<string, unknown> = {};
+                    for (const c of components) {
+                      if ("key" in c) processed[c.key] = data[c.key];
+                    }
+                    onSubmit(processed);
+                  }
+                }}
+                vertical={isOnboarding}
               />
             );
           case "multi_select":
@@ -403,7 +421,7 @@ export function A2UIRenderer({
       {/* 操作按钮 */}
       {!showRejectInput && (
         <div className="flex items-center gap-3 pt-2">
-          {hasInputs && (
+          {hasInputs && !onlyAutoAdvance && (
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
@@ -423,22 +441,26 @@ export function A2UIRenderer({
               重置
             </Button>
           )}
-          <Button
-            variant="ghost"
-            onClick={onSkip}
-            disabled={isSubmitting}
-            className="text-[#1A1816]/50 hover:text-[#1A1816]"
-          >
-            跳过
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setShowRejectInput(true)}
-            disabled={isSubmitting}
-            className="text-red-400 hover:text-red-500"
-          >
-            拒绝
-          </Button>
+          {!isOnboarding && (
+            <>
+              <Button
+                variant="ghost"
+                onClick={onSkip}
+                disabled={isSubmitting}
+                className="text-[#1A1816]/50 hover:text-[#1A1816]"
+              >
+                跳过
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setShowRejectInput(true)}
+                disabled={isSubmitting}
+                className="text-[#8B3A3A] hover:text-[#8B3A3A]/80"
+              >
+                拒绝
+              </Button>
+            </>
+          )}
         </div>
       )}
     </div>
