@@ -128,6 +128,17 @@
 - **Context:** 不再作为独立 TODO。前瞻标记驱动 Check-in 内容调整已在 `coach_system.j2` 中实现
 - **Source:** 原 /plan-ceo-review 2026-04-06 → 升级 /plan-ceo-review 2026-04-07
 
+## P3: 移动端 BottomTabBar 导航
+- **What:** 移动端（iOS / Web mobile）实现 COACH / MIRROR 两 Tab 底部导航栏，替代当前 header 图标 + Sheet overlay 方案
+- **Why:** DESIGN.md 定义了 BottomTabBar 规格（Mono 12px uppercase, letter-spacing 2px, copper 活跃态），桌面端已用三栏面板替代，但移动端缺少直觉的 Tab 切换
+- **Pros:** 移动端核心导航更直觉，thumb zone 友好
+- **Cons:** 需要移动端视口适配、状态管理
+- **Context:** Design review 2026-04-16 调查确认桌面端三栏布局已覆盖 Tab 功能，BottomTabBar 仅移动端需要。当前开发优先级为 Web 桌面端，移动端暂缓
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P3
+- **Depends on:** 移动端开发启动
+- **Source:** /design-review 2026-04-16
+
 ## P2: LangGraph Cron API 能力调研
 - **What:** 在天级 Thread Phase 3 开始前调研 LangGraph Cloud Cron API，确认是否支持按用户时区触发定时 run、是否能绑定到特定 thread
 - **Why:** 日终 Pipeline 的编排依赖此能力，如果不支持需要设计替代方案
