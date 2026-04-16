@@ -463,7 +463,7 @@ export function Thread({
                   <button
                     type="button"
                     onClick={() => stream.stop()}
-                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-none bg-[#1A1816] text-[#F4F0E8]"
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none bg-[#1A1816] text-[#F4F0E8]"
                   >
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                   </button>
@@ -471,7 +471,7 @@ export function Thread({
                   <button
                     type="submit"
                     disabled={isLoading || isSealed || !input.trim()}
-                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-none bg-[#1A1816] text-[#F4F0E8] transition-opacity disabled:opacity-20"
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none bg-[#1A1816] text-[#F4F0E8] transition-opacity disabled:opacity-20"
                   >
                     <ArrowUp className="h-4 w-4" />
                   </button>
