@@ -18,7 +18,7 @@ import {
   type RemoveUIMessage,
 } from "@langchain/langgraph-sdk/react-ui";
 import { useQueryState } from "nuqs";
-import { useThreads } from "./Thread";
+import { ThreadContext } from "./Thread";
 import { toast } from "sonner";
 import { getUserId } from "@/lib/user";
 import { ensureTodayThread } from "@/lib/thread-bootstrap";
@@ -76,7 +76,7 @@ const StreamSession = ({
 }) => {
   const apiUrl = resolveApiUrl(rawApiUrl);
   const [threadId, setThreadId] = useQueryState("threadId");
-  const { getThreads, setThreads } = useThreads();
+  const threadCtx = useContext(ThreadContext);
 
   // 首次加载时，若无 threadId，尝试复用/创建今日 Thread
   const ensureInFlight = useRef(false);
@@ -114,7 +114,9 @@ const StreamSession = ({
     },
     onThreadId: (id) => {
       setThreadId(id);
-      sleep().then(() => getThreads().then(setThreads).catch(console.error));
+      if (threadCtx) {
+        sleep().then(() => threadCtx.getThreads().then(threadCtx.setThreads).catch(console.error));
+      }
     },
   });
 

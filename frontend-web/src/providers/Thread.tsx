@@ -22,7 +22,7 @@ interface ThreadContextType {
   setThreadsLoading: Dispatch<SetStateAction<boolean>>;
 }
 
-const ThreadContext = createContext<ThreadContextType | undefined>(undefined);
+export const ThreadContext = createContext<ThreadContextType | undefined>(undefined);
 
 export function ThreadProvider({ children }: { children: ReactNode }) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
