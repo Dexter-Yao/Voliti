@@ -20,6 +20,8 @@ Voliti 是 AI 减脂行为教练。底层提供饮食指导、运动建议、方
 | 运行时契约 | `docs/05_Runtime_Contracts.md` | **共享持久化真相、Store、session、A2UI、错误、记忆分层、可观测性边界** |
 | GTM 洞察 | `docs/06_Go_To_Market_Insights.md` | 走向市场的战略思考与定位分析 |
 | 用户研究 | `docs/07_User_Research.md` | **综合研究报告：核心画像、跨源验证发现、产品与 GTM 含义** |
+| 用户旅程地图 | `docs/08_Customer_Journey_Map.md` | **核心 Persona 端到端旅程、关键时刻、流失触发器** |
+| 竞品格局 | `docs/09_Competitive_Landscape.md` | **中美竞品矩阵、白空间/红海判断、渠道与 AI 演进** |
 | 体验式干预 | `docs/09_Experiential_Interventions.md` | 四种干预手段（未来自我 / 场景预演 / 隐喻协作 / 认知重构）的 skill 架构、成品 SKILL.md、代码落地规格 |
 | 干预学术依据 | `docs/knowledge/experiential-interventions/` | 四手法学术调研分册（西方主流轴 + 东方传统视角）|
 | Design Tokens | `docs/design-system/design-tokens.json` | 色彩、字体、间距精确值（机器可读） |

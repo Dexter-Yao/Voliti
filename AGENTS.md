@@ -21,6 +21,7 @@ Voliti 是 AI 减脂行为教练。底层提供饮食指导、运动建议、方
 | GTM 洞察 | `docs/06_Go_To_Market_Insights.md` | 走向市场的战略思考与定位分析 |
 | 用户研究 | `docs/07_User_Research.md` | **综合研究报告：核心画像、跨源验证发现、产品与 GTM 含义** |
 | 用户旅程地图 | `docs/08_Customer_Journey_Map.md` | **核心 Persona 端到端旅程、关键时刻、流失触发器与产品机会优先级** |
+| 竞品格局 | `docs/09_Competitive_Landscape.md` | **中美竞品矩阵、白空间/红海判断、渠道与 AI 演进趋势** |
 | Design Tokens | `docs/design-system/design-tokens.json` | 色彩、字体、间距精确值（机器可读） |
 | 组件规则 | `docs/design-system/component-rules.json` | 组件渲染规则（机器可读） |
 | 设计系统参考 | `docs/design-system-reference/` | 设计语言、视觉规范、AI 生成指引（人类可读） |
