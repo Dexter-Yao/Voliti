@@ -98,3 +98,14 @@ class TestPromptRegistry:
         result = PromptRegistry.get("onboarding")
 
         assert "suggested replies" not in result.lower()
+
+    def test_onboarding_prompt_includes_canonical_memory_template(self) -> None:
+        """onboarding prompt 应直接包含 coach memory 的 canonical 模板，而不是只做口头描述。"""
+        prompts_dir = Path(__file__).resolve().parents[1] / "prompts"
+        PromptRegistry.load(prompts_dir)
+
+        result = PromptRegistry.get("onboarding")
+
+        assert "# Coach Memory — {user_name}" in result
+        assert "## Verified Patterns" in result
+        assert "## Claimed vs Revealed" in result

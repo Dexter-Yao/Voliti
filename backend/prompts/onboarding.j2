@@ -182,42 +182,9 @@ Purpose: Ensure all required data is written, trigger the departure ceremony, gu
 
    **Quick path must populate**: Basics + Environment (primary_meal_source) + Rhythm (work_rhythm) + Triggers (from danger scenarios). Other dimensions: Coach fills during natural coaching conversation.
 
-   Example (full path):
+   Use this exact structure as the starting template, then fill the fields with user-specific values:
    ```
-   # User Profile
-
-   ## Basics
-   - name: 小明
-   - depth_choice: full
-   - identity_statement: 正在成为一个能在压力下做出清醒选择的人
-   - onboarding_complete: true
-
-   ## Environment
-   - primary_meal_source: delivery
-   - available_options:
-   - cooking_ability:
-
-   ## Identity & Motivation
-   - motivation_type: health, self_mastery
-   - motivation_intensity: medium
-   - privacy_attitude: private
-
-   ## Habits
-   - dietary_restrictions: none
-   - established_good_habits: regular exercise, no sugary drinks
-   - exercise_type_freq:
-   - medical_boundaries:
-
-   ## Rhythm
-   - work_rhythm: nine_to_five
-   - social_rhythm:
-
-   ## Triggers
-   - emotional_triggers: low_mood, fatigue
-   - physical_triggers:
-   - social_triggers: social_meal
-   - post_lapse_pattern: sometimes
-   - known_recovery_strategy:
+{% include "partials/profile_context_template.j2" %}
    ```
 
 2. `/user/goal/current.json` — first Goal:
@@ -264,4 +231,7 @@ Metric types: `numeric` (continuous), `scale` (bounded integer), `ordinal` (cate
 
 8. `/user/timeline/markers.json` — forward markers from upcoming events
 
-9. `/user/coach/AGENTS.md` — Initialize with four-zone template. Verified/Coaching Notes/Claimed vs Revealed: empty. Hypotheses: write 1-2 initial observations from the onboarding conversation (e.g., "[04-16] User chose quick path and avoided number questions (watch: may be number-averse)").
+9. `/user/coach/AGENTS.md` — Initialize with this exact structure. Replace `{user_name}` with the actual user name. Keep `Verified Patterns`, `Coaching Notes`, and `Claimed vs Revealed` empty on the first write. Add only 1-2 onboarding observations under `Hypotheses`.
+```md
+{% include "partials/coach_agents_template.j2" %}
+```
