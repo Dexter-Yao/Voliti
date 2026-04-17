@@ -2,6 +2,7 @@
 // ABOUTME: 把各 Store item 的文件封装值还原为前端投影视图所需的数据对象
 
 export interface ChapterData {
+  id?: string;
   chapter_number: number;
   goal_id: string;
   title: string;
@@ -54,9 +55,10 @@ export interface DashboardConfigData {
 }
 
 export interface CopingPlan {
+  id?: string;
   trigger: string;
-  plan: string;
-  success_rate: number | null;
+  coping_response: string;
+  status?: string;
 }
 
 export interface MirrorData {
@@ -97,11 +99,10 @@ export function parseCopingPlans(markdown: string): CopingPlan[] {
     if (arrowIdx >= 0) {
       plans.push({
         trigger: text.slice(0, arrowIdx).trim(),
-        plan: text.slice(arrowIdx + 1).trim(),
-        success_rate: null,
+        coping_response: text.slice(arrowIdx + 1).trim(),
       });
     } else {
-      plans.push({ trigger: text, plan: "", success_rate: null });
+      plans.push({ trigger: text, coping_response: "" });
     }
   }
 

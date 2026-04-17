@@ -31,6 +31,7 @@ LIFESIGNS_KEY = "/lifesigns.md"
 BRIEFING_STORE_KEY = "/derived/briefing.md"
 DAY_SUMMARY_PREFIX = "/day_summary/"
 CONVERSATION_ARCHIVE_PREFIX = "/conversation_archive/"
+LEDGER_PREFIX = "/ledger/"
 BRIEFING_FILE_PATH = "/user/derived/briefing.md"
 INTERVENTIONS_SEGMENT = "interventions"
 

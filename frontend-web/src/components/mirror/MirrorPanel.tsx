@@ -168,8 +168,8 @@ export function MirrorPanel() {
               {copingPlans.map((plan, i) => (
                 <div key={i} className="text-xs">
                   <span className="text-[#1A1816]/60">{plan.trigger}</span>
-                  {plan.plan && (
-                    <span className="text-[#1A1816]/40"> → {plan.plan}</span>
+                  {plan.coping_response && (
+                    <span className="text-[#1A1816]/40"> → {plan.coping_response}</span>
                   )}
                 </div>
               ))}
