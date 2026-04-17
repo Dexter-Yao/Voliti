@@ -101,6 +101,30 @@ export function MirrorPanel() {
           )}
         </div>
 
+        {/* Journey progress bar */}
+        {chapter.start_date && chapter.planned_end_date && (() => {
+          const start = new Date(chapter.start_date).getTime();
+          const end = new Date(chapter.planned_end_date).getTime();
+          const now = Date.now();
+          const total = end - start;
+          const elapsed = now - start;
+          const pct = total > 0 ? Math.max(0, Math.min(100, (elapsed / total) * 100)) : 0;
+          const dayNum = Math.max(1, Math.ceil(elapsed / (1000 * 60 * 60 * 24)));
+          const totalDays = Math.max(1, Math.ceil(total / (1000 * 60 * 60 * 24)));
+          return (
+            <div>
+              <div className="relative h-[2px] bg-[#1A1816]/10">
+                <div className="absolute left-0 top-0 h-full bg-[#B87333]" style={{ width: `${pct}%` }} />
+                <div className="absolute top-[-3px] h-2 w-2 rounded-full bg-[#B87333]" style={{ left: `${pct}%` }} />
+              </div>
+              <div className="mt-1 flex justify-between font-mono-system text-[8px] text-[#1A1816]/30">
+                <span>{chapter.start_date.slice(5)}</span>
+                <span>Day {dayNum}/{totalDays}</span>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* North Star metric */}
         {dashboardConfig?.north_star && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
