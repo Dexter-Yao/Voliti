@@ -4,7 +4,12 @@
 import httpx
 
 from voliti_eval import client as client_module
-from voliti_eval.client import CoachClient, build_client_timeout, decorate_interrupt_payload
+from voliti_eval.client import (
+    CoachClient,
+    build_client_timeout,
+    decorate_interrupt_payload,
+    extract_tool_calls,
+)
 
 
 def test_build_client_timeout_uses_short_connect_timeout() -> None:
@@ -89,3 +94,25 @@ def test_coach_client_builds_session_type_config_and_thread_metadata(monkeypatch
         "user_id": "user_123",
         "session_type": "onboarding",
     }
+
+
+def test_extract_tool_calls_reads_name_and_arguments() -> None:
+    tool_calls = extract_tool_calls(
+        {
+            "tool_calls": [
+                {
+                    "name": "fan_out",
+                    "args": {"layout": "full", "components": [{"kind": "text"}]},
+                },
+                {
+                    "name": "compose_witness_card",
+                    "args": {"achievement_type": "implicit"},
+                },
+            ]
+        },
+        turn_index=4,
+    )
+
+    assert [call.name for call in tool_calls] == ["fan_out", "compose_witness_card"]
+    assert tool_calls[0].turn_index == 4
+    assert tool_calls[1].arguments == {"achievement_type": "implicit"}

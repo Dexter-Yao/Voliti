@@ -1,245 +1,204 @@
-<!-- ABOUTME: 多模型对比评估报告 Jinja2 模板 -->
-<!-- ABOUTME: 渲染 pass@k/pass^k 矩阵、瓶颈诊断和维度对比热力图 -->
 <!DOCTYPE html>
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Voliti 多模型对比报告</title>
+<title>Voliti Eval Comparison</title>
 <style>
   :root {
-    --bg: #fafafa; --fg: #1a1a1a; --muted: #666; --border: #e0e0e0;
-    --pass: #2e7d32; --fail: #d32f2f; --notable: #f57c00; --na: #bbb;
-    --pass-bg: #e8f5e9; --fail-bg: #ffebee; --notable-bg: #fff3e0;
+    --bg: #f7f4ee;
+    --panel: #fffdf8;
+    --ink: #1e1c19;
+    --muted: #6f665c;
+    --line: #ddd4c8;
+    --pass: #2b6b4a;
+    --warn: #b26a1f;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, "Helvetica Neue", sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 2rem; }
-  h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-  h2 { font-size: 1.2rem; margin: 2rem 0 0.75rem; border-bottom: 2px solid var(--fg); padding-bottom: 0.25rem; }
-  h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
-  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
-
-  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
-  th, td { padding: 0.5rem 0.75rem; border: 1px solid var(--border); text-align: center; }
-  th { background: #f5f5f5; font-weight: 600; }
-  td.left { text-align: left; }
-
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.75rem; font-weight: 700; }
-  .badge-pass { background: var(--pass-bg); color: var(--pass); }
-  .badge-fail { background: var(--fail-bg); color: var(--fail); }
-  .badge-notable { background: var(--notable-bg); color: var(--notable); }
-  .badge-na { background: #f5f5f5; color: var(--na); }
-
-  .cell-pass { background: #e8f5e9; }
-  .cell-fail { background: #ffebee; }
-  .cell-mixed { background: #fff3e0; }
-  .cell-na { background: #f9f9f9; color: var(--na); }
-
-  .bottleneck-section { margin: 0.75rem 0; padding: 0.75rem 1rem; border-radius: 4px; border-left: 4px solid; }
-  .bottleneck-prompt { border-color: var(--fail); background: #fff5f5; }
-  .bottleneck-model { border-color: var(--notable); background: #fffaf0; }
-  .bottleneck-resolved { border-color: var(--pass); background: #f5fff5; }
-
-  details { margin: 0.75rem 0; border: 1px solid var(--border); border-radius: 4px; }
-  summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; background: #f9f9f9; }
-  summary:hover { background: #f0f0f0; }
-  .detail-content { padding: 1rem; }
-
-  .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+    line-height: 1.6;
+  }
+  .page { max-width: 1280px; margin: 0 auto; }
+  h1, h2, h3 { margin: 0 0 12px; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 20px; margin-top: 28px; }
+  .meta { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+    font-size: 14px;
+  }
+  th { background: #f1eadf; font-size: 13px; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #ece7df;
+    color: var(--muted);
+  }
+  details {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  summary {
+    cursor: pointer;
+    padding: 14px 16px;
+    font-weight: 700;
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  .detail-body { padding: 0 16px 16px; }
+  .mono { font-family: "SFMono-Regular", "JetBrains Mono", ui-monospace, monospace; font-size: 12px; }
 </style>
 </head>
 <body>
-
-<h1>Voliti Coach 多模型对比报告</h1>
-<div class="meta">
-  Models: {% for mid in model_ids %}{{ model_labels.get(mid, mid) }}{% if not loop.last %} vs {% endif %}{% endfor %}
-  | {{ seed_ids | length }} seeds | {{ num_runs }} runs per model
-</div>
-
-{# ================================================================ #}
-{# 区域 1: 通过率矩阵                                                 #}
-{# ================================================================ #}
-<h2>1. 通过率矩阵</h2>
-<table>
-  <thead>
-    <tr>
-      <th>Seed</th>
-      {% for mid in model_ids %}
-      <th>{{ model_labels.get(mid, mid) }}</th>
-      {% endfor %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for sid in seed_ids %}
-    <tr>
-      <td class="left">{{ sid }} {{ seed_names.get(sid, '') }}</td>
-      {% for mid in model_ids %}
-      {% set rates = seed_pass_rates.get(mid, {}).get(sid, []) %}
-      {% if rates %}
-      {% set avg_rate = (rates | sum / rates | length * 100) | round | int %}
-      <td class="{% if avg_rate >= 80 %}cell-pass{% elif avg_rate >= 60 %}cell-mixed{% else %}cell-fail{% endif %}">
-        {{ avg_rate }}%
-        {% if rates | length > 1 %}
-        <br><span style="font-size: 0.7rem; color: var(--muted);">
-          ({{ rates | map('round', 2) | join(', ') }})
-        </span>
-        {% endif %}
-      </td>
-      {% else %}
-      <td class="cell-na">—</td>
-      {% endif %}
-      {% endfor %}
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-{# ================================================================ #}
-{# 区域 2: 维度级通过矩阵                                             #}
-{# ================================================================ #}
-<h2>2. 维度级通过矩阵</h2>
-<p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem;">
-  每格显示 X/{{ num_runs }}（{{ num_runs }} 次运行中通过的次数，跨所有 seed 聚合）。
-  pass@k = 至少 1 次通过 | pass^k = 全部通过
-</p>
-<table>
-  <thead>
-    <tr>
-      <th>维度</th>
-      {% for mid in model_ids %}
-      <th colspan="2">{{ model_labels.get(mid, mid) }}</th>
-      {% endfor %}
-    </tr>
-    <tr>
-      <th></th>
-      {% for mid in model_ids %}
-      <th style="font-size: 0.7rem;">pass@k</th>
-      <th style="font-size: 0.7rem;">pass^k</th>
-      {% endfor %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for dim in dim_ids %}
-    <tr>
-      <td class="left" style="font-size: 0.8rem;">{{ dim | replace('_', ' ') }}</td>
-      {% for mid in model_ids %}
-      {% set all_bools = [] %}
-      {% for sid in seed_ids %}
-      {% set bools = matrix.get(mid, {}).get(sid, {}).get(dim, []) %}
-      {% for b in bools %}{% if all_bools.append(b) %}{% endif %}{% endfor %}
-      {% endfor %}
-      {% if all_bools %}
-      {% set pk = pass_at_k(all_bools) %}
-      {% set pak = pass_all_k(all_bools) %}
-      {% set cnt = pass_count(all_bools) %}
-      <td class="{% if pk %}cell-pass{% else %}cell-fail{% endif %}">
-        {{ cnt }}
-      </td>
-      <td class="{% if pak %}cell-pass{% elif pk %}cell-mixed{% else %}cell-fail{% endif %}">
-        {% if pak %}✓{% elif pk %}partial{% else %}✗{% endif %}
-      </td>
-      {% else %}
-      <td class="cell-na">—</td>
-      <td class="cell-na">—</td>
-      {% endif %}
-      {% endfor %}
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-{# ================================================================ #}
-{# 区域 3: 瓶颈诊断                                                   #}
-{# ================================================================ #}
-<h2>3. 瓶颈诊断</h2>
-
-{% if bottlenecks.prompt %}
-<div class="bottleneck-section bottleneck-prompt">
-  <h3 style="color: var(--fail);">Prompt 瓶颈（所有模型均失败）</h3>
-  <p style="font-size: 0.85rem; margin-top: 0.25rem;">
-    以下维度在所有模型上均未能稳定通过，指向 prompt 或系统设计层面的问题：
-  </p>
-  <ul style="margin-top: 0.5rem;">
-    {% for b in bottlenecks.prompt %}
-    <li><strong>{{ b.dim | replace('_', ' ') }}</strong></li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
-
-{% if bottlenecks.model %}
-<div class="bottleneck-section bottleneck-model">
-  <h3 style="color: var(--notable);">模型能力差异（部分模型失败）</h3>
-  <p style="font-size: 0.85rem; margin-top: 0.25rem;">
-    以下维度仅在特定模型上失败，指向模型特定的能力缺陷：
-  </p>
-  <ul style="margin-top: 0.5rem;">
-    {% for b in bottlenecks.model %}
-    <li>
-      <strong>{{ b.dim | replace('_', ' ') }}</strong>
-      — 通过: {% for w in b.winners %}{{ model_labels.get(w, w) }}{% if not loop.last %}, {% endif %}{% endfor %}
-      | 失败: {% for l in b.losers %}{{ model_labels.get(l, l) }}{% if not loop.last %}, {% endif %}{% endfor %}
-    </li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
-
-{% if bottlenecks.resolved %}
-<div class="bottleneck-section bottleneck-resolved">
-  <h3 style="color: var(--pass);">已解决（所有模型均通过）</h3>
-  <ul style="margin-top: 0.5rem;">
-    {% for b in bottlenecks.resolved %}
-    <li>{{ b.dim | replace('_', ' ') }}</li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
-
-{# ================================================================ #}
-{# 区域 4: Per-seed 详情                                              #}
-{# ================================================================ #}
-<h2>4. Per-Seed 详情</h2>
-{% for sid in seed_ids %}
-<details>
-  <summary>{{ sid }} — {{ seed_names.get(sid, '') }}</summary>
-  <div class="detail-content">
-    {% for mid in model_ids %}
-    <h3>{{ model_labels.get(mid, mid) }}</h3>
-    {% set runs = results.get(mid, []) %}
-    {% for run in runs %}
-    {% for sr in run.seed_results %}
-    {% if sr.seed.id == sid %}
-    <div style="margin: 0.5rem 0; padding: 0.5rem; background: #f9f9f9; border-radius: 4px; font-size: 0.85rem;">
-      <strong>Run {{ loop.index }}</strong> — pass {{ (sr.score_card.pass_rate * 100) | round | int }}%
-      | must {% if sr.score_card.must_pass_met %}<span style="color: var(--pass);">✓</span>{% else %}<span style="color: var(--fail);">✗</span>{% endif %}
-      | {{ sr.transcript.turn_count }} turns ({{ sr.transcript.end_reason }})
-      <div style="margin-top: 0.25rem;">
-        {% for dim_id, dim in sr.score_card.scores.items() %}
-        <span class="badge {% if dim.passed %}badge-pass{% elif dim.failure_severity == 'critical' %}badge-fail{% else %}badge-notable{% endif %}" style="margin: 1px;">
-          {{ dim_id | replace('_', ' ') | truncate(20) }}: {% if dim.passed %}✓{% else %}✗{% endif %}
-        </span>
-        {% endfor %}
-      </div>
-      {% if sr.score_card.critical_failures %}
-      <div style="margin-top: 0.25rem; color: var(--fail); font-size: 0.8rem;">
-        Critical: {{ sr.score_card.critical_failures | join(', ') }}
-      </div>
-      {% endif %}
-    </div>
-    {% endif %}
-    {% endfor %}
-    {% endfor %}
+<div class="page">
+  <h1>Voliti Eval Comparison</h1>
+  <div class="meta">
+    {% for row in model_summaries %}
+    {{ row.label }}{% if not loop.last %} vs {% endif %}
     {% endfor %}
   </div>
-</details>
-{% endfor %}
 
-<div class="footer">
-  Generated by voliti-eval comparison<br>
-  Models: {% for mid in model_ids %}{{ model_labels.get(mid, mid) }}{% if not loop.last %} vs {% endif %}{% endfor %}
-  | {{ num_runs }} runs per model
+  <h2>模型总览</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>模型</th>
+        <th>运行次数</th>
+        <th>总体通过率</th>
+        <th>硬契约通过率</th>
+        <th>行为维度通过率</th>
+        <th>Must-Pass 通过率</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in model_summaries %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td>{{ row.run_count }}</td>
+        <td>{{ (row.overall_pass_rate * 100) | round | int }}%</td>
+        <td>{{ (row.contract_pass_rate * 100) | round | int }}%</td>
+        <td>{{ (row.behavior_pass_rate * 100) | round | int }}%</td>
+        <td>{{ (row.must_pass_rate * 100) | round | int }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Per-Seed 双轴对比</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Seed</th>
+        {% for row in model_summaries %}
+        <th>{{ row.label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in seed_rows %}
+      <tr>
+        <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
+        {% for model in row.models %}
+        <td>
+          <div>overall={{ (model.average_pass_rate * 100) | round | int }}%</div>
+          <div>contract={{ (model.contract_pass_rate * 100) | round | int }}%</div>
+          <div>behavior={{ (model.behavior_pass_rate * 100) | round | int }}%</div>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>维度对比</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>维度</th>
+        <th>类别</th>
+        <th>评分来源</th>
+        {% for row in model_summaries %}
+        <th>{{ row.label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in dimension_rows %}
+      <tr>
+        <td class="mono">{{ row.dimension_id }}</td>
+        <td>{{ row.category }}</td>
+        <td>{{ row.score_source }}</td>
+        {% for model in row.models %}
+        <td>
+          {{ (model.pass_rate * 100) | round | int }}%
+          <div class="mono">{{ model.pass_count }}/{{ model.total_count }}</div>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>运行明细</h2>
+  {% for row in seed_rows %}
+  <details>
+    <summary>{{ row.seed_id }} — {{ row.seed_name }}</summary>
+    <div class="detail-body">
+      {% for model in row.models %}
+      <h3>{{ model.label }}</h3>
+      {% if model.runs %}
+      <table>
+        <thead>
+          <tr>
+            <th>Run</th>
+            <th>Pass Rate</th>
+            <th>Must-Pass</th>
+            <th>End Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in model.runs %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ (run.pass_rate * 100) | round | int }}%</td>
+            <td>{% if run.must_pass_met %}YES{% else %}NO{% endif %}</td>
+            <td>{{ run.end_reason }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="badge">该模型没有此 seed 结果</div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
 </div>
-
 </body>
 </html>

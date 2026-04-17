@@ -11,6 +11,8 @@ import httpx
 from langgraph_sdk import get_client
 from langgraph_sdk.client import LangGraphClient
 
+from voliti_eval.models import ToolCallRecord
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,7 +36,14 @@ class A2UIInterruptEvent:
     images: list[dict[str, Any]] = field(default_factory=list)  # 提取的 ImageComponent
 
 
-CoachEvent = TextEvent | A2UIInterruptEvent
+@dataclass
+class ToolCallEvent:
+    """Coach 在某一轮中触发的工具调用。"""
+
+    tool_calls: list[ToolCallRecord] = field(default_factory=list)
+
+
+CoachEvent = TextEvent | A2UIInterruptEvent | ToolCallEvent
 
 
 def decorate_interrupt_payload(payload: dict[str, Any], interrupt: dict[str, Any]) -> dict[str, Any]:
@@ -84,6 +93,32 @@ def _text_from_content(content: Any) -> str:
                 parts.append(block.strip())
         return "\n".join(parts)
     return ""
+
+
+def extract_tool_calls(message: dict[str, Any], *, turn_index: int) -> list[ToolCallRecord]:
+    """从 AI message 中提取工具调用记录。"""
+    raw_tool_calls = message.get("tool_calls", [])
+    extracted: list[ToolCallRecord] = []
+    for raw in raw_tool_calls:
+        if not isinstance(raw, dict):
+            continue
+        name = raw.get("name")
+        if not isinstance(name, str) or not name:
+            continue
+        arguments = raw.get("args")
+        if not isinstance(arguments, dict):
+            arguments = raw.get("arguments")
+        if not isinstance(arguments, dict):
+            arguments = None
+        extracted.append(
+            ToolCallRecord(
+                turn_index=turn_index,
+                name=name,
+                arguments=arguments,
+                raw=raw,
+            )
+        )
+    return extracted
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +198,7 @@ class CoachClient:
         """流式处理 Coach 响应，提取文本和 interrupt 事件。"""
         events: list[CoachEvent] = []
         collected_text_parts: list[str] = []
+        pending_tool_calls: list[ToolCallRecord] = []
 
         kwargs: dict[str, Any] = {
             "thread_id": thread_id,
@@ -190,6 +226,9 @@ class CoachClient:
                     if collected_text_parts:
                         events.append(TextEvent(text="\n".join(collected_text_parts)))
                         collected_text_parts.clear()
+                    if pending_tool_calls:
+                        events.append(ToolCallEvent(tool_calls=pending_tool_calls.copy()))
+                        pending_tool_calls.clear()
 
                     for interrupt in interrupts:
                         value = interrupt.get("value", interrupt)
@@ -216,6 +255,12 @@ class CoachClient:
                         text = _text_from_content(content)
                         if text:
                             collected_text_parts.append(text)
+                        extracted_tool_calls = extract_tool_calls(
+                            msg,
+                            turn_index=len(events),
+                        )
+                        if extracted_tool_calls:
+                            pending_tool_calls.extend(extracted_tool_calls)
                         if tool_calls:
                             names = [tc.get("name", "?") for tc in tool_calls if isinstance(tc, dict)]
                             logger.debug("AI tool_calls from %s: %s", node_name, names)
@@ -223,6 +268,8 @@ class CoachClient:
                             logger.debug("AI message from %s: empty content (type=%s)", node_name, type(content).__name__)
 
         # flush 剩余文本
+        if pending_tool_calls:
+            events.append(ToolCallEvent(tool_calls=pending_tool_calls.copy()))
         if collected_text_parts:
             events.append(TextEvent(text="\n".join(collected_text_parts)))
 

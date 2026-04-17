@@ -1,46 +1,99 @@
-id: "L01_onboarding"
-name: "精华版 Onboarding 完整流程"
+id: "L01_onboarding_quick_minimum_dataset"
+name: "Quick Onboarding Minimum Dataset"
 description: >
-  模拟全新用户首次开启对话。测试 Coach 是否执行 4 阶段自适应 Onboarding：
-  深度选择 → 目标身份 → 情境场景 → 个人系统 → 收尾（Store 写入 + Witness Card）。
-  同时验证首个 LifeSign 是否在流程中被创建。
+  新用户选择快速开始。验证 Coach 能在低摩擦路径下完成深度选择、危险场景采集、
+  最小数据集写入与 onboarding_complete 收口，而不是把 quick path 退化成不完整 onboarding。
+entry_mode: "new"
 
 persona:
   name: "小璃"
-  background: "26 岁互联网运营，第一次用 AI 减脂教练，目标减掉产后体重"
-  personality: "热情但没耐心，配合流程但希望过程简洁，选择完整对话路径"
+  background: "28 岁新手妈妈，刚开始重新减脂，希望尽快开始日常陪伴"
+  personality: "愿意配合，但不想第一次就被盘问太久"
   language: "zh"
 
 goal: >
-  配合 Onboarding 全流程。如果 Coach 提供快速/完整两种路径选择，选"完整对话"。
-  在目标身份环节提供愿景"成为一个工作日也能好好吃饭的人"。
-  在高风险场景环节选择"情绪低谷"和"疲劳睡眠不足"，补充"每天晚上带娃后忍不住吃零食"。
-  配合 LifeSign 创建讨论。如果 Coach 跳过某个阶段，不主动补充。
+  如果 Coach 给出深度选择，明确选择“快速开始”。
+  只在被问到时补充姓名、工作节奏、主要用餐来源和高风险场景，
+  不主动替 Coach 补齐缺失字段。
 
-initial_message: "你好！我刚注册，不知道从哪里开始"
-
+initial_message: "你好，我刚注册，想快一点开始。"
 pre_state: null
-
-max_turns: 30
+max_turns: 24
 
 expected_behaviors:
   must:
-    - "提供深度选择（快速路径/完整对话）"
-    - "采集用户姓名和 Future Self 愿景"
-    - "使用 fan_out multi_select 展示高风险场景"
-    - "写入 profile（含 onboarding_complete: true）"
-    - "写入 dashboardConfig（north_star + support_metrics）"
-    - "写入 chapter/current.json（identity_statement 为身份式表达）"
-    - "创建至少 1 个 LifeSign 捕获高风险场景"
-    - "触发首张 Witness Card（不征求同意）"
+    - "通过 A2UI select 提供 quick/full 深度选择"
+    - "完成最小数据集写入并将 onboarding_complete 收口为 true"
+    - "创建 Goal、Chapter 与 3 个 Process Goal"
   should:
-    - "流程感觉像自然对话而非填表"
-    - "每次聚焦一个话题"
-    - "identity_statement 为'一个…的人'格式"
+    - "使用推断授权而不是继续追问过多细节"
+    - "用自然语言解释正在为用户建立起点"
   must_not:
-    - "在触发 Witness Card 前询问用户意愿"
-    - "同时抛出多个不相关问题"
+    - "把 quick path 当作不完整 onboarding"
+    - "要求 quick path 必须先创建 LifeSign 才算完成"
+
+auditor_policy:
+  latent_facts:
+    - "晚上带娃后很容易吃零食"
+  reveal_rules:
+    - topic: "name"
+      when_asked: true
+      response: "我叫小璃。"
+    - topic: "work_rhythm"
+      when_asked: true
+      response: "我现在的节奏比较碎，白天带娃，晚上才像自己的时间。"
+    - topic: "primary_meal_source"
+      when_asked: true
+      response: "白天基本是家里有什么吃什么，忙的时候会点外卖。"
+  a2ui_plan:
+    - key: "depth_choice"
+      action: "submit"
+      value: "quick"
+    - key: "danger_scenarios"
+      action: "submit"
+      value: ["fatigue", "low_mood"]
+    - key: "danger_scenarios_custom"
+      action: "submit"
+      value: "晚上带娃后会想靠零食缓一下"
+  challenge_rules:
+    - trigger: "collects_sensitive_context_without_explaining_use"
+      message: "这些信息你会怎么用？"
+  stop_rules:
+    min_user_turns: 4
+    complete_when:
+      - "minimum_dataset_written"
+      - "onboarding_complete_written"
+    continue_until:
+      - "minimum_dataset_written"
+
+expected_artifacts:
+  required_keys:
+    - "/profile/context.md"
+    - "/goal/current.json"
+    - "/chapter/current.json"
+    - "/profile/dashboardConfig"
+  optional_keys:
+    - "/coping_plans_index.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "quick"
+  relevant_final_files:
+    - "/profile/context.md"
+    - "/goal/current.json"
+    - "/chapter/current.json"
+    - "/profile/dashboardConfig"
+
+judge_dimensions:
+  - "coach_state_before_strategy"
+  - "coach_identity_language"
+  - "coach_action_transparency"
 
 scoring_focus:
-  primary: ["L7_onboarding", "L8_chapter_plan"]
-  secondary: ["L2_identity_language", "L4_lifesign_usage"]
+  primary:
+    - "contract_onboarding_artifacts"
+    - "contract_store_schema"
+    - "contract_goal_chapter_alignment"
+  secondary:
+    - "coach_state_before_strategy"
+    - "coach_action_transparency"

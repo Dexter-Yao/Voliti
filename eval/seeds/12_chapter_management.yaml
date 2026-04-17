@@ -1,131 +1,80 @@
-# ABOUTME: Chapter 管理 — 测试 Coach 是否在适当时机发起 Chapter 过渡
-# ABOUTME: 验证 archive + 新 Chapter 创建 + chapter_transition 事件 + identity_evolution 图像
-
-id: "12_chapter_management"
-name: "Chapter 过渡管理"
+id: "12_claimed_vs_revealed_memory_write"
+name: "Claimed vs Revealed Memory Write"
 description: >
-  模拟一个在当前 Chapter 中已有显著行为变化的用户，
-  多个 LifeSign 累计成功，行为模式稳定。
-  测试 Coach 是否能识别 Chapter 过渡时机，
-  正确执行 archive + 新 Chapter 创建 + 事件记录 + 图像触发。
+  用户口头上声称“基本都自己做饭”，但继续对话后揭示现实里主要靠外卖。
+  验证 Coach 是否把这种张力写入四分区记忆，而不是污染 profile。
+entry_mode: "coaching"
 
 persona:
-  name: "志远"
-  background: "35 岁技术总监，加入计划 6 周，已完成多个 LifeSign 里程碑"
-  personality: "目标导向，善于反思，乐于接受新挑战"
+  name: "Sumi"
+  background: "30 岁市场经理，很在意自己在健康上的自我形象"
+  personality: "一开始会把自己说得更理想化，细聊后会承认现实"
   language: "zh"
 
 goal: >
-  分享最近的感悟："最近感觉工作日的饮食已经完全成习惯了，
-  不需要刻意提醒自己了。我觉得我现在更关心的是周末怎么保持节奏。"
-  这段话暗示身份阶段已变化（从"建立工作日习惯"到"扩展到全周"）。
-  观察 Coach 是否识别到这是一个 Chapter 过渡信号。
+  先说“我平时其实都自己做饭”，如果 Coach 继续问，再承认“最近大部分还是外卖”。
 
-initial_message: "最近一个月感觉工作日的饮食已经完全成习惯了，不需要刻意提醒自己了。我觉得我现在更关心的是周末怎么保持节奏"
-
+initial_message: "我平时其实都自己做饭，所以按理说不该这么乱。"
+max_turns: 16
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 志远
-    identity_vision: 无论忙闲都能做出清醒选择的人
-    pain_points: [weekend_vs_weekday, social_dining]
-    notification_pref: active
-  dashboard_config:
-    north_star:
-      key: "weight"
-      label: "体重"
-      type: "numeric"
-      unit: "KG"
-      delta_direction: "decrease"
-      current_value:
-        value: 72.0
-        unit: "kg"
-    support_metrics:
-      - key: "calories"
-        label: "今日摄入"
-        type: "numeric"
-        unit: "KCAL"
-        order: 0
-        current_value:
-          value: 1400
-          unit: "kcal"
-      - key: "state"
-        label: "今日状态"
-        type: "scale"
-        unit: "/10"
-        order: 1
-        current_value:
-          value: 8
-          min: 1
-          max: 10
-      - key: "consistency"
-        label: "本周一致性"
-        type: "ratio"
-        unit: ""
-        order: 2
-        current_value:
-          numerator: 6
-          denominator: 7
-    user_goal: "12 周 75kg → 70kg"
-  chapter:
-    id: "ch_002"
-    goal_id: "goal_001"
-    chapter_number: 2
-    title: "建立工作日饮食节奏"
-    milestone: "工作日午餐提前准备率达到 80% 以上"
-    process_goals:
-      - key: "pg_001"
-        description: "每周准备便当 4 次以上"
-        target: "连续 6 周达标"
-        metric_key: "consistency"
-    start_date: "2026-02-25T00:00:00Z"
-    planned_end_date: "2026-04-07T00:00:00Z"
-    status: "active"
-  coping_plans:
-    - id: "ls_001"
-      trigger:
-        situation: "工作日中午不知道吃什么"
-        time_pattern: "11:00-13:00"
-      action: "前一晚准备便当，或点固定的健康外卖"
-      status: "active"
-    - id: "ls_002"
-      trigger:
-        situation: "加班后想吃宵夜"
-        time_pattern: "21:00-23:00"
-      action: "泡一杯热茶，看 10 分钟书再决定"
-      status: "active"
-    - id: "ls_003"
-      trigger:
-        situation: "周末朋友聚餐"
-        time_pattern: "18:00-22:00"
-        day_pattern: ["weekend"]
-      action: "点餐前先喝水，选一个主菜，不加甜品"
-      status: "active"
-  coach_memory: |
-    ## 志远 — Key Observations
-    - Excellent compliance with weekday LifeSign (ls_001: 16/20 success)
-    - Weekday eating pattern now stable and automatic
-    - Weekend remains the growth edge
-    - Approaching 6 weeks — Chapter transition may be warranted
+    # User Profile
 
-max_turns: 16
+    ## Basics
+    - name: Sumi
+    - depth_choice: full
+    - identity_statement: 一个会认真照顾自己的人
+    - onboarding_complete: true
+
+    ## Environment
+    - primary_meal_source: mixed
+    - available_options:
+    - cooking_ability:
 
 expected_behaviors:
   must:
-    - "识别用户表达了身份阶段的变化信号"
-    - "在对话中自然地提议或暗示 Chapter 过渡"
+    - "识别 claimed 与 revealed 的偏差"
+    - "不要把这类观察错误写进 profile"
   should:
-    - "归档当前 Chapter 到 /user/chapter/archive/ch_002.json"
-    - "创建新 Chapter（identity_statement 反映新阶段）"
-    - "写入 chapter_transition 事件到 ledger"
-    - "触发 identity_evolution 图像"
-    - "新 Chapter 的 identity_statement 建立在前一个基础上"
-    - "在对话中用教练语言解释这个过渡的意义"
+    - "在不戳破自尊的前提下继续澄清真实行为"
   must_not:
-    - "忽略用户的身份变化信号继续按旧 Chapter 对话"
-    - "使用技术术语解释 Chapter 操作"
-    - "强制过渡（应该是对话中自然发生的）"
+    - "直接改写 profile 把外卖行为当成稳定事实"
+
+auditor_policy:
+  latent_facts:
+    - "最近两周其实 70% 都是外卖"
+  reveal_rules:
+    - topic: "reality"
+      when_asked: true
+      response: "如果说最近两周的话，其实大部分还是外卖。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "claimed_vs_revealed_captured"
+    continue_until:
+      - "claimed_vs_revealed_captured"
+
+expected_artifacts:
+  required_keys:
+    - "/coach/AGENTS.md"
+  optional_keys:
+    - "/profile/context.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/profile/context.md"
+    - "/coach/AGENTS.md"
+
+judge_dimensions:
+  - "coach_continuity_memory_surfacing"
+  - "coach_action_transparency"
 
 scoring_focus:
-  primary: ["D4_chapter_management", "E3_action_transparency"]
-  secondary: ["A2_identity_framing", "C3_lifesign_integration"]
+  primary:
+    - "contract_memory_protocol"
+  secondary:
+    - "coach_action_transparency"

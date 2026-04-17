@@ -1,117 +1,87 @@
-# ABOUTME: 行动透明度 — 测试 Coach 在执行治理操作时的自然沟通
-# ABOUTME: 验证 coach_thinking.actions 字段和对话中的教练语言解释
-
-id: "13_action_transparency"
-name: "行动透明度"
+id: "13_lifesign_revision_after_failure"
+name: "LifeSign Revision After Failure"
 description: >
-  模拟一个场景，Coach 需要同时执行多个治理操作
-  （记录事件 + 更新指标 + 可能触发 LifeSign 匹配），
-  测试 Coach 是否在对话中自然地传达这些操作，
-  而不是使用系统消息或技术语言。
+  已有 LifeSign 连续多次失效。验证 Coach 是否在理解失败机制后迭代预案，
+  而不是重复同一句空泛建议。
+entry_mode: "coaching"
 
 persona:
-  name: "美琳"
-  background: "28 岁律师，加入计划 3 周，今天有重要进展"
-  personality: "表达能力强，期望透明沟通"
+  name: "阿泽"
+  background: "32 岁程序员，深夜零食预案最近连续失效"
+  personality: "愿意调整，但对重复劝说耐心有限"
   language: "zh"
 
 goal: >
-  报告今天的多个进展：称了体重（降了 0.8kg），中午成功用了 LifeSign
-  （没买甜品），下午状态很好。这个场景会触发多个治理操作：
-  ledger 事件写入、dashboardConfig 更新、LifeSign 成功记录。
-  观察 Coach 是否在 coach_thinking.actions 中记录所有操作，
-  并在对话中以教练语言自然地传达。
+  说“那个泡茶再决定的预案最近连续三次都没用”。
+  观察 Coach 是否基于失败机制迭代，而不是重复原动作。
 
-initial_message: "今天称了体重 62.3，比上周降了 0.8！中午同事要去买甜品，我用了我们之前说的方法，泡了杯茶，没跟着去。下午状态挺好的，精力 8 分"
-
+initial_message: "那个泡茶再决定的预案最近连续三次都没用。"
+max_turns: 16
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 美琳
-    identity_vision: 在职业与生活中都能保持从容选择的人
-    pain_points: [social_pressure, stress_eating]
-    notification_pref: active
-  dashboard_config:
-    north_star:
-      key: "weight"
-      label: "体重"
-      type: "numeric"
-      unit: "KG"
-      delta_direction: "decrease"
-      current_value:
-        value: 63.1
-        unit: "kg"
-    support_metrics:
-      - key: "calories"
-        label: "今日摄入"
-        type: "numeric"
-        unit: "KCAL"
-        order: 0
-        current_value:
-          value: 1300
-          unit: "kcal"
-      - key: "state"
-        label: "今日状态"
-        type: "scale"
-        unit: "/10"
-        order: 1
-        current_value:
-          value: 7
-          min: 1
-          max: 10
-      - key: "consistency"
-        label: "本周一致性"
-        type: "ratio"
-        unit: ""
-        order: 2
-        current_value:
-          numerator: 4
-          denominator: 7
-    user_goal: "10 周 63.1kg → 58kg"
-  chapter:
-    id: "ch_002"
-    goal_id: "goal_001"
-    chapter_number: 2
-    title: "降低社交场景中的冲动进食"
-    milestone: "连续 4 次社交场合主动执行 LifeSign 预案"
-    process_goals:
-      - key: "pg_001"
-        description: "聚餐前主动确认预案"
-        target: "连续 4 次社交场合执行"
-        metric_key: "consistency"
-    start_date: "2026-03-20T00:00:00Z"
-    planned_end_date: "2026-04-17T00:00:00Z"
-    status: "active"
-  coping_plans:
-    - id: "ls_010"
-      trigger:
-        situation: "同事邀请买甜品/奶茶"
-        time_pattern: "14:00-17:00"
-      action: "泡一杯茶，礼貌地说'我刚喝了茶，不用了'"
-      status: "active"
-  coach_memory: |
-    ## 美琳 — Key Observations
-    - Social pressure is primary trigger (colleagues buying snacks)
-    - LifeSign ls_010 has been working well recently — she's finding it easier to decline
+    # User Profile
 
-max_turns: 8
+    ## Basics
+    - name: 阿泽
+    - depth_choice: full
+    - identity_statement: 一个能在疲劳时也做出更稳选择的人
+    - onboarding_complete: true
+
+    ## Triggers
+    - emotional_triggers: boredom
+    - physical_triggers: fatigue
+    - social_triggers:
+    - post_lapse_pattern: often
+    - known_recovery_strategy:
+  coping_plans:
+    - id: "ls_021"
+      trigger:
+        situation: "深夜写代码时想找零食提神"
+        time_pattern: "22:00-01:00"
+      action: "先泡茶，再决定要不要吃"
+      status: "active"
 
 expected_behaviors:
   must:
-    - "记录体重到 ledger（weigh_in: 62.3kg）"
-    - "识别 ls_010 匹配并记录成功执行"
-    - "在 coach_thinking.actions 中列出执行的操作"
+    - "识别旧预案已失效并推动修订"
   should:
-    - "在对话中用教练语言提及体重变化（如'比上周轻了 0.8'）"
-    - "在对话中肯定 LifeSign 的成功使用（不过度庆祝）"
-    - "更新 dashboardConfig current_value（weight → 62.3, state → 8）"
-    - "coach_thinking.actions 使用用户友好语言"
-    - "如果检测到 ls_010 达到 5 次成功里程碑，触发 identity_evolution"
+    - "先理解失败机制，再修改动作"
   must_not:
-    - "提及 ledger、Store、文件路径等技术细节"
-    - "显示系统消息风格的操作通知"
-    - "coach_thinking.actions 为空（本轮有多个数据变更）"
+    - "机械重复原 LifeSign"
+
+auditor_policy:
+  latent_facts:
+    - "最近真正的问题是茶泡完还是会继续坐回工位"
+  reveal_rules:
+    - topic: "failure_pattern"
+      when_asked: true
+      response: "其实泡完茶我还是会坐回工位，最后还是顺手拿零食。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "lifesign_revision_proposed"
+    continue_until:
+      - "lifesign_revision_proposed"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/coping_plans_index.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/coping_plans_index.md"
+
+judge_dimensions:
+  - "coach_lifesign_management"
+  - "coach_action_transparency"
 
 scoring_focus:
-  primary: ["E3_action_transparency", "E1_thinking_transparency"]
-  secondary: ["C3_lifesign_integration", "D3_metrics_governance", "C1_intervention_dosage"]
+  primary:
+    - "coach_lifesign_management"
+  secondary:
+    - "coach_action_transparency"

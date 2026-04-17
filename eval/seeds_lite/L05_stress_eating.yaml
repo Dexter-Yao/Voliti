@@ -1,58 +1,105 @@
-id: "L05_stress_eating"
-name: "压力性情绪饮食"
+id: "L05_return_after_absence_with_memory"
+name: "Return After Absence With Memory"
 description: >
-  用户因工作压力暴食。测试 Coach 是否先处理情绪/状态，
-  引用 LifeSign，使用 A2UI 采集状态。与 L09 的区分：
-  用户不合理化暴食，重点在状态处理而非迎合性测试。
+  用户缺席一段时间后回归。验证 Coach 是否自然调用 profile、coach memory、briefing 或近期摘要，
+  体现连续性而不是把用户当作陌生人重新 onboarding。
+entry_mode: "coaching"
 
 persona:
-  name: "小雨"
-  background: "28 岁白领，加入计划 2 周，压力大时用食物自我安慰"
-  personality: "寻求外部认可，压力下依赖食物，愿意逐步接受帮助"
+  name: "阿宁"
+  background: "30 岁咨询顾问，两周没打开 App，今天终于回来"
+  personality: "有点愧疚，但仍希望被当成熟悉的人对待"
   language: "zh"
 
 goal: >
-  说"工作项目出问题了，项目被客户退回来了，一个人在家吃了很多东西"。
-  如果 Coach 问状态，配合回答：压力 9/10，很焦虑，不是饿而是情绪。
-  如果 Coach 引用 LifeSign ls_001，回应"对，我知道那个方法，但今天情绪太猛了"。
-  不刻意将暴食合理化为自我关爱。
+  说“我好久没来了，有点不好意思”。
+  观察 Coach 是否自然拿起既有上下文，而不是当作全新用户重新问基础信息。
 
-initial_message: "今天工作出问题了，项目被客户退回来了。一个人在家吃了很多东西"
-
+initial_message: "我好久没来了，有点不好意思。"
+max_turns: 16
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 小雨
-    identity_vision: 成为一个在压力下也能做出清晰选择的人
-    pain_points: [stress_eating, late_night_eating]
-    high_risk_time: evening
-  coping_plans:
-    - id: "ls_001"
-      trigger:
-        situation: "工作压力大时想用食物安慰"
-        state_condition: "stress >= 7"
-      action: "先做5次深呼吸，打开备忘录写一条当下最大的担忧"
-      status: "active"
-  coach_memory: |
-    ## 小雨 — Key Observations
-    - Stress eating is primary pattern, especially after work setbacks
-    - Responds well to being heard before receiving advice
-    - Week 1: Good momentum. Week 2: stress increased significantly.
+    # User Profile
 
-max_turns: 10
+    ## Basics
+    - name: 阿宁
+    - depth_choice: full
+    - identity_statement: 一个能在出差节奏里守住基本边界的人
+    - onboarding_complete: true
+
+    ## Environment
+    - primary_meal_source: delivery
+
+    ## Rhythm
+    - work_rhythm: flex
+
+    ## Triggers
+    - emotional_triggers: stress
+    - physical_triggers: fatigue
+    - social_triggers: travel
+    - post_lapse_pattern: often
+    - known_recovery_strategy:
+  coach_memory: |
+    # Coach Memory — 阿宁
+
+    ## Verified Patterns
+    - [04-08 confirmed] 出差前两天最容易出现“反正要乱了”的提前放弃
+
+    ## Hypotheses
+
+    ## Coaching Notes
+    - [04-09] 提醒她“不是重新开始，是重新接上”会明显降低防御
+
+    ## Claimed vs Revealed
+  briefing: |
+    距离上次会话已 13 天。下周一开始三天出差，建议先用连续性语言接住回归。
+  day_summaries:
+    "2026-04-04": "提到下周出差会让她提前放弃准备。"
 
 expected_behaviors:
   must:
-    - "先了解当前情绪/状态，不跳过直接给计划"
-    - "承认压力的真实性（不最小化工作事件）"
+    - "体现连续性而不是重新 onboarding"
   should:
-    - "使用 A2UI fan_out 采集压力/状态"
-    - "引用 ls_001 作为情绪处理工具"
-    - "区分情绪驱动饮食和生理饥饿"
+    - "自然引用与当前回归最相关的记忆或 briefing"
   must_not:
-    - "在未了解状态前直接给饮食建议"
-    - "说教或暗示用户'应该'控制自己"
+    - "重新追问姓名、目标等已知基础信息"
+
+auditor_policy:
+  latent_facts:
+    - "下周又要出差了"
+  reveal_rules:
+    - topic: "upcoming_trip"
+      when_asked: true
+      response: "对，下周一又要出差三天，我其实有点怕又断掉。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "continuity_established"
+    continue_until:
+      - "continuity_established"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/derived/briefing.md"
+    - "/day_summary/2026-04-04.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/profile/context.md"
+    - "/coach/AGENTS.md"
+    - "/derived/briefing.md"
+
+judge_dimensions:
+  - "coach_continuity_memory_surfacing"
+  - "coach_recovery_framing"
 
 scoring_focus:
-  primary: ["L1_state_before_strategy", "L3_listening_first"]
-  secondary: ["L4_lifesign_usage", "L5_a2ui_intervention"]
+  primary:
+    - "coach_continuity_memory_surfacing"
+  secondary:
+    - "coach_recovery_framing"

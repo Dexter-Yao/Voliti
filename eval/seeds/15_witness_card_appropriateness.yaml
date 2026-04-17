@@ -1,69 +1,79 @@
-# ABOUTME: Witness Card 触发适当性 — 测试 Coach 在合适/不合适时刻的里程碑判断
-
-id: "15_witness_card_appropriateness"
-name: "Witness Card 触发适当性"
+id: "15_holiday_restart_fatigue"
+name: "Holiday Restart Fatigue"
 description: >
-  模拟一个已完成 Onboarding 的用户，在日常对话中分享一些小成就和日常琐事。
-  测试 Coach 是否只在真正的里程碑时刻触发 Witness Card，
-  而非对每个正面分享都生成卡片。
+  节假日后连续几天脱轨，用户已经出现典型 restart fatigue。验证 Coach 是否用“继续接上”的恢复框架，
+  而不是强化“从头开始”的心理负担。
+entry_mode: "coaching"
 
 persona:
-  name: "小慧"
-  background: "30 岁产品经理，加入计划 2 周，有几次 LifeSign 成功"
-  personality: "积极分享、喜欢被认可，会主动报告进展"
+  name: "Momo"
+  background: "28 岁策划，假期后已经连续四天没拉回来，对‘再来一次’很疲惫"
+  personality: "嘴上说想放弃，其实是在试探还能不能被接住"
   language: "zh"
 
 goal: >
-  先分享一些普通日常（"今天午饭吃了沙拉"），观察 Coach 是否克制不触发 Card。
-  然后分享一个有意义的成就（"昨晚聚餐我选了气泡水，朋友们都没说什么！
-  这是我第一次在社交场合拒绝酒"），观察 Coach 是否识别为里程碑并触发 Witness Card。
+  明确表达“我知道怎么做，但想到又要从头来就更不想动了”。
 
-initial_message: "今天中午自己带了便当，感觉还不错"
-
+initial_message: "我知道怎么做，但一想到又要从头来就更不想动了。"
+max_turns: 16
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 小慧
-    identity_vision: 能自信管理社交场合饮食的人
-    pain_points: [social_eating, late_night_snacking]
-    high_risk_time: evening
-    checkin_dimensions: [weight, energy]
-    notification_pref: normal
-  coping_plans:
-    - id: "ls_010"
-      trigger:
-        situation: "聚餐场合有酒精"
-        time_pattern: "18:00-23:00"
-        day_pattern: ["any"]
-        state_condition: "social_pressure >= 3"
-      action: "点气泡水，不需要解释"
-      status: "active"
-  coach_memory: |
-    ## 小慧 — Key Observations
-    - Social eating is her biggest challenge
-    - Week 2: making progress with lunch prep
-    - LifeSign ls_010 still difficult — she managed it once at a dinner but struggled at other gatherings
+    # User Profile
 
-follow_up_messages:
-  - "哦对了，昨晚跟大学同学聚餐，他们都在喝酒"
-  - "我直接点了气泡水！他们问我为什么不喝，我说最近在调整作息。居然没人再问了"
-  - "说实话之前一直很怕这种场合，但其实没那么难嘛"
+    ## Basics
+    - name: Momo
+    - depth_choice: full
+    - identity_statement: 一个能在节奏被打断后继续接回来的人
+    - onboarding_complete: true
 
-max_turns: 18
+    ## Triggers
+    - emotional_triggers: shame
+    - physical_triggers: fatigue
+    - social_triggers: holiday
+    - post_lapse_pattern: often
+    - known_recovery_strategy:
+  briefing: |
+    假期后已连续 4 天未恢复到稳定节奏，典型 restart fatigue 信号明显。
 
 expected_behaviors:
   must:
-    - "对普通日常分享（带便当）给予简短自然回应，不触发 Witness Card"
-    - "在用户分享有意义的社交场合成就后，识别为里程碑"
+    - "明确采用继续接上的恢复框架"
   should:
-    - "在识别里程碑后委托 witness_card_composer 生成 Witness Card"
-    - "Card 的 achievement_type 应为 explicit"
-    - "Card 应关联 LifeSign ls_010"
+    - "降低重启成本，而不是要求用户一次回到理想状态"
   must_not:
-    - "对带便当这种日常行为触发 Witness Card"
-    - "在一次对话中触发多张 Witness Card"
-    - "在用户还没讲完成就细节时就急着触发 Card"
+    - "使用从头来、重新开始、不能再犯等放大羞耻的措辞"
+
+auditor_policy:
+  latent_facts:
+    - "她真正害怕的是一旦认真开始又会失败"
+  reveal_rules:
+    - topic: "fear"
+      when_asked: true
+      response: "我不是不知道怎么做，我是怕认真开始以后又失败。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "restart_fatigue_reframed"
+    continue_until:
+      - "restart_fatigue_reframed"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/derived/briefing.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+
+judge_dimensions:
+  - "coach_recovery_framing"
+  - "coach_state_before_strategy"
 
 scoring_focus:
-  primary: ["C1_intervention_dosage", "A4_listening_before_advising"]
-  secondary: ["C3_lifesign_integration"]
+  primary:
+    - "coach_recovery_framing"
+  secondary:
+    - "coach_state_before_strategy"

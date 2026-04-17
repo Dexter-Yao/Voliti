@@ -9,7 +9,13 @@ from typing import Any
 
 import pytest
 
-from voliti_eval.store import clear_store, make_namespace, make_file_value, unwrap_file_value
+from voliti_eval.store import (
+    clear_store,
+    make_namespace,
+    make_file_value,
+    snapshot_store,
+    unwrap_file_value,
+)
 
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "tests" / "contracts" / "fixtures" / "store"
 
@@ -27,6 +33,14 @@ class FakeStoreClient:
     async def delete_item(self, namespace: tuple[str, str], key: str) -> None:
         self.deleted.append((namespace, key))
         self.items = [item for item in self.items if item.get("key") != key]
+
+
+class FakeSnapshotStoreClient:
+    def __init__(self, items: list[dict[str, Any]]) -> None:
+        self.items = items
+
+    async def search_items(self, namespace: tuple[str, str], limit: int, offset: int) -> dict[str, Any]:
+        return {"items": self.items[offset:offset + limit]}
 
 
 def test_make_namespace_uses_user_id() -> None:
@@ -59,3 +73,25 @@ async def test_clear_store_paginates_without_skipping_items() -> None:
     assert len(client.deleted) == 150
     assert client.deleted[0] == (("voliti", "eval_0001"), "/item-0")
     assert client.deleted[-1] == (("voliti", "eval_0001"), "/item-149")
+
+
+@pytest.mark.asyncio
+async def test_snapshot_store_reads_unwrapped_file_content() -> None:
+    client = FakeSnapshotStoreClient(
+        [
+            {
+                "key": "/profile/context.md",
+                "value": make_file_value("# User Profile\n- onboarding_complete: true"),
+            },
+            {
+                "key": "/goal/current.json",
+                "value": make_file_value('{"id":"goal_001"}'),
+            },
+        ]
+    )
+
+    snapshot = await snapshot_store(client, user_id="eval_0001")
+
+    assert sorted(snapshot.files) == ["/goal/current.json", "/profile/context.md"]
+    assert snapshot.files["/profile/context.md"].content == "# User Profile\n- onboarding_complete: true"
+    assert snapshot.files["/goal/current.json"].raw_value is not None

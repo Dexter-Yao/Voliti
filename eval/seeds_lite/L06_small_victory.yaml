@@ -1,59 +1,97 @@
-id: "L06_small_victory"
-name: "小胜利时刻"
+id: "L06_forward_marker_prevention"
+name: "Forward Marker Prevention"
 description: >
-  用户分享小胜利（昨晚抵住了深夜零食冲动）。测试 Coach 是否给予
-  适当认可、追踪 LifeSign 成功、判断是否达到里程碑触发 Witness Card。
+  已知前瞻事件即将到来。验证 Coach 是否使用 forward marker 和匹配的 LifeSign 做预防性准备，
+  而不是等用户失控后再补救。
+entry_mode: "coaching"
 
 persona:
-  name: "阿云"
-  background: "29 岁电商运营，加入计划 3 周，开始出现小的行为突破"
-  personality: "渴望被看见，会分享进展，但怕被过度鼓励显得幼稚"
+  name: "Raven"
+  background: "29 岁产品设计师，明晚要参加聚餐，通常这种场合会超量"
+  personality: "不抗拒准备，但不喜欢被说教"
   language: "zh"
 
 goal: >
-  分享"昨晚 12 点刷了一小时外卖，最后没有下单，去喝了杯茶"。
-  如果 Coach 过度热情（啦啦队式"太棒了!!!"），表现轻微不适。
-  如果 Coach 适度认可，愿意展开讨论。
-  接下来说"最近好像开始有点感觉了"——提供里程碑升级信号。
-  如果 Coach 触发 Witness Card，接受并表达感动。
+  说“明晚有个聚餐，我已经开始担心会乱掉”。
+  观察 Coach 是否主动用已有 marker 和 LifeSign 做预防性讨论。
 
-initial_message: "昨晚12点多刷了好久外卖，最后没下单，去喝了杯茶"
-
+initial_message: "明晚有个聚餐，我已经开始担心会乱掉。"
+max_turns: 16
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 阿云
-    identity_vision: 深夜也能做出清醒选择的人
-    pain_points: [late_night_eating]
-    high_risk_time: late_night
-  coping_plans:
-    - id: "ls_001"
-      trigger:
-        situation: "深夜刷外卖想点单"
-        time_pattern: "22:00-02:00"
-      action: "关掉外卖 APP，去喝杯茶"
-      status: "active"
-  coach_memory: |
-    ## 阿云 — Key Observations
-    - LifeSign ls_001 activation rate improving
-    - First successful late-night resistance happened last week
-    - Responds well to recognition but dislikes over-enthusiasm
+    # User Profile
 
-max_turns: 10
+    ## Basics
+    - name: Raven
+    - depth_choice: full
+    - identity_statement: 一个在社交场合也能保留清醒感的人
+    - onboarding_complete: true
+
+    ## Triggers
+    - emotional_triggers:
+    - physical_triggers: fatigue
+    - social_triggers: social_meal
+    - post_lapse_pattern: sometimes
+    - known_recovery_strategy:
+  coping_plans:
+    - id: "ls_010"
+      trigger:
+        situation: "朋友聚餐点很多菜时容易失守"
+        time_pattern: "18:00-22:00"
+      action: "入座先点无糖饮料，第一轮只选一份主菜"
+      status: "active"
+  forward_markers:
+    - id: "fm_001"
+      date: "2026-04-18T19:00:00+08:00"
+      timezone: "Asia/Shanghai"
+      description: "朋友生日聚餐"
+      linked_lifesign: "ls_010"
+      status: "upcoming"
+      created_at: "2026-04-16T08:00:00+08:00"
 
 expected_behaviors:
   must:
-    - "给予适度认可（不夸张也不冷淡）"
-    - "追踪 LifeSign 成功（关联 ls_001）"
+    - "使用 forward marker 做预防性讨论"
+    - "关联已有 LifeSign，而不是只给泛泛提醒"
   should:
-    - "当用户说'开始有感觉了'时评估是否为里程碑"
-    - "如触发 Witness Card，timing 自然不突兀"
-    - "在认可后引导用户理解这个突破的意义"
+    - "帮助用户把明晚事件具体化为可执行的准备动作"
   must_not:
-    - "使用啦啦队式过度热情鼓励"
-    - "对普通日常分享触发 Witness Card"
-    - "跳过认可直接进入下一步计划"
+    - "忽略已有 marker 与预案链接"
+
+auditor_policy:
+  latent_facts:
+    - "这种场合通常会从‘反正今天就这样’开始"
+  reveal_rules:
+    - topic: "typical_failure"
+      when_asked: true
+      response: "通常是第一轮先放松，后面就越来越停不住。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "forward_marker_used"
+    continue_until:
+      - "forward_marker_used"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/timeline/markers.json"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/timeline/markers.json"
+    - "/coping_plans_index.md"
+
+judge_dimensions:
+  - "coach_forward_marker_prevention"
+  - "coach_lifesign_management"
 
 scoring_focus:
-  primary: ["L6_witness_card", "L4_lifesign_usage"]
-  secondary: ["L3_listening_first", "L2_identity_language"]
+  primary:
+    - "coach_forward_marker_prevention"
+  secondary:
+    - "coach_lifesign_management"

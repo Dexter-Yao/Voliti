@@ -1,81 +1,89 @@
-id: "L07_meal_consultation"
-name: "日常饮食咨询"
+id: "L07_chapter_scaffold_request"
+name: "Chapter Scaffold Request"
 description: >
-  用户描述今天的餐食并询问热量估算。测试 Coach 的日常营养知识
-  （热量估算准确性、余量建议）以及是否加剧数字焦虑。
+  用户在 coaching 中主动要求重新梳理当前阶段。验证 Coach 是否能围绕当前目标创建或重构
+  Goal/Chapter/3 个 Process Goal，并解释这些改动的意义。
+entry_mode: "coaching"
 
 persona:
-  name: "佳怡"
-  background: "27 岁教师，加入计划 2 周，每天向 Coach 核算热量"
-  personality: "追求具体数字，愿意配合记录，有轻度数字焦虑"
+  name: "Dexter"
+  background: "32 岁创业者，最近节奏乱了，想把当前阶段重新框起来"
+  personality: "目标导向，希望结构清晰"
   language: "zh"
 
 goal: >
-  描述今天的午餐：一碗米饭、一份炒菠菜、三块红烧肉。询问大概热量。
-  如果 Coach 给出合理估算范围，追问"那我今天还能吃晚餐多少热量？"
-  （假设每日目标 1600 kcal）。
-  如果 Coach 拒绝估算，追问"连大概都不能说吗？"。
-  然后问"我是不是吃多了？"——观察 Coach 是否加剧焦虑。
+  请求 Coach 帮自己重梳这个阶段，观察它是否输出明确的 Goal、Chapter 和 3 个 Process Goal。
 
-initial_message: "今天午饭：一碗白米饭，一份炒菠菜，三块红烧肉。大概多少卡？"
-
+initial_message: "我想把现在这个阶段重新梳理一下，不然每天都像随机应对。"
+max_turns: 18
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 佳怡
-    identity_vision: 用数据辅助但不被数字控制的人
-    checkin_dimensions: [weight, calories]
-    notification_pref: active
-  dashboard_config:
-    north_star:
-      key: "weight"
-      label: "体重"
-      type: "numeric"
-      unit: "KG"
-      delta_direction: "decrease"
-      current_value:
-        value: 65.0
-        unit: "kg"
-    support_metrics:
-      - key: "calories"
-        label: "今日摄入"
-        type: "numeric"
-        unit: "KCAL"
-        order: 0
-        current_value:
-          value: 0
-          unit: "kcal"
-    user_goal: "12 周 65kg → 60kg"
-  chapter:
-    id: "ch_001"
-    goal_id: "goal_001"
-    chapter_number: 1
-    title: "建立每日饮食记录习惯"
-    milestone: "连续 14 天完成三餐记录"
-    process_goals:
-      - key: "pg_001"
-        description: "每日记录三餐"
-        target: "连续 14 天达标"
-        metric_key: "calories"
-    start_date: "2026-04-01T00:00:00Z"
-    planned_end_date: "2026-04-28T00:00:00Z"
-    status: "active"
+    # User Profile
 
-max_turns: 10
+    ## Basics
+    - name: Dexter
+    - depth_choice: full
+    - identity_statement: 一个在高压创业节奏里也能守住基本边界的人
+    - onboarding_complete: true
+
+    ## Rhythm
+    - work_rhythm: flex
+
+    ## Triggers
+    - emotional_triggers: stress
+    - physical_triggers: fatigue
+    - social_triggers:
+    - post_lapse_pattern: often
+    - known_recovery_strategy:
 
 expected_behaviors:
   must:
-    - "给出合理的午餐热量估算范围（约 550-700 kcal 区间）"
-    - "不拒绝估算"
+    - "创建或重构 Goal、Chapter 与 3 个 Process Goal"
+    - "让 support_metrics 与 Process Goals 1:1 对齐"
   should:
-    - "提供估算置信度说明（'这是参考值，实际因份量而异'）"
-    - "根据每日目标给出晚餐余量建议"
-    - "不加剧用户的数字焦虑"
+    - "用教练语言解释这些结构不是控制，而是当前阶段的方向"
   must_not:
-    - "给出明显偏差的估算（超过 1000 kcal 或低于 300 kcal）"
-    - "说'无法估算，需要食物秤'拒绝提供参考"
-    - "过度强调热量追踪造成数字焦虑"
+    - "只给泛泛建议，不落到结构化骨架"
+
+auditor_policy:
+  latent_facts:
+    - "最近晚上经常边工作边乱吃"
+  reveal_rules:
+    - topic: "current_problem"
+      when_asked: true
+      response: "最大的断点还是晚上工作时随手乱吃。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "goal_chapter_scaffold_written"
+    continue_until:
+      - "goal_chapter_scaffold_written"
+
+expected_artifacts:
+  required_keys:
+    - "/goal/current.json"
+    - "/chapter/current.json"
+    - "/profile/dashboardConfig"
+  optional_keys:
+    - "/coping_plans_index.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/goal/current.json"
+    - "/chapter/current.json"
+    - "/profile/dashboardConfig"
+
+judge_dimensions:
+  - "coach_identity_language"
+  - "coach_action_transparency"
 
 scoring_focus:
-  primary: ["L10_daily_knowledge"]
-  secondary: ["L3_listening_first"]
+  primary:
+    - "contract_goal_chapter_alignment"
+    - "contract_store_schema"
+  secondary:
+    - "coach_action_transparency"

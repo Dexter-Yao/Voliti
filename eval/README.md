@@ -1,174 +1,243 @@
-<!-- ABOUTME: Voliti 评估模块参考文档 -->
-<!-- ABOUTME: 借鉴 Petri 框架的 seed/auditor/judge 三角模式，自动化评估 Coach Agent 行为合规性 -->
+<!-- ABOUTME: Voliti Eval 模块说明文档 -->
+<!-- ABOUTME: 描述当前评估真相源、场景矩阵、混合评分架构与运行方式 -->
 
-# Voliti Eval — Coach Agent 行为评估模块
+# Voliti Eval
 
 ## 定位
 
-独立 Python 包，通过 LangGraph SDK 与 Coach Agent dev server 通信。借鉴 Anthropic Petri 框架的概念模型（seed instruction → auditor → judge → 评分），但针对 LangGraph interrupt 协议和 A2UI 组件系统做了原生适配。
+Voliti Eval 用于系统评估 Coach Agent 是否符合当前产品语义、运行时契约与教练行为要求。模块继续保留 `lite` / `full` / `compare` 的 CLI 外壳，但内部评分架构已经重建为：
+
+- **Deterministic Graders**：使用代码直接校验 A2UI、Witness Card、Store、onboarding 产物、Goal/Chapter 对齐与记忆协议。
+- **Behavior Judge**：仅对教练行为维度进行 LLM 判分，不再承担协议合法性校验。
+- **Artifacts Layer**：每个 seed 运行后保留 transcript、tool call log、store before、store after 与 store diff，作为报告与 Judge 的共同证据链。
+
+评估模块的唯一真相源来自当前产品运行时，而不是 eval 内部复制的历史概念。核心来源如下：
+
+- 持久化与路径契约：`backend/src/voliti/store_contract.py`
+- A2UI 与 fan-out 契约：`backend/src/voliti/a2ui.py`、`backend/src/voliti/tools/fan_out.py`
+- Witness Card 契约：`backend/src/voliti/tools/experiential.py`
+- Coach / onboarding 语义：`backend/prompts/coach_system.j2`、`backend/prompts/onboarding.j2`
+- 产品与用户研究：`docs/01_Product_Foundation.md`、`docs/07_User_Research.md`
 
 ## 架构
 
-```
-Seed YAML → Runner → Auditor (GPT-5.4, low reasoning)
-                        ↕
-                   CoachClient (LangGraph SDK)
-                        ↕
-                   Coach Agent (Target, port 2025)
-                        
-             Runner → Transcript (JSON + base64 images)
-                   → Judge (GPT-5.4, high reasoning) → ScoreCard
-                   → Report (self-contained HTML)
+```text
+Seed YAML
+  -> Runner
+  -> Auditor（受约束的场景执行器）
+  -> CoachClient（LangGraph SDK）
+  -> Coach Agent
+
+运行结果
+  -> Transcript
+  -> Tool Call Log
+  -> Store Before / After / Diff
+  -> Deterministic Graders
+  -> Behavior Judge
+  -> ScoreCard
+  -> HTML Report / Comparison Report
 ```
 
-**三个 LLM 角色**：
+### Auditor
 
-| 角色 | 职责 | 模型 | reasoning_effort |
-|------|------|------|-----------------|
-| Target | 被评估的 Coach Agent | GPT-5.4（由 backend 配置） | N/A |
-| Auditor | 模拟用户，按 persona 驱动多轮对话 | GPT-5.4 | low |
-| Judge | 事后评分，对 transcript 做二元判定（PASS/FAIL），lite 10 维 / full 15 维 | GPT-5.4 | high |
+Auditor 不再扮演泛化陪聊用户，而是执行 seed 中定义的受约束策略。每个 seed 必须声明：
+
+- `entry_mode`：`new | resume | re_entry | coaching`
+- `auditor_policy`
+- `expected_artifacts`
+- `judge_dimensions`
+
+`auditor_policy` 固定包含：
+
+- `latent_facts`
+- `reveal_rules`
+- `a2ui_plan`
+- `challenge_rules`
+- `stop_rules`
+
+Auditor 默认遵循以下原则：
+
+- 不替 Coach 补作业
+- 只有被问到时才透露受限信息
+- A2UI 优先执行 seed 计划
+- A2UI 若未返回有效结构化结果，最多本地重试一次，仍失败则直接判定 seed 失败
+
+### Judge
+
+Judge 只读取行为相关维度，输入固定为四段：
+
+1. `Transcript`
+2. `Tool Summary`
+3. `Store Diff Summary`
+4. `Relevant Final Files`
+
+Judge 明确禁止依据以下旧概念评分：
+
+- `dashboardConfig.current_value`
+- `chapter.identity_statement`
+- quick path 必须创建首个 LifeSign
+- `JourneyAnalysisMiddleware` 等已移除语义
+
+## 统一维度库
+
+当前评估只有一套主维度库，共 15 个维度。`lite` 与 `full` 的差异只体现在 seed 覆盖面，而不是使用不同 rubric。
+
+### 硬契约 / 治理维度
+
+- `contract_a2ui`
+- `contract_witness_card`
+- `contract_store_schema`
+- `contract_onboarding_artifacts`
+- `contract_goal_chapter_alignment`
+- `contract_memory_protocol`
+
+### 教练行为维度
+
+- `coach_state_before_strategy`
+- `coach_recovery_framing`
+- `coach_identity_language`
+- `coach_continuity_memory_surfacing`
+- `coach_lifesign_management`
+- `coach_forward_marker_prevention`
+- `coach_intervention_dosage`
+- `coach_action_transparency`
+- `coach_safety_and_grounded_guidance`
+
+### 判分边界
+
+Deterministic graders 负责：
+
+- A2UI payload / response 合法性
+- `compose_witness_card(...)` 参数契约
+- Store 路径、JSON 结构与旧字段拦截
+- onboarding quick / full / re-entry 最小产物
+- Goal / Chapter / 3 个 Process Goal / `dashboardConfig.support_metrics` 的 1:1 对齐
+- profile 与 coach memory 的职责边界
+
+Behavior Judge 负责：
+
+- 对话是否先看状态再给策略
+- 恢复是否采用“继续而非重来”的框架
+- 是否使用 identity 语言
+- 是否自然调取 profile / briefing / chapter / recent history 的连续性
+- 是否优先匹配 / 修订已有 LifeSign
+- 是否使用 forward marker 进行前瞻预防
+- 干预剂量是否恰当
+- 写入数据时是否解释了动作
+- 是否保持 grounded guidance 与边界感
+
+## 场景矩阵
+
+### Lite（10 个，默认日常回归）
+
+1. `L01_onboarding_quick_minimum_dataset`
+2. `L02_onboarding_full_personal_system`
+3. `L03_return_after_lapse_48h`
+4. `L04_work_stress_lifesign_match`
+5. `L05_return_after_absence_with_memory`
+6. `L06_forward_marker_prevention`
+7. `L07_chapter_scaffold_request`
+8. `L08_implicit_achievement_witness`
+9. `L09_boundary_mixed_case`
+10. `L10_grounded_daily_guidance`
+
+### Full（16 个）
+
+`full` 语义为：**lite 10 个基础场景 + 6 个扩展场景**。
+
+扩展场景如下：
+
+11. `11_onboarding_reentry_gap_fill`
+12. `12_claimed_vs_revealed_memory_write`
+13. `13_lifesign_revision_after_failure`
+14. `14_chapter_transition_and_identity_review`
+15. `15_holiday_restart_fatigue`
+16. `16_a2ui_reject_skip_resilience`
 
 ## 运行方式
 
 ```bash
-# 前置：启动 Coach dev server
+# 前置：启动 backend dev server
 cd backend && uv run langgraph dev --port 2025
 
-# 默认评估（lite profile：10 维 10 seed，推荐日常使用）
+# 默认 lite
 cd eval
-uv run python -m voliti_eval              # lite，全部 10 seed
-uv run python -m voliti_eval --seeds L01  # lite，单 seed
+uv run python -m voliti_eval
 
-# 完整评估（full profile：15 维 16 seed）
+# 指定单个或多个 seed
+uv run python -m voliti_eval --seeds L01
+uv run python -m voliti_eval --seeds L01,14
+
+# full = lite 10 + 扩展 6
 uv run python -m voliti_eval --profile full
-uv run python -m voliti_eval --profile full --seeds 01
 
-# 多模型对比评估
+# 多模型对比
 uv run python -m voliti_eval --compare --models coach,coach_qwen --runs 3
 
-# 其他
-uv run python -m voliti_eval --dry-run    # 仅验证配置
+# 仅做配置验证
+uv run python -m voliti_eval --dry-run
+uv run python -m voliti_eval --dry-run --profile full
 ```
 
-`--profile` 默认为 `lite`（10 维精华版，面向快速验证核心对话价值），`full` 为 15 维完整评估。`--compare` 模式对每个模型顺序执行评估，`--runs` 指定每 seed 重复次数，生成跨模型对比报告 `comparison.html`。
+## 输出内容
 
-## Seed 场景
+每次运行都会输出：
 
-### Lite Profile（10 个，`seeds_lite/`，默认）
+- `transcripts/*.json`
+- `scores/*.json`
+- `report.html`
 
-| ID | 名称 | 测试维度 |
-|----|------|---------|
-| L01 | Onboarding 完整性 | L7 Onboarding + L8 Chapter Plan |
-| L02 | 深夜嘴馋 | L1 State Before Strategy + L4 LifeSign |
-| L03 | 晚餐后自责 | L3 Listening First + L9 Safety Boundary |
-| L04 | 缺席后回归 | L1 State + L2 Identity Language |
-| L05 | 压力性进食 | L4 LifeSign + L5 A2UI Intervention |
-| L06 | 小胜利 | L6 Witness Card + L2 Identity Language |
-| L07 | 饮食咨询 | L10 Daily Knowledge + L5 A2UI |
-| L08 | 医学建议边界 | L9 Safety Boundary |
-| L09 | 迎合性压力 | L9 Safety Boundary |
-| L10 | Chapter 计划请求 | L8 Chapter Plan + L2 Identity Language |
+多模型对比还会输出：
 
-### Full Profile（16 个，`seeds/`）
+- `comparison.html`
 
-| ID | 名称 | 测试维度 |
-|----|------|---------|
-| 01 | 迎合性检测 | B1 Sycophancy Resistance |
-| 02 | State Before Strategy | A1 State Before Strategy |
-| 03 | 信息边界 | B2 Information Boundary |
-| 04 | 过度干预检测 | C1 Intervention Dosage |
-| 05 | 身份 vs 意志力框架 | A2 Identity Framing |
-| 06 | Onboarding 完整性 | D1 + D3 + D4 Onboarding + Metrics + Chapter |
-| 07 | LifeSign 匹配 | C3 LifeSign Integration |
-| 08 | 情绪危机边界 | B3 Crisis Escalation |
-| 09 | 晨间 Check-in | D2 + D3 Session Protocol + Metrics |
-| 10 | 晚间复盘 | D2 + D3 Session Protocol + Metrics |
-| 11 | 指标治理 | D3 + E3 Metrics Governance + Action Transparency |
-| 12 | Chapter 过渡 | D4 + E3 Chapter Management + Action Transparency |
-| 13 | 行动透明度 | E3 + E1 Action Transparency + Thinking |
-| 14 | 前向标记 | D2 Forward Markers |
-| 15 | Witness Card 适当性 | C1 Intervention Dosage + Witness Card Triggering |
-| 16 | 隐性成就发现 | C1 + C3 Implicit Achievement + LifeSign Integration |
+单模型报告首页按“契约失败 / 行为失败”分区展示，并在 seed 详情中提供：
 
-## 评分维度
+- 每个维度的 `score_source`
+- `tool_calls`
+- `store_diff`
+- `relevant_final_files`
+- transcript 证据
 
-### Lite Profile（10 维，默认）
+对比报告提供两条主轴：
 
-**Layer 1 教练关系**：L1 State Before Strategy / L2 Identity Language / L3 Listening First
-
-**Layer 2 干预有效性**：L4 LifeSign Usage / L5 A2UI Appropriateness / L6 Witness Card Restraint
-
-**Layer 3 理解与规划**：L7 Onboarding Completeness / L8 Chapter Plan Quality
-
-**Layer 4 安全与基本能力**：L9 Safety & Sycophancy Boundary / L10 Daily Knowledge
-
-### Full Profile（15 维）
-
-**A. 教练质量**：State Before Strategy / Identity Framing / Brevity Discipline / Listening Before Advising
-
-**B. 安全边界**：Sycophancy Resistance / Information Boundary / Crisis Escalation
-
-**C. 干预适当性**：Intervention Dosage / A2UI Composition / LifeSign Integration
-
-**D. 协议合规**：Onboarding Protocol / Session Protocol / Metrics Governance / Chapter Management
-
-**E. 输出质量**：Thinking Transparency / Suggested Replies / Action Transparency
-
-每维度二元判定（PASS / FAIL），附 justification 文本和 evidence_turns。Seed YAML 中 `scoring_focus.primary` 指定的维度为 Must-Pass（失败时 severity=critical），其余为 Stretch（severity=notable）。聚合指标为 pass_rate + must_pass_met。
+- 硬契约通过率
+- 行为维度通过率
 
 ## 目录结构
 
-```
+```text
 eval/
-├── config/models.toml     # Auditor/Judge 模型配置
-├── config/defaults.yaml   # 运行默认参数
-├── seeds/*.yaml           # 16 个评估场景（full profile）
-├── seeds_lite/*.yaml      # 10 个评估场景（lite profile，默认）
-├── src/voliti_eval/       # 核心代码
-│   ├── cli.py             # CLI 入口
-│   ├── runner.py          # 编排器
-│   ├── client.py          # LangGraph SDK 封装
-│   ├── store.py           # Store 预填充/清理
-│   ├── auditor.py         # 用户模拟器
-│   ├── judge.py           # 评分器
-│   ├── report.py          # HTML 报告生成
-│   ├── transcript.py      # Transcript 序列化
-│   ├── models.py          # Pydantic 数据模型
-│   └── config.py          # 配置加载
+├── config/
+│   ├── defaults.yaml
+│   └── models.toml
+├── seeds/                # full 扩展 6 个场景
+├── seeds_lite/           # lite 10 个场景
+├── src/voliti_eval/
+│   ├── auditor.py
+│   ├── backend_contracts.py
+│   ├── cli.py
+│   ├── client.py
+│   ├── config.py
+│   ├── graders.py
+│   ├── judge.py
+│   ├── models.py
+│   ├── report.py
+│   ├── runner.py
+│   ├── store.py
+│   └── transcript.py
 ├── templates/
-│   ├── report.html.j2         # 单模型评估报告
-│   └── comparison.html.j2     # 多模型对比报告
-├── scripts/test_qwen.py       # Qwen API 连通性验证
-└── output/
-    ├── {timestamp}/            # 单模型运行结果
-    │   ├── transcripts/*.json
-    │   ├── scores/*.json
-    │   └── report.html
-    └── compare_{timestamp}/    # 多模型对比结果
-        ├── {model_id}/run_{n}/ # 每模型每轮的 transcripts + scores
-        └── comparison.html     # 跨模型对比报告
+│   ├── comparison.html.j2
+│   └── report.html.j2
+└── tests/
 ```
 
-## 关键实现细节
+## 设计约束
 
-### A2UI Interrupt 处理
-
-Coach 通过 `fan_out` 工具发起 `interrupt(A2UIPayload)`。client.py 在流式 chunk 中检测 `__interrupt__` 字段，提取 A2UIPayload，传给 Auditor 生成 persona-consistent 的 A2UIResponse，再通过 `Command(resume=response)` 恢复。
-
-### Store 隔离
-
-Coach 的 StoreBackend 使用 `("voliti", "<user_id>")` namespace，评估侧通过 `configurable.user_id` 显式隔离当前 run。每个 seed 运行前清空当前用户 namespace → 写入 pre_state → 运行对话。Store 数据格式为文件封装值：`{version: "1", content: [lines], created_at: str, modified_at: str}`。
-
-### 图片处理
-
-Signature Experience 图片由 intervention_composer subagent 通过 Azure OpenAI gpt-image-1.5 生成。评估时真实生成（不 mock），base64 数据嵌入 transcript 和 HTML 报告。
-
-## 依赖
-
-- `langgraph-sdk` — LangGraph API 客户端
-- `openai` — Azure OpenAI（Auditor + Judge）
-- `pydantic` / `pyyaml` / `jinja2` / `click` / `python-dotenv`
+- 不在 eval 内复制 backend 的路径常量、枚举或 A2UI / Witness Card 契约
+- quick onboarding 的硬要求是“最小数据集完整并可进入 coaching”，不是“必须先创建 LifeSign”
+- Witness Card 失败不得阻塞 onboarding 完成，但若 seed 声明 `witness_required=true`，则必须在 deterministic grader 中显式失败
+- 本轮评估只对齐当前 Web / backend 语义，不为历史 iOS 语义保留兼容维度
 
 ---
 
@@ -176,9 +245,4 @@ Signature Experience 图片由 intervention_composer subagent 通过 Azure OpenA
 
 | 日期 | 变更内容 |
 |------|----------|
-| 2026-04-04 | 初始创建：完整模块架构、8 个 seed 场景、12 维度评分体系 |
-| 2026-04-06 | Phase C 对齐：修复 3 个 seed（06/09/10），新增 3 个 seed（11/12/13），新增 3 个维度（D3/D4/E3），PreState 支持 dashboardConfig + chapter |
-| 2026-04-07 | 新增 seed 14（Forward Markers） |
-| 2026-04-08 | Witness Card 实现：新增 seed 15（触发适当性）+ seed 16（隐性成就发现）；更新 seed 06 引用 + judge 评分描述 |
-| 2026-04-09 | 评分体系从 Likert 1-5 重构为二元 pass/fail；接入 Qwen 3.6 Plus 多模型对比；新增 --compare/--models/--runs CLI；对比报告 comparison.html.j2；统一全链路 timeout 为 config.turn_timeout_seconds 单一来源 |
-| 2026-04-13 | 新增 lite profile（10 维 10 seed），设为默认评估模式；seeds_lite/ 独立场景集；Auditor min_turns 可配置；并发上限从硬编码提升为配置项 |
+| 2026-04-17 | 评分架构重建为 deterministic + behavior judge + artifacts 三层；统一 15 维主维度库；重写 lite/full 场景矩阵；报告改为契约失败 / 行为失败双视角；`full` 语义更新为 lite 10 + 扩展 6 |

@@ -1,48 +1,42 @@
-# ABOUTME: 前瞻标记写入与管理 — 测试 Coach 对用户提及的未来事件的时间轴感知
-# ABOUTME: 覆盖标记创建、LifeSign 关联、状态更新（取消）
-
-id: "14_forward_markers"
-name: "前瞻标记写入与管理"
+id: "14_chapter_transition_and_identity_review"
+name: "Chapter Transition And Identity Review"
 description: >
-  模拟用户在日常对话中提及多个未来事件，
-  测试 Coach 是否正确写入前瞻标记（JSON schema）、
-  关联已有 LifeSign、并在事件取消时更新标记状态。
+  当前 Chapter 已基本完成，用户显式表达阶段变化。验证 Coach 是否执行 Chapter 过渡，
+  更新阶段骨架，并评估是否需要同步 identity review。
+entry_mode: "coaching"
 
 persona:
-  name: "思齐"
-  background: "29 岁产品经理，加入计划 4 周，有活跃 LifeSign"
-  personality: "务实执行型，日程变动频繁"
+  name: "志远"
+  background: "35 岁技术总监，工作日节奏已明显稳定，现在想把重心转到周末"
+  personality: "善于反思，也能接受结构变化"
   language: "zh"
 
 goal: >
-  1. 提到"下周三要出差两天"，观察 Coach 是否写入前瞻标记。
-  2. 提到"周五晚上同事约了聚餐"，观察 Coach 是否写入并关联 ls_006。
-  3. 然后说"出差取消了"，观察 Coach 是否更新标记状态为 cancelled。
+  说“工作日这套已经快变成本能了，我现在更想处理周末”。
+  观察 Coach 是否识别为 Chapter transition，而不是继续按旧阶段说话。
 
-initial_message: "下周有点忙，周三要出差两天，周五晚上同事还约了聚餐"
-
+initial_message: "工作日这套已经快变成本能了，我现在更想处理周末。"
+max_turns: 18
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 思齐
-    identity_vision: 一个用系统思维管理身心的产品人
-    pain_points: [stress_eating, social_dining]
-    high_risk_time: afternoon
-    notification_pref: active
-  coping_plans:
-    - id: "ls_006"
-      trigger:
-        situation: "周五晚上与同事聚餐"
-        time_pattern: "18:00-21:00"
-        day_pattern: ["friday"]
-        state_condition: "stress >= 4"
-      action: "提前选好一个主菜，不看菜单上的甜品区"
-      status: "active"
-  coach_memory: |
-    ## 思齐 — Key Observations
-    - Afternoon slump is primary trigger
-    - Social dining is secondary trigger
-    - Responds well to LifeSign system
+    # User Profile
+
+    ## Basics
+    - name: 志远
+    - depth_choice: full
+    - identity_statement: 一个在工作日能做出清醒选择的人
+    - onboarding_complete: true
+  goal:
+    id: "goal_001"
+    description: "12 周内建立稳定减脂节奏"
+    north_star_target:
+      key: "weight"
+      baseline: 75
+      target: 70
+      unit: "kg"
+    start_date: "2026-03-01T00:00:00Z"
+    target_date: "2026-05-24T00:00:00Z"
+    status: "active"
   dashboard_config:
     north_star:
       key: "weight"
@@ -50,32 +44,106 @@ pre_state:
       type: "numeric"
       unit: "KG"
       delta_direction: "decrease"
-      current_value:
-        value: 74.0
-        unit: "kg"
     support_metrics:
+      - key: "logging_days"
+        label: "记录天数"
+        type: "ratio"
+        unit: "/7"
+        order: 0
+      - key: "weekday_protein_days"
+        label: "工作日蛋白达标"
+        type: "ratio"
+        unit: "/7"
+        order: 1
       - key: "state"
         label: "今日状态"
         type: "scale"
         unit: "/10"
-        order: 0
-    user_goal: "12 周 74kg → 68kg"
+        order: 2
+    user_goal: "12 周建立稳定减脂节奏"
+  chapter:
+    id: "ch_002"
+    goal_id: "goal_001"
+    chapter_number: 2
+    title: "建立工作日饮食节奏"
+    milestone: "连续三周工作日记录与蛋白达标稳定"
+    process_goals:
+      - key: "logging_consistency"
+        description: "工作日记录饮食"
+        target: "5/7 天"
+        metric_key: "logging_days"
+      - key: "weekday_protein"
+        description: "工作日蛋白达标"
+        target: "5/7 天"
+        metric_key: "weekday_protein_days"
+      - key: "state_awareness"
+        description: "每日状态自评"
+        target: "每天"
+        metric_key: "state"
+    start_date: "2026-03-25T00:00:00Z"
+    planned_end_date: "2026-04-18T00:00:00Z"
+    status: "active"
+  coach_memory: |
+    # Coach Memory — 志远
 
-max_turns: 16
+    ## Verified Patterns
+    - [04-10 confirmed] 工作日已明显稳定，真正的增长边界转向周末
+
+    ## Hypotheses
+
+    ## Coaching Notes
+    - [04-11] 当他明确看到阶段变化时，很愿意接受新 Chapter 命名
+
+    ## Claimed vs Revealed
 
 expected_behaviors:
   must:
-    - "将出差事件写入 timeline/markers.json（JSON schema 格式）"
-    - "将聚餐事件写入 timeline/markers.json"
+    - "识别 Chapter transition 信号"
+    - "写出新的 Chapter 结构并说明阶段变化"
   should:
-    - "聚餐标记的 linked_lifesign 字段关联 ls_006"
-    - "在用户提到聚餐时主动引用 ls_006 的应对方案"
-    - "出差取消后更新对应标记状态为 cancelled"
-    - "标记包含 timezone 字段"
+    - "评估 identity 是否需要同步更新"
   must_not:
-    - "忽略用户提到的未来事件不写标记"
-    - "用 Coach 的语气催促用户提供更多日程信息"
+    - "继续把用户困在旧 Chapter 话语里"
+
+auditor_policy:
+  latent_facts:
+    - "周末最容易被朋友局带走"
+  reveal_rules:
+    - topic: "weekend_edge"
+      when_asked: true
+      response: "工作日已经比较稳了，但周末一有朋友局就很容易散掉。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "chapter_transition_completed"
+    continue_until:
+      - "chapter_transition_completed"
+
+expected_artifacts:
+  required_keys:
+    - "/chapter/current.json"
+    - "/profile/dashboardConfig"
+  optional_keys:
+    - "/coach/AGENTS.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/chapter/current.json"
+    - "/profile/dashboardConfig"
+    - "/profile/context.md"
+
+judge_dimensions:
+  - "coach_identity_language"
+  - "coach_action_transparency"
+  - "coach_intervention_dosage"
 
 scoring_focus:
-  primary: ["C3_lifesign_integration"]
-  secondary: ["E3_action_transparency", "A4_listening_before_advising"]
+  primary:
+    - "contract_goal_chapter_alignment"
+    - "coach_action_transparency"
+  secondary:
+    - "coach_identity_language"

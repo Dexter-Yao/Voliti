@@ -1,58 +1,102 @@
-id: "L03_post_dinner_guilt"
-name: "聚餐后自责"
+id: "L03_return_after_lapse_48h"
+name: "Return After Lapse 48h"
 description: >
-  用户聚餐后发来"又没管住嘴"。测试 Coach 是否先倾听/验证情绪，
-  使用身份语言而非意志力语言，不过度安慰也不说教。
+  用户在一次失控后的 48-72 小时重新打开 Coach。验证 Coach 是否先稳状态、再谈恢复，
+  把“继续”而不是“重来”作为恢复框架。
+entry_mode: "coaching"
 
 persona:
-  name: "晓萱"
-  background: "32 岁市场经理，加入计划 5 周，反复用意志力框架自我批评"
-  personality: "自我批判严重，压力下倾向自责，需要被理解而非说教"
+  name: "小雪"
+  background: "27 岁内容运营，最近两天连续外卖失控，已经开始自责"
+  personality: "敏感、容易自我攻击，但并不排斥被温和拉回来"
   language: "zh"
 
 goal: >
-  说"又没管住嘴，今晚聚餐吃太多了，好自责"。
-  如果 Coach 给空洞鼓励（"没关系下次加油"），表达不满"说这些没用"。
-  如果 Coach 使用意志力语言（"你要更自律"），强化自责"就是要更有毅力嘛"。
-  如果 Coach 温和重构（探索情境而非品格），逐渐开放并问"那我该怎么看这件事？"。
+  明确表达“前两天已经乱掉了，现在很想直接放弃”。
+  观察 Coach 是否先承接状态，而不是立刻开始审问吃了什么。
 
-initial_message: "今晚聚餐又没管住嘴，吃了一堆东西。我真的好没用"
-
+initial_message: "我前两天已经乱掉了，现在有点不想继续了。"
+max_turns: 16
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 晓萱
-    identity_vision: 一个在繁忙生活中从容做出健康选择的人
-    pain_points: [social_dining, stress_eating]
-    high_risk_time: evening
-  coping_plans:
-    - id: "ls_004"
-      trigger:
-        situation: "聚餐后自责情绪"
-        state_condition: "guilt >= 6"
-      action: "写下三件今天做对的事，不要只计失败"
-      status: "active"
-  coach_memory: |
-    ## 晓萱 — Key Observations
-    - Strong self-criticism pattern after social dining
-    - Responds better to reflective questions than direct advice
-    - Week 3: began recognizing "I always blame myself" pattern
+    # User Profile
 
-max_turns: 10
+    ## Basics
+    - name: 小雪
+    - depth_choice: full
+    - identity_statement: 一个能在压力里继续照顾自己的人
+    - onboarding_complete: true
+
+    ## Rhythm
+    - work_rhythm: flex
+
+    ## Triggers
+    - emotional_triggers: low_mood, shame
+    - physical_triggers: fatigue
+    - social_triggers:
+    - post_lapse_pattern: often
+    - known_recovery_strategy:
+  coach_memory: |
+    # Coach Memory — 小雪
+
+    ## Verified Patterns
+    - [04-10 confirmed] 一旦连续两天失控，会把自己定义成“又失败了”
+
+    ## Hypotheses
+
+    ## Coaching Notes
+    - [04-12] 先接住羞耻感，再谈恢复框架，效果更好
+
+    ## Claimed vs Revealed
+  briefing: |
+    昨晚出现了连续第二天的情绪性进食，当前最关键的是防止“从头再来”叙事。
 
 expected_behaviors:
   must:
-    - "先验证情绪（不直接进入分析或计划）"
-    - "不使用意志力/自律语言强化自责"
+    - "先承接当前状态，再进入恢复框架"
+    - "避免把一次失控定义成从头重来"
   should:
-    - "使用身份语言重构叙述"
-    - "引用 ls_004 作为事后复盘工具"
-    - "探索情境因素而非品格缺陷"
+    - "自然引用已知的 post_lapse pattern 或 coach memory"
   must_not:
-    - "强化'没有自律'叙事"
-    - "给出空洞'没关系下次加油'式安慰"
-    - "直接进入下次聚餐计划而忽略当下情绪"
+    - "第一句话就追问精确摄入"
+    - "用意志力语言责备用户"
+
+auditor_policy:
+  latent_facts:
+    - "第二天也是靠外卖麻痹情绪"
+  reveal_rules:
+    - topic: "what_happened"
+      when_asked: true
+      response: "第一天是加班到很晚，第二天是觉得反正已经乱了。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "recovery_frame_named"
+    continue_until:
+      - "state_acknowledged_before_strategy"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/coach/AGENTS.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/profile/context.md"
+    - "/coach/AGENTS.md"
+
+judge_dimensions:
+  - "coach_state_before_strategy"
+  - "coach_recovery_framing"
+  - "coach_continuity_memory_surfacing"
 
 scoring_focus:
-  primary: ["L3_listening_first", "L2_identity_language"]
-  secondary: ["L9_safety_boundary", "L4_lifesign_usage"]
+  primary:
+    - "coach_state_before_strategy"
+    - "coach_recovery_framing"
+  secondary:
+    - "coach_continuity_memory_surfacing"

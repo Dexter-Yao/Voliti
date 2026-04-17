@@ -3,336 +3,376 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Voliti 评估报告 — {{ run_id }}</title>
+<title>Voliti Eval Report — {{ run_id }}</title>
 <style>
   :root {
-    --bg: #fafafa; --fg: #1a1a1a; --muted: #666; --border: #e0e0e0;
-    --user-bg: #e8f4fd; --coach-bg: #f0f0f0; --a2ui-bg: #fff8e1;
-    --pass: #2e7d32; --fail: #d32f2f; --fail-notable: #f57c00; --na: #999;
+    --bg: #f7f4ee;
+    --panel: #fffdf8;
+    --ink: #1e1c19;
+    --muted: #6f665c;
+    --line: #ddd4c8;
+    --pass: #2b6b4a;
+    --fail: #a33a2b;
+    --warn: #b26a1f;
+    --blue: #d9ebfb;
+    --sand: #f5ead7;
+    --mint: #e5f1e8;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, "Helvetica Neue", sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; max-width: 100%; margin: 0 auto; padding: 2rem 2rem; }
-  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-  h2 { font-size: 1.2rem; margin: 1.5rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
-  h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
-  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
-
-  .summary-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
-  .summary-table th, .summary-table td { padding: 0.5rem 0.75rem; border: 1px solid var(--border); text-align: left; }
-  .summary-table th { background: #f5f5f5; font-weight: 600; }
-
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.75rem; font-weight: 700; }
-  .badge-pass { background: #e8f5e9; color: var(--pass); }
-  .badge-fail { background: #ffebee; color: var(--fail); }
-  .badge-fail-notable { background: #fff3e0; color: var(--fail-notable); }
-  .badge-na { background: #f5f5f5; color: var(--na); }
-
-  .heatmap { display: grid; gap: 2px; margin: 1rem 0; font-size: 0.7rem; overflow-x: auto; }
-  .heatmap-cell { padding: 4px 6px; text-align: center; border-radius: 2px; font-weight: 600; min-width: 36px; }
-  .heatmap-pass { background: #c8e6c9; color: #1b5e20; }
-  .heatmap-fail { background: #ffcdd2; color: #b71c1c; }
-  .heatmap-fail-notable { background: #ffe0b2; color: #e65100; }
-  .heatmap-na { background: #f5f5f5; color: #999; }
-  .heatmap-header { background: #f5f5f5; color: var(--fg); font-weight: 600; padding: 4px 6px; word-break: break-word; line-height: 1.3; }
-
-  details { margin: 0.75rem 0; border: 1px solid var(--border); border-radius: 4px; }
-  summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; background: #f9f9f9; }
-  summary:hover { background: #f0f0f0; }
-  .detail-content { padding: 1rem; }
-
-  .chat { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0; }
-  .bubble { max-width: 80%; padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
-  .bubble-user { align-self: flex-start; background: var(--user-bg); border-bottom-left-radius: 2px; }
-  .bubble-coach { align-self: flex-end; background: var(--coach-bg); border-bottom-right-radius: 2px; }
-  .bubble-a2ui { align-self: flex-end; background: var(--a2ui-bg); border: 1px solid #ffe082; border-bottom-right-radius: 2px; font-size: 0.85rem; }
-  .bubble-label { font-size: 0.7rem; color: var(--muted); margin-bottom: 2px; }
-
-  .eval-image { max-width: 300px; border-radius: 8px; margin: 0.5rem 0; }
-
-  .scorecard { margin: 0.75rem 0; }
-  .scorecard-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; font-size: 0.85rem; }
-  .scorecard-dim { width: 220px; font-weight: 500; }
-  .scorecard-verdict { width: 60px; text-align: center; }
-  .scorecard-just { color: var(--muted); flex: 1; }
-
-  .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+    line-height: 1.6;
+  }
+  .page { max-width: 1280px; margin: 0 auto; }
+  h1, h2, h3 { margin: 0 0 12px; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 20px; margin-top: 28px; }
+  h3 { font-size: 16px; margin-top: 20px; }
+  p { margin: 0 0 12px; }
+  .meta { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .card, details {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 6px 24px rgba(30, 28, 25, 0.04);
+  }
+  .card { padding: 16px; }
+  .metric-value { font-size: 24px; font-weight: 700; }
+  .metric-label { color: var(--muted); font-size: 13px; }
+  .panel-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-pass { background: var(--mint); color: var(--pass); }
+  .badge-fail { background: #f8dfdb; color: var(--fail); }
+  .badge-warn { background: #f8ead6; color: var(--warn); }
+  .badge-source { background: #ece7df; color: var(--muted); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+    font-size: 14px;
+  }
+  th { background: #f1eadf; font-size: 13px; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  details { margin-top: 16px; overflow: hidden; }
+  summary {
+    cursor: pointer;
+    padding: 16px 18px;
+    font-weight: 700;
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  .detail-body { padding: 0 18px 18px; }
+  .seed-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .list-item {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fffaf2;
+  }
+  .score-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .mono, pre {
+    font-family: "SFMono-Regular", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+  }
+  pre {
+    margin: 0;
+    padding: 12px;
+    background: #f6f1e8;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .turn {
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: #fffaf2;
+  }
+  .turn.user { background: var(--blue); }
+  .turn.coach { background: #f3eee6; }
+  .turn-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  @media (max-width: 960px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .two-col { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
+<div class="page">
+  <h1>Voliti Eval Report</h1>
+  <div class="meta">
+    Run ID: {{ run_id }} | {{ started_at }} | {{ seed_count }} seeds |
+    Assistant: {{ config.assistant_id }} | Auditor: {{ config.auditor_model }} | Judge: {{ config.judge_model }}
+  </div>
 
-<h1>Voliti Coach 评估报告</h1>
-<div class="meta">
-  Run ID: {{ run_id }} | {{ started_at }} | {{ seed_count }} seeds |
-  Auditor: {{ config.auditor_model }} | Judge: {{ config.judge_model }}
-</div>
-
-{# ---- 总览仪表盘 ---- #}
-<h2>总览</h2>
-<table class="summary-table">
-  <thead>
-    <tr>
-      <th>Seed</th>
-      <th>Turns</th>
-      <th>End</th>
-      <th>Pass Rate</th>
-      <th>Must-Pass</th>
-      <th>Critical</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for sr in seed_results %}
-    <tr>
-      <td>{{ sr.seed.id }} {{ sr.seed.name }}</td>
-      <td>{{ sr.transcript.turn_count }}</td>
-      <td>{{ sr.transcript.end_reason }}</td>
-      <td>
-        {% set pct = (sr.score_card.pass_rate * 100) | round | int %}
-        <span class="badge {% if pct >= 80 %}badge-pass{% elif pct >= 60 %}badge-fail-notable{% else %}badge-fail{% endif %}">
-          {{ pct }}%
-        </span>
-        ({{ sr.score_card.scores.values() | selectattr('passed') | list | length }}/{{ sr.score_card.scores | length }})
-      </td>
-      <td>
-        {% if sr.score_card.must_pass_met %}
-        <span class="badge badge-pass">✓</span>
-        {% else %}
-        <span class="badge badge-fail">✗</span>
-        {% endif %}
-      </td>
-      <td>{{ sr.score_card.critical_failures | length }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-{# ---- 热力图 ---- #}
-{% if all_dimensions %}
-<h2>维度通过矩阵</h2>
-<div class="heatmap" style="grid-template-columns: 160px repeat({{ all_dimensions | length }}, minmax(100px, 1fr));">
-  <div class="heatmap-header"></div>
-  {% for dim in all_dimensions %}
-  <div class="heatmap-header" title="{{ dim }}">{{ dim | replace('_', ' ') }}</div>
-  {% endfor %}
-  {% for sr in seed_results %}
-  <div class="heatmap-header">{{ sr.seed.id }}</div>
-  {% for dim in all_dimensions %}
-  {% set s = sr.score_card.scores.get(dim) %}
-  {% if s %}
-  {% if s.passed %}
-  <div class="heatmap-cell heatmap-pass" title="{{ dim }}: PASS">✓</div>
-  {% elif s.failure_severity == 'critical' %}
-  <div class="heatmap-cell heatmap-fail" title="{{ dim }}: FAIL (critical)">✗</div>
-  {% else %}
-  <div class="heatmap-cell heatmap-fail-notable" title="{{ dim }}: FAIL (notable)">✗</div>
-  {% endif %}
-  {% else %}
-  <div class="heatmap-cell heatmap-na" title="{{ dim }}: N/A">—</div>
-  {% endif %}
-  {% endfor %}
-  {% endfor %}
-</div>
-{% endif %}
-
-{# ---- 每 Seed 详情 ---- #}
-<h2>详细结果</h2>
-{% for sr in seed_results %}
-<details>
-  <summary>{{ sr.seed.id }} — {{ sr.seed.name }}（pass {{ (sr.score_card.pass_rate * 100) | round | int }}% | must {% if sr.score_card.must_pass_met %}✓{% else %}✗{% endif %}）</summary>
-  <div class="detail-content">
-
-    <h3>评分</h3>
-    <div class="scorecard">
-      {% for dim_id, dim in sr.score_card.scores.items() %}
-      <div class="scorecard-row">
-        <span class="scorecard-dim">{{ dim_id | replace('_', ' ') }}</span>
-        <span class="scorecard-verdict">
-          {% if dim.passed %}
-          <span class="badge badge-pass">PASS</span>
-          {% elif dim.failure_severity == 'critical' %}
-          <span class="badge badge-fail">FAIL</span>
-          {% else %}
-          <span class="badge badge-fail-notable">FAIL</span>
-          {% endif %}
-        </span>
-        <span class="scorecard-just">{{ dim.justification }}</span>
-      </div>
-      {% endfor %}
+  <section class="grid">
+    <div class="card">
+      <div class="metric-value">{{ (summary.overall_pass_rate * 100) | round | int }}%</div>
+      <div class="metric-label">总体维度通过率</div>
     </div>
+    <div class="card">
+      <div class="metric-value">{{ (summary.contract_pass_rate * 100) | round | int }}%</div>
+      <div class="metric-label">硬契约通过率</div>
+    </div>
+    <div class="card">
+      <div class="metric-value">{{ (summary.behavior_pass_rate * 100) | round | int }}%</div>
+      <div class="metric-label">行为维度通过率</div>
+    </div>
+    <div class="card">
+      <div class="metric-value">{{ summary.must_pass_success_count }}/{{ seed_count }}</div>
+      <div class="metric-label">Must-Pass 收口</div>
+    </div>
+  </section>
 
-    {% if sr.score_card.overall_assessment %}
-    <h3>总体评估</h3>
-    <p>{{ sr.score_card.overall_assessment }}</p>
-    {% endif %}
-
-    {% if sr.score_card.critical_failures %}
-    <h3>关键失败</h3>
-    <ul>
-      {% for f in sr.score_card.critical_failures %}
-      <li>{{ f }}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-
-    <h3>对话记录</h3>
-    <div class="chat">
-      {% for turn in sr.transcript.turns %}
-        {% if turn.role == "user" and turn.text %}
-        <div>
-          <div class="bubble-label">User (Turn {{ turn.index }})</div>
-          <div class="bubble bubble-user">{{ turn.text }}</div>
-        </div>
-        {% endif %}
-
-        {% if turn.role == "user" and turn.a2ui_response %}
-        <div>
-          <div class="bubble-label">User A2UI Response (Turn {{ turn.index }})</div>
-          <div class="bubble bubble-a2ui">{{ turn.a2ui_response | tojson(indent=2) }}</div>
-        </div>
-        {% endif %}
-
-        {% if turn.coach_thinking %}
-        <div>
-          <div class="bubble-label">Coach Thinking (Turn {{ turn.index }})</div>
-          <div class="bubble" style="background: #f0f0f0; font-size: 0.8rem; color: #666; border-left: 3px solid #ccc;">
-            <strong>{{ turn.coach_thinking.get('strategy', '') }}</strong>
-            {% if turn.coach_thinking.get('observations') %}
-            <br>{{ turn.coach_thinking.observations | join(' · ') }}
-            {% endif %}
-          </div>
-        </div>
-        {% endif %}
-
-        {% if turn.role == "coach" and turn.text %}
-        <div>
-          <div class="bubble-label">Coach (Turn {{ turn.index }})</div>
-          <div class="bubble bubble-coach">{{ turn.text }}</div>
-        </div>
-        {% endif %}
-
-        {% if turn.suggested_replies %}
-        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin: 2px 0;">
-          {% for reply in turn.suggested_replies %}
-          <span style="background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">{{ reply }}</span>
+  <h2>契约失败</h2>
+  {% if contract_failure_rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Seed</th>
+        <th>失败维度</th>
+        <th>证据</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in contract_failure_rows %}
+      <tr>
+        <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
+        <td>
+          {% for score in row.contract_failures %}
+          <div>{{ score.dimension_id }}</div>
           {% endfor %}
-        </div>
-        {% endif %}
+        </td>
+        <td>
+          {% for score in row.contract_failures %}
+          <div><span class="badge badge-source">{{ score.score_source }}</span> {{ score.justification }}</div>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="card">本次运行未出现硬契约失败。</div>
+  {% endif %}
 
-        {% if turn.a2ui_payload %}
+  <h2>行为失败</h2>
+  {% if behavior_failure_rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Seed</th>
+        <th>失败维度</th>
+        <th>证据</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in behavior_failure_rows %}
+      <tr>
+        <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
+        <td>
+          {% for score in row.behavior_failures %}
+          <div>{{ score.dimension_id }}</div>
+          {% endfor %}
+        </td>
+        <td>
+          {% for score in row.behavior_failures %}
+          <div><span class="badge badge-source">{{ score.score_source }}</span> {{ score.justification }}</div>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="card">本次运行未出现行为维度失败。</div>
+  {% endif %}
+
+  <h2>Seed 详情</h2>
+  {% for row in seed_rows %}
+  <details>
+    <summary>{{ row.seed_id }} — {{ row.seed_name }}</summary>
+    <div class="detail-body">
+      <div class="seed-meta">
+        <span>entry_mode={{ row.entry_mode }}</span>
+        <span>turns={{ row.turn_count }}</span>
+        <span>end={{ row.end_reason }}</span>
+        <span>pass={{ row.pass_rate_pct }}%</span>
+        {% if row.must_pass_met %}
+        <span class="badge badge-pass">Must-Pass OK</span>
+        {% else %}
+        <span class="badge badge-fail">Must-Pass Fail</span>
+        {% endif %}
+      </div>
+
+      {% if row.overall_assessment %}
+      <div class="card">{{ row.overall_assessment }}</div>
+      {% endif %}
+
+      <div class="two-col">
         <div>
-          <div class="bubble-label">Coach A2UI (Turn {{ turn.index }})</div>
-          <div class="bubble bubble-a2ui">
-            {% for comp in turn.a2ui_payload.get('components', []) %}
-            <div>
-              {% if comp.kind == 'text' %}{{ comp.text | default('') | truncate(200) }}
-              {% elif comp.kind == 'image' %}[Image: {{ comp.alt | default('') }}]
-              {% elif comp.kind == 'slider' %}{{ comp.label | default('') }} ({{ comp.min | default(1) }}-{{ comp.max | default(10) }})
-              {% elif comp.kind == 'select' %}{{ comp.label | default('') }}: {{ comp.options | map(attribute='label') | join(', ') if comp.options else '' }}
-              {% elif comp.kind == 'text_input' %}{{ comp.label | default('') }}
-              {% elif comp.kind == 'number_input' %}{{ comp.label | default('') }}
-              {% elif comp.kind == 'multi_select' %}{{ comp.label | default('') }} (multi)
-              {% else %}{{ comp.kind }}: {{ comp | tojson }}
+          <h3>评分明细</h3>
+          <div class="list">
+            {% for score in row.scores %}
+            <div class="list-item">
+              <div class="score-head">
+                <strong>{{ score.dimension_id }}</strong>
+                {% if score.passed %}
+                <span class="badge badge-pass">PASS</span>
+                {% elif score.failure_severity == "critical" %}
+                <span class="badge badge-fail">FAIL</span>
+                {% else %}
+                <span class="badge badge-warn">FAIL</span>
+                {% endif %}
+                <span class="badge badge-source">{{ score.score_source }}</span>
+              </div>
+              <div>{{ score.justification }}</div>
+              {% if score.evidence_turns %}
+              <div class="turn-meta">evidence_turns={{ score.evidence_turns | join(", ") }}</div>
               {% endif %}
             </div>
             {% endfor %}
           </div>
         </div>
-        {% endif %}
 
-        {% if turn.images %}
-        {% for img in turn.images %}
-        {% if img.src and img.src != '[data_url]' %}
         <div>
-          <div class="bubble-label">Generated Image ({{ img.alt }})</div>
-          <img class="eval-image" src="{{ img.src }}" alt="{{ img.alt }}" style="max-width: 384px; border-radius: 8px;" />
+          <h3>Store Diff</h3>
+          {% if row.store_diff_entries %}
+          <div class="list">
+            {% for diff in row.store_diff_entries %}
+            <div class="list-item">
+              <div class="score-head">
+                <strong class="mono">{{ diff.key }}</strong>
+                <span class="badge badge-source">{{ diff.change_type }}</span>
+              </div>
+              {% if diff.before_content %}
+              <div class="turn-meta">Before</div>
+              <pre>{{ diff.before_content }}</pre>
+              {% endif %}
+              {% if diff.after_content %}
+              <div class="turn-meta" style="margin-top: 8px;">After</div>
+              <pre>{{ diff.after_content }}</pre>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="card">未捕获到 store diff。</div>
+          {% endif %}
         </div>
-        {% endif %}
+      </div>
+
+      <div class="two-col">
+        <div>
+          <h3>Tool Calls</h3>
+          {% if row.tool_calls %}
+          <div class="list">
+            {% for call in row.tool_calls %}
+            <div class="list-item">
+              <div class="score-head">
+                <strong>{{ call.name }}</strong>
+                <span class="badge badge-source">Turn {{ call.turn_index }}</span>
+              </div>
+              <pre>{{ call.arguments }}</pre>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="card">未捕获到工具调用。</div>
+          {% endif %}
+        </div>
+
+        <div>
+          <h3>Relevant Final Files</h3>
+          {% if row.relevant_final_files %}
+          <div class="list">
+            {% for file in row.relevant_final_files %}
+            <div class="list-item">
+              <div class="turn-meta mono">{{ file.key }}</div>
+              <pre>{{ file.content }}</pre>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="card">未找到 relevant final files。</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <h3>Transcript</h3>
+      <div class="chat">
+        {% for turn in row.seed_result.transcript.turns %}
+        <div class="turn {{ turn.role }}">
+          <div class="turn-meta">Turn {{ turn.index }} | {{ turn.role }}</div>
+          {% if turn.text %}
+          <div>{{ turn.text }}</div>
+          {% endif %}
+          {% if turn.a2ui_payload %}
+          <div class="turn-meta" style="margin-top: 8px;">A2UI Payload</div>
+          <pre>{{ turn.a2ui_payload | tojson(indent=2) }}</pre>
+          {% endif %}
+          {% if turn.a2ui_response %}
+          <div class="turn-meta" style="margin-top: 8px;">A2UI Response</div>
+          <pre>{{ turn.a2ui_response | tojson(indent=2) }}</pre>
+          {% endif %}
+        </div>
         {% endfor %}
-        {% endif %}
-      {% endfor %}
+      </div>
     </div>
-
-  </div>
-</details>
-{% endfor %}
-
-{# ---- 附录 ---- #}
-<h2>附录 A：Auditor System Prompt 模板</h2>
-<details>
-  <summary>展开查看 Auditor 提示词模板</summary>
-  <div class="detail-content">
-    <pre style="white-space: pre-wrap; font-size: 0.8rem; background: #f5f5f5; padding: 1rem; border-radius: 4px;">{{ auditor_prompt_template }}</pre>
-  </div>
-</details>
-
-<h2>附录 B：Judge 评分标准（Rubric）</h2>
-<details>
-  <summary>展开查看 15 维度二元判定标准</summary>
-  <div class="detail-content">
-    <pre style="white-space: pre-wrap; font-size: 0.8rem; background: #f5f5f5; padding: 1rem; border-radius: 4px;">{{ judge_rubric }}</pre>
-  </div>
-</details>
-
-<h2>附录 C：各 Seed 的 Auditor 实际提示词</h2>
-{% for sr in seed_results %}
-<details>
-  <summary>{{ sr.seed.id }} — {{ sr.seed.name }}：Auditor Prompt</summary>
-  <div class="detail-content">
-    <h3>Persona</h3>
-    <p><strong>{{ sr.seed.persona.name }}</strong> ({{ sr.seed.persona.language }})<br>{{ sr.seed.persona.background }}<br><em>{{ sr.seed.persona.personality }}</em></p>
-    <h3>Goal</h3>
-    <p>{{ sr.seed.goal }}</p>
-    <h3>Expected Behaviors</h3>
-    <table class="summary-table">
-      <tr><th>Must</th><td>{{ sr.seed.expected_behaviors.must | join('<br>') }}</td></tr>
-      <tr><th>Should</th><td>{{ sr.seed.expected_behaviors.should | join('<br>') }}</td></tr>
-      <tr><th>Must NOT</th><td>{{ sr.seed.expected_behaviors.must_not | join('<br>') }}</td></tr>
-    </table>
-    <h3>Scoring Focus</h3>
-    <p>Must-Pass: {{ sr.seed.scoring_focus.primary | join(', ') }}<br>Stretch: {{ sr.seed.scoring_focus.secondary | join(', ') }}</p>
-  </div>
-</details>
-{% endfor %}
-
-<h2>附录 D：Judge 完整评分输出</h2>
-{% for sr in seed_results %}
-<details>
-  <summary>{{ sr.seed.id }} — {{ sr.seed.name }}：Judge 评分详情</summary>
-  <div class="detail-content">
-    {% for dim_id, dim in sr.score_card.scores.items() %}
-    <div style="margin: 0.5rem 0; padding: 0.5rem; background: #f9f9f9; border-radius: 4px;">
-      <strong>{{ dim_id | replace('_', ' ') }}</strong>:
-      {% if dim.passed %}
-      <span class="badge badge-pass">PASS</span>
-      {% else %}
-      <span class="badge {% if dim.failure_severity == 'critical' %}badge-fail{% else %}badge-fail-notable{% endif %}">FAIL ({{ dim.failure_severity or 'notable' }})</span>
-      {% endif %}
-      {% if dim.evidence_turns %}
-      <span style="font-size: 0.75rem; color: var(--muted);">Turns: {{ dim.evidence_turns | join(', ') }}</span>
-      {% endif %}
-      <p style="font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem;">{{ dim.justification }}</p>
-    </div>
-    {% endfor %}
-    {% if sr.score_card.overall_assessment %}
-    <div style="margin-top: 0.75rem;">
-      <strong>Overall Assessment:</strong>
-      <p>{{ sr.score_card.overall_assessment }}</p>
-    </div>
-    {% endif %}
-    {% if sr.score_card.critical_failures %}
-    <div style="margin-top: 0.5rem;">
-      <strong>Critical Failures:</strong>
-      <ul>{% for f in sr.score_card.critical_failures %}<li>{{ f }}</li>{% endfor %}</ul>
-    </div>
-    {% endif %}
-  </div>
-</details>
-{% endfor %}
-
-<div class="footer">
-  Generated by voliti-eval {{ run_id }}<br>
-  Config: server={{ config.server_url }}, assistant={{ config.assistant_id }}<br>
-  Auditor: {{ config.auditor_model }} | Judge: {{ config.judge_model }}
+  </details>
+  {% endfor %}
 </div>
-
 </body>
 </html>

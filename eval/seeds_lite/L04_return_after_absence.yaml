@@ -1,71 +1,100 @@
-id: "L04_return_after_absence"
-name: "多日失联后回归"
+id: "L04_work_stress_lifesign_match"
+name: "Work Stress LifeSign Match"
 description: >
-  用户消失 5 天后重新开启对话。测试 Coach 是否先关心状态不说教，
-  引用已有 Chapter 和 LifeSign 重建连接。
+  用户再次进入典型的工作压力场景。验证 Coach 是否优先匹配现有 LifeSign，
+  而不是无视已有预案或重新发明一个新计划。
+entry_mode: "coaching"
 
 persona:
-  name: "思远"
-  background: "30 岁咨询顾问，加入计划 6 周，出差期间完全脱离计划"
-  personality: "理性务实，有点愧疚但不愿被说教，出差时难以维持习惯"
+  name: "志远"
+  background: "34 岁工程经理，连续高压一周后又出现晚间奶茶冲动"
+  personality: "理性、直接，希望得到可执行但不过度繁琐的帮助"
   language: "zh"
 
 goal: >
-  主动说"嗨，我消失五天了，出差回来了"。
-  如果 Coach 说教缺席或暗示失望，表现防御。
-  如果 Coach 关心状态并重建连接，配合回答"出差很累，但想重新开始"。
-  观察 Coach 是否引用已有 Chapter 身份声明和 LifeSign 重新定向。
+  描述“今天会特别想喝奶茶，感觉脑子已经下线了”。
+  如果 Coach 引用了已有预案，回应“对，就是那个场景”。
 
-initial_message: "嗨，我消失五天了，出差回来了"
-
+initial_message: "今天会后特别想喝奶茶，感觉脑子已经下线了。"
+max_turns: 14
 pre_state:
   profile: |
-    onboarding_complete: true
-    name: 思远
-    identity_vision: 无论出差在家都能维持核心节奏的人
-    pain_points: [travel_eating, exercise_inconsistency]
-    high_risk_time: travel
-  chapter:
-    id: "ch_001"
-    goal_id: "goal_001"
-    chapter_number: 1
-    title: "建立差旅饮食基础习惯"
-    milestone: "连续 3 次出差期间主动选择合理餐食"
-    process_goals:
-      - key: "pg_001"
-        description: "出差期间每餐有意识选择"
-        target: "连续 3 次出差执行"
-        metric_key: "consistency"
-    start_date: "2026-03-01T00:00:00Z"
-    planned_end_date: "2026-03-29T00:00:00Z"
-    status: "active"
+    # User Profile
+
+    ## Basics
+    - name: 志远
+    - depth_choice: full
+    - identity_statement: 一个在高压工作里也能做出清醒选择的人
+    - onboarding_complete: true
+
+    ## Triggers
+    - emotional_triggers: stress
+    - physical_triggers: fatigue
+    - social_triggers:
+    - post_lapse_pattern: sometimes
+    - known_recovery_strategy:
   coping_plans:
-    - id: "ls_002"
+    - id: "ls_005"
       trigger:
-        situation: "出差期间不知道如何选择餐厅"
-        state_condition: "stress >= 5"
-      action: "选择有蔬菜和蛋白质的菜，不纠结热量细节"
+        situation: "开完密集会议后想买奶茶"
+        time_pattern: "16:00-19:00"
+      action: "先喝一杯水，走到楼下再决定要不要买"
       status: "active"
   coach_memory: |
-    ## 思远 — Key Observations
-    - Travel is primary disruption pattern
-    - Does not respond well to guilt-based coaching
-    - Had 3 consecutive good weeks before this trip
+    # Coach Memory — 志远
 
-max_turns: 10
+    ## Verified Patterns
+    - [04-11 confirmed] 高强度会议后最容易冲动性买奶茶
+
+    ## Hypotheses
+
+    ## Coaching Notes
+    - [04-12] 志远对直接点名已有预案的反馈很好
+
+    ## Claimed vs Revealed
 
 expected_behaviors:
   must:
-    - "不因缺席说教或表达失望"
-    - "先了解当前状态（出差后的恢复期）"
+    - "优先匹配已有 LifeSign"
   should:
-    - "引用已有 Chapter 身份重建连接（而非从零开始）"
-    - "引用 ls_002 作为差旅情境的参考"
-    - "温和了解差旅期间发生了什么"
+    - "在压力场景下先承接状态，再引用预案"
   must_not:
-    - "使用'你这几天都去哪了？'等带问责意味的语言"
-    - "忽略用户已有的 Chapter 和 LifeSign 重新布置全新计划"
+    - "忽略已有计划重新创建重复 LifeSign"
+
+auditor_policy:
+  latent_facts:
+    - "最近连着几天睡不够"
+  reveal_rules:
+    - topic: "sleep"
+      when_asked: true
+      response: "这几天都睡不太够，所以今天更想靠糖撑一下。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "existing_lifesign_matched"
+    continue_until:
+      - "existing_lifesign_matched"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/coping_plans_index.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/coping_plans_index.md"
+    - "/coach/AGENTS.md"
+
+judge_dimensions:
+  - "coach_state_before_strategy"
+  - "coach_lifesign_management"
 
 scoring_focus:
-  primary: ["L3_listening_first", "L1_state_before_strategy"]
-  secondary: ["L4_lifesign_usage", "L8_chapter_plan"]
+  primary:
+    - "coach_lifesign_management"
+  secondary:
+    - "coach_state_before_strategy"
