@@ -5,8 +5,8 @@ import pandas as pd
 import numpy as np
 import re
 
-RAW_CSV = "raw/减脂行为与日常习惯调查-第二期-results.csv"
-OUT_CSV = "survey_cleaned.csv"
+RAW_CSV = "raw/wave-2_减脂行为与日常习惯调查-第二期-results.csv"
+OUT_CSV = "wave-2_survey_cleaned.csv"
 
 # ─── 1. 读取 ─────────────────────────────────────────────────────────────────
 

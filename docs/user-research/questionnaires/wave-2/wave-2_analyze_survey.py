@@ -9,10 +9,10 @@ from datetime import datetime
 from collections import Counter
 
 # ─── 路径配置 ──────────────────────────────────────────────────────────────────
-RAW_CSV = "/Users/dexter/DexterOS/products/Voliti/docs/user-research/questionnaires/raw/减脂行为与日常习惯调查-第二期-results.csv"
-OUT_DIR = "/Users/dexter/DexterOS/products/Voliti/docs/user-research/questionnaires/v2"
-CLEANED_CSV = os.path.join(OUT_DIR, "survey_v2_cleaned.csv")
-REPORT_MD = os.path.join(OUT_DIR, "analysis_report.md")
+RAW_CSV = "raw/wave-2_减脂行为与日常习惯调查-第二期-results.csv"
+OUT_DIR = "."
+CLEANED_CSV = os.path.join(OUT_DIR, "wave-2_survey_cleaned.csv")
+REPORT_MD = os.path.join(OUT_DIR, "wave-2_analysis_report.md")
 
 os.makedirs(OUT_DIR, exist_ok=True)
 
