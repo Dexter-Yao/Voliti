@@ -19,7 +19,6 @@ license: internal
 - User has just lapsed and is self-blaming — try cognitive-reframing first
 - Mental-health crisis signal in the session
 - User explicitly refuses the invitation to look forward
-- Same session already used another intervention skill
 
 ## Core Move
 1. Surface the future self that is already in the user's language. Do not invent one.

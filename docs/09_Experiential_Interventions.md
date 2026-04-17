@@ -90,7 +90,6 @@ license: internal
 - User has just lapsed and is self-blaming — try cognitive-reframing first
 - Mental-health crisis signal in the session
 - User explicitly refuses the invitation to look forward
-- Same session already used another intervention skill
 
 ## Core Move
 1. Surface the future self that is already in the user's language. Do not invent one.
@@ -175,7 +174,7 @@ Layout: `"three-quarter"` — rehearsal is working dialogue, not ceremonial.
 - Do not rehearse willpower. Rehearse the environmental move, the first 90 seconds, or the exit ritual.
 - Never rehearse a scenario the user has not named. Coach cannot generate the scenario — only refine it.
 - After the session, if the event passed and the user lapsed, do not re-rehearse the same plan. Explore why and revise the LifeSign.
-- Do not reference method names (including abbreviations) or researcher surnames to the user.
+- Do not reference method names (including abbreviations) or researcher surnames to the user. Use the method without naming it.
 
 ## Deeper References
 - `references/theory.md` — Western protocols (MCII, WOOP, Implementation Intentions, Coping Planning, Episodic Future Thinking) and Eastern cultural parallels (庙算, 慎独, 豫则立, 禅宗日课, 中医取象比类). Read when calibrating depth or explaining rationale.
@@ -231,7 +230,7 @@ Layout: `"three-quarter"`.
 - Never translate the metaphor back to behavioral terms on the user's behalf. The user crosses the bridge, or the bridge stays uncrossed.
 - Do not interpret the metaphor psychoanalytically ("this represents your unmet need for..."). The metaphor is the meaning, not a proxy for it.
 - Record the user's recurring metaphors in `/user/coach/AGENTS.md` under Coaching Notes zone: `[MM-DD] metaphor: "<verbatim>"`. This supports long-arc continuity.
-- Do not reference method names (including abbreviations) or researcher surnames to the user.
+- Do not reference method names (including abbreviations) or researcher surnames to the user. Use the method without naming it.
 
 ## Deeper References
 - `references/theory.md` — Western frameworks (Lakoff & Johnson CMT, Grove Clean Language, ACT metaphor usage) and Eastern cultural parallels (诗经比兴, 庄子寓言, 禅宗公案, 中医取象比类). Read when the user produces a novel metaphor type you want to handle well.

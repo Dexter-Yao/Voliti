@@ -47,7 +47,7 @@ Layout: `"three-quarter"` — rehearsal is working dialogue, not ceremonial.
 - Do not rehearse willpower. Rehearse the environmental move, the first 90 seconds, or the exit ritual.
 - Never rehearse a scenario the user has not named. Coach cannot generate the scenario — only refine it.
 - After the session, if the event passed and the user lapsed, do not re-rehearse the same plan. Explore why and revise the LifeSign.
-- Do not reference method names (including abbreviations) or researcher surnames to the user.
+- Do not reference method names (including abbreviations) or researcher surnames to the user. Use the method without naming it.
 
 ## Deeper References
 - `references/theory.md` — Western protocols (MCII, WOOP, Implementation Intentions, Coping Planning, Episodic Future Thinking) and Eastern cultural parallels (庙算, 慎独, 豫则立, 禅宗日课, 中医取象比类). Read when calibrating depth or explaining rationale.

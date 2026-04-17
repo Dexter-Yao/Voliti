@@ -106,36 +106,30 @@ export interface A2UIPayload {
 
 /**
  * A2UI 交互形态分类，通过 payload.metadata.surface 传达。
- * - onboarding: 全屏引导采集
- * - coaching: 日常对话内嵌（默认）
- * - intervention: 体验式干预（四手法：future-self-dialogue / scenario-rehearsal / metaphor-collaboration / cognitive-reframing）
- * - witness-card: Witness Card 见证卡片
+ * 取值集合与后端 docs/05_Runtime_Contracts.md §8.5 保持同步。
  */
-export type Surface = "onboarding" | "coaching" | "intervention" | "witness-card";
-
-export type InterventionKind =
-  | "future-self-dialogue"
-  | "scenario-rehearsal"
-  | "metaphor-collaboration"
-  | "cognitive-reframing";
-
-const SURFACE_VALUES: Surface[] = [
+export const SurfaceSchema = z.enum([
   "onboarding",
   "coaching",
   "intervention",
   "witness-card",
-];
+]);
+export type Surface = z.infer<typeof SurfaceSchema>;
+
+export const InterventionKindSchema = z.enum([
+  "future-self-dialogue",
+  "scenario-rehearsal",
+  "metaphor-collaboration",
+  "cognitive-reframing",
+]);
+export type InterventionKind = z.infer<typeof InterventionKindSchema>;
 
 /**
  * 从 payload metadata 解析交互形态。
- * - 值不识别或缺失 → 降级为 "coaching"（契约向前兼容）
+ * 值不识别或缺失时降级为 "coaching"（契约向前兼容）。
  */
 export function resolveSurface(metadata: Record<string, string>): Surface {
-  const raw = metadata.surface;
-  if (typeof raw === "string" && (SURFACE_VALUES as string[]).includes(raw)) {
-    return raw as Surface;
-  }
-  return "coaching";
+  return SurfaceSchema.safeParse(metadata.surface).data ?? "coaching";
 }
 
 /**
@@ -145,16 +139,7 @@ export function resolveInterventionKind(
   metadata: Record<string, string>,
 ): InterventionKind | null {
   if (resolveSurface(metadata) !== "intervention") return null;
-  const raw = metadata.intervention_kind;
-  switch (raw) {
-    case "future-self-dialogue":
-    case "scenario-rehearsal":
-    case "metaphor-collaboration":
-    case "cognitive-reframing":
-      return raw;
-    default:
-      return null;
-  }
+  return InterventionKindSchema.safeParse(metadata.intervention_kind).data ?? null;
 }
 
 export interface A2UIResponse {

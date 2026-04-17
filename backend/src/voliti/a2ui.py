@@ -7,6 +7,17 @@ from langgraph.config import get_config
 from langgraph.types import Interrupt
 from pydantic import BaseModel, Field
 
+Surface = Literal["onboarding", "coaching", "intervention", "witness-card"]
+"""A2UI 交互形态分类，写入 A2UIPayload.metadata["surface"]；详见 docs/05_Runtime_Contracts.md §8.5。"""
+
+InterventionKind = Literal[
+    "future-self-dialogue",
+    "scenario-rehearsal",
+    "metaphor-collaboration",
+    "cognitive-reframing",
+]
+"""干预手法标识，仅当 surface="intervention" 时写入 metadata["intervention_kind"]。"""
+
 
 class SelectOption(BaseModel):
     """选项定义，用于 select 和 multi_select 组件。"""

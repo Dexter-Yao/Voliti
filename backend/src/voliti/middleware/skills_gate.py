@@ -27,7 +27,7 @@ class SkillsGateMiddleware(SkillsMiddleware):
     理由：onboarding 有自己的引导节奏，额外 skill 清单会稀释注意力且无触发机会。
     """
 
-    def _should_inject(self) -> bool:
+    def should_inject(self) -> bool:
         try:
             return get_current_session_type() == "coaching"
         except InvalidSessionTypeError:
@@ -39,7 +39,7 @@ class SkillsGateMiddleware(SkillsMiddleware):
         request: ModelRequest,
         handler: Callable[[ModelRequest], ModelResponse],
     ) -> ModelResponse:
-        if not self._should_inject():
+        if not self.should_inject():
             logger.debug("SkillsGate: skipping skill injection for non-coaching session")
             return handler(request)
         return super().wrap_model_call(request, handler)
@@ -49,7 +49,7 @@ class SkillsGateMiddleware(SkillsMiddleware):
         request: ModelRequest,
         handler: Callable[[ModelRequest], Awaitable[ModelResponse]],
     ) -> ModelResponse:
-        if not self._should_inject():
+        if not self.should_inject():
             logger.debug("SkillsGate: skipping skill injection for non-coaching session")
             return await handler(request)
         return await super().awrap_model_call(request, handler)

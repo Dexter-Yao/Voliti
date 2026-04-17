@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { resolveSurface, type A2UIPayload, type Surface } from "@/lib/a2ui";
+import { cn } from "@/lib/utils";
 import { A2UIRenderer } from "./A2UIRenderer";
 
 const LAYOUT_HEIGHT: Record<A2UIPayload["layout"], string> = {
@@ -52,12 +53,16 @@ export function A2UIDrawer({
 
   const surface = resolveSurface(payload.metadata);
 
+  // data-surface 作为 CSS 主题钩子预留给未来干预视觉规格（M7）；当前仅 intervention 形态有样式
   return (
     <Sheet open={!!payload} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
         data-surface={surface}
-        className={`mx-auto max-w-[480px] overflow-y-auto rounded-t-lg p-6 ${SURFACE_CLASS[surface]}`}
+        className={cn(
+          "mx-auto max-w-[480px] overflow-y-auto rounded-t-lg p-6",
+          SURFACE_CLASS[surface],
+        )}
         style={{ maxHeight: LAYOUT_HEIGHT[payload.layout] }}
       >
         <SheetHeader className="sr-only">

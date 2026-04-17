@@ -42,7 +42,7 @@ Layout: `"three-quarter"`.
 - Never translate the metaphor back to behavioral terms on the user's behalf. The user crosses the bridge, or the bridge stays uncrossed.
 - Do not interpret the metaphor psychoanalytically ("this represents your unmet need for..."). The metaphor is the meaning, not a proxy for it.
 - Record the user's recurring metaphors in `/user/coach/AGENTS.md` under Coaching Notes zone: `[MM-DD] metaphor: "<verbatim>"`. This supports long-arc continuity.
-- Do not reference method names (including abbreviations) or researcher surnames to the user.
+- Do not reference method names (including abbreviations) or researcher surnames to the user. Use the method without naming it.
 
 ## Deeper References
 - `references/theory.md` — Western frameworks (Lakoff & Johnson CMT, Grove Clean Language, ACT metaphor usage) and Eastern cultural parallels (诗经比兴, 庄子寓言, 禅宗公案, 中医取象比类). Read when the user produces a novel metaphor type you want to handle well.
