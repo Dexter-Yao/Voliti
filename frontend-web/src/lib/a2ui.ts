@@ -104,6 +104,59 @@ export interface A2UIPayload {
   metadata: Record<string, string>;
 }
 
+/**
+ * A2UI 交互形态分类，通过 payload.metadata.surface 传达。
+ * - onboarding: 全屏引导采集
+ * - coaching: 日常对话内嵌（默认）
+ * - intervention: 体验式干预（四手法：future-self-dialogue / scenario-rehearsal / metaphor-collaboration / cognitive-reframing）
+ * - witness-card: Witness Card 见证卡片
+ */
+export type Surface = "onboarding" | "coaching" | "intervention" | "witness-card";
+
+export type InterventionKind =
+  | "future-self-dialogue"
+  | "scenario-rehearsal"
+  | "metaphor-collaboration"
+  | "cognitive-reframing";
+
+const SURFACE_VALUES: Surface[] = [
+  "onboarding",
+  "coaching",
+  "intervention",
+  "witness-card",
+];
+
+/**
+ * 从 payload metadata 解析交互形态。
+ * - 值不识别或缺失 → 降级为 "coaching"（契约向前兼容）
+ */
+export function resolveSurface(metadata: Record<string, string>): Surface {
+  const raw = metadata.surface;
+  if (typeof raw === "string" && (SURFACE_VALUES as string[]).includes(raw)) {
+    return raw as Surface;
+  }
+  return "coaching";
+}
+
+/**
+ * 仅当 surface="intervention" 时返回具体手法标识，否则返回 null。
+ */
+export function resolveInterventionKind(
+  metadata: Record<string, string>,
+): InterventionKind | null {
+  if (resolveSurface(metadata) !== "intervention") return null;
+  const raw = metadata.intervention_kind;
+  switch (raw) {
+    case "future-self-dialogue":
+    case "scenario-rehearsal":
+    case "metaphor-collaboration":
+    case "cognitive-reframing":
+      return raw;
+    default:
+      return null;
+  }
+}
+
 export interface A2UIResponse {
   action: "submit" | "reject" | "skip";
   interrupt_id: string | null;

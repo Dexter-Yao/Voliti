@@ -11,13 +11,20 @@ from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 from deepagents.middleware.subagents import SubAgent
 
+from voliti.backends.readonly_filesystem import ReadOnlyFilesystemBackend
 from voliti.config.models import ModelRegistry
 from voliti.config.prompts import PromptRegistry
 from voliti.middleware.briefing import BriefingMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
+from voliti.middleware.skills_gate import SkillsGateMiddleware
 from voliti.middleware.strip_todo import StripDeepAgentDefaultsMiddleware
 from voliti.session_type import SessionProfile, get_session_profile, list_session_profiles
-from voliti.store_contract import InvalidUserIDError, resolve_user_namespace
+from voliti.store_contract import (
+    COACH_SKILLS_BACKEND_PREFIX,
+    COACH_SKILLS_ROOT,
+    InvalidUserIDError,
+    resolve_user_namespace,
+)
 from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
 
@@ -42,10 +49,19 @@ def _build_coach_middleware(
     *,
     backend_factory: Callable[..., Any],
 ) -> list[Any]:
-    """组装 Coach middleware 栈。"""
+    """组装 Coach middleware 栈。
+
+    顺序约束：
+    - `SessionTypeMiddleware` 之后插入 `SkillsGateMiddleware`，仅在 coaching session 注入
+      四份 intervention skill 描述到 system prompt；onboarding session 跳过注入以保持引导节奏。
+    """
     return [
         StripDeepAgentDefaultsMiddleware(),
         SessionTypeMiddleware(),
+        SkillsGateMiddleware(
+            backend=backend_factory,
+            sources=[COACH_SKILLS_BACKEND_PREFIX],
+        ),
         BriefingMiddleware(backend=backend_factory),
     ]
 
@@ -77,7 +93,9 @@ def _create_backend_factory() -> Callable[..., Any]:
     """创建 CompositeBackend 工厂函数。
 
     路由规则：
-    - /user/ → StoreBackend（持久存储）
+    - /user/ → StoreBackend（持久存储，按 user_id 分 namespace）
+    - /skills/coach/ → 只读 FilesystemBackend，挂载仓库内 `backend/skills/coach/` 目录，
+      承载四份 experiential intervention skill 与其 references/；Coach 对该路径只读
     - 其他 → StateBackend（临时存储）
     """
 
@@ -88,6 +106,10 @@ def _create_backend_factory() -> Callable[..., Any]:
                 "/user/": StoreBackend(
                     rt,
                     namespace=_resolve_user_namespace,
+                ),
+                COACH_SKILLS_BACKEND_PREFIX: ReadOnlyFilesystemBackend(
+                    root_dir=COACH_SKILLS_ROOT,
+                    virtual_mode=True,
                 ),
             },
         )

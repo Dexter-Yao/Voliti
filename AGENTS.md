@@ -20,6 +20,7 @@ Voliti 是 AI 减脂行为教练。底层提供饮食指导、运动建议、方
 | 运行时契约 | `docs/05_Runtime_Contracts.md` | **共享持久化真相、Store、session、A2UI、错误、记忆分层、可观测性边界** |
 | GTM 洞察 | `docs/06_Go_To_Market_Insights.md` | 走向市场的战略思考与定位分析 |
 | 用户研究 | `docs/07_User_Research.md` | **综合研究报告：核心画像、跨源验证发现、产品与 GTM 含义** |
+| 用户旅程地图 | `docs/08_Customer_Journey_Map.md` | **核心 Persona 端到端旅程、关键时刻、流失触发器与产品机会优先级** |
 | Design Tokens | `docs/design-system/design-tokens.json` | 色彩、字体、间距精确值（机器可读） |
 | 组件规则 | `docs/design-system/component-rules.json` | 组件渲染规则（机器可读） |
 | 设计系统参考 | `docs/design-system-reference/` | 设计语言、视觉规范、AI 生成指引（人类可读） |
@@ -170,3 +171,5 @@ Key routing rules:
 | 2026-04-15 | onboarding surface、thread 语义与 Mirror 契约收口；运行时文档补齐外部认证边界 |
 | 2026-04-15 | 认证重构：`VOLITI_USER_MAP` 密码门禁 → Supabase Auth（邮箱+密码）；`user_id` 使用 Supabase UUID；middleware 验证 session 并同步 `voliti_user_id` cookie；运行时契约与架构文档同步 |
 | 2026-04-16 | 记忆体系重构：六维用户画像（profile/context.md）、四分区 Coach 记忆协议（coach/AGENTS.md）、剥离 DeepAgent 默认 memory_guidelines、Briefing 纳入 Goal/Chapter 摘要、Onboarding 扩展六维采集 |
+| 2026-04-17 | 新增用户旅程地图文档（docs/08_Customer_Journey_Map.md）；补充核心 Persona 端到端旅程、关键时刻与优化优先级 |
+| 2026-04-17 | 四种体验式干预手段 Skill 化：新增 `backend/skills/coach/` 四份 SKILL.md（future-self-dialogue / scenario-rehearsal / metaphor-collaboration / cognitive-reframing）；学术调研分册落入 `docs/knowledge/experiential-interventions/`；新增 `docs/09_Experiential_Interventions.md` 应用方案；`SkillsGateMiddleware` 仅 coaching session 注入；`CompositeBackend` 新增 `/skills/coach/` 只读路由；A2UI 契约新增 `metadata.surface`（四取值含 `witness-card`）与 `intervention_kind`；Witness Card composer 补 `surface="witness-card"` |

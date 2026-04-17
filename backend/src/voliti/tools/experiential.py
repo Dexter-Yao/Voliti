@@ -276,6 +276,7 @@ def compose_witness_card(
         )
 
     card_metadata: dict[str, str] = {
+        "surface": "witness-card",
         "card_id": card_id,
         "achievement_type": achievement_type,
     }

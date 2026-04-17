@@ -6,10 +6,18 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC, datetime
-from typing import Any
+from pathlib import Path
+from typing import Any, Final
 
 USER_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$")
 STORE_NAMESPACE_PREFIX = "voliti"
+
+_BACKEND_DIR: Final[Path] = Path(__file__).resolve().parent.parent.parent
+COACH_SKILLS_ROOT: Final[Path] = _BACKEND_DIR / "skills" / "coach"
+"""Coach 的 Agent Skills 根目录；由 SkillsMiddleware 通过只读 FilesystemBackend 挂载。"""
+
+COACH_SKILLS_BACKEND_PREFIX: Final[str] = "/skills/coach/"
+"""Skills 在 CompositeBackend 中暴露给 Coach 的虚拟路径前缀（只读）。"""
 
 PROFILE_CONTEXT_KEY = "/profile/context.md"
 PROFILE_DASHBOARD_CONFIG_KEY = "/profile/dashboardConfig"

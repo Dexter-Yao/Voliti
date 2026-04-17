@@ -295,6 +295,37 @@ resume 同时校验以下两类约束：
 
 原始 A2UI payload snapshot 不进入长期 Store。长期 Store 只保存该次交互真正产生的业务结果。
 
+### 8.5 Surface 与 Intervention 分类
+
+A2UI Payload 的 `metadata: dict[str, str]` 承载一条交互形态分类约定，供前端渲染层选择视觉外壳。
+
+`metadata.surface` 取值（封闭集）：
+
+| 取值 | 形态 | 使用方 |
+|---|---|---|
+| `"onboarding"` | 全屏引导采集 | Onboarding session 的 Coach |
+| `"coaching"` | 日常对话内嵌（默认）| 常规 coaching session 的 Coach |
+| `"intervention"` | 体验式干预形态 | `future-self-dialogue` / `scenario-rehearsal` / `metaphor-collaboration` / `cognitive-reframing` 四份 skill |
+| `"witness-card"` | 见证卡片 | `compose_witness_card` 工具 |
+
+`metadata.intervention_kind` 取值（仅当 `surface="intervention"` 时必填）：
+
+- `"future-self-dialogue"` / `"scenario-rehearsal"` / `"metaphor-collaboration"` / `"cognitive-reframing"`
+
+**前端契约**：
+
+1. `surface` 缺失或不识别时，前端降级为 `"coaching"` 视觉，不抛错。
+2. `intervention` 形态使用独立视觉外壳（更多留白、copper 细线、仪式化揭示）；具体视觉规格由 `/design-shotgun` 或 `/design-consultation` 单独产出，契约只约定分类键。
+3. 其他三类形态保持现有视觉。
+
+**运行时约束**：
+
+1. `metadata` 键由 `A2UIPayload.metadata` 透传，后端 `validate_a2ui_response` 仅校验 `data` 字段，**不对 metadata 键做运行时校验**。
+2. `surface` 与 `intervention_kind` 的正确写入依赖 Coach 系统提示词约束（`coach_system.j2` Section 3.5 + 四份 SKILL.md 的 A2UI Composition 节）与后续 eval 覆盖。
+3. payload 构造侧需做最小断言：若 `surface="intervention"` 必带 `intervention_kind`。
+
+完整规格见 `docs/09_Experiential_Interventions.md`。
+
 ## 九、错误封装契约
 
 ### 9.1 目标

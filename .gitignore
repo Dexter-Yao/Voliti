@@ -50,3 +50,6 @@ Package.resolved
 .playwright-mcp/
 .gstack/
 .worktrees/
+
+# Superpowers brainstorm skill local working dir
+.superpowers/

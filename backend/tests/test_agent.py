@@ -6,9 +6,12 @@ from unittest.mock import MagicMock, patch
 from langgraph.store.memory import InMemoryStore
 
 from voliti.agent import create_coach_agent
+from voliti.backends.readonly_filesystem import ReadOnlyFilesystemBackend
 from voliti.middleware.briefing import BriefingMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
+from voliti.middleware.skills_gate import SkillsGateMiddleware
 from voliti.session_type import get_session_profile
+from voliti.store_contract import COACH_SKILLS_BACKEND_PREFIX
 
 
 class TestCreateCoachAgent:
@@ -238,6 +241,74 @@ class TestCreateCoachAgent:
 
         call_kwargs = mock_create.call_args
         assert any(isinstance(item, BriefingMiddleware) for item in call_kwargs.kwargs["middleware"])
+
+    @patch("voliti.agent.create_deep_agent")
+    @patch("voliti.agent.PromptRegistry")
+    @patch("voliti.agent.ModelRegistry")
+    def test_registers_skills_gate_middleware(
+        self,
+        mock_model_reg: MagicMock,
+        mock_prompt_reg: MagicMock,
+        mock_create: MagicMock,
+    ) -> None:
+        """应注册 SkillsGateMiddleware（仅 coaching session 注入 skill 元数据）。"""
+        mock_model_reg.get.return_value = MagicMock()
+        mock_prompt_reg.get.return_value = "You are a coach."
+        mock_create.return_value = MagicMock()
+
+        create_coach_agent()
+
+        call_kwargs = mock_create.call_args
+        assert any(
+            isinstance(item, SkillsGateMiddleware)
+            for item in call_kwargs.kwargs["middleware"]
+        )
+
+    @patch("voliti.agent.create_deep_agent")
+    @patch("voliti.agent.PromptRegistry")
+    @patch("voliti.agent.ModelRegistry")
+    def test_skills_gate_is_after_session_type_and_before_briefing(
+        self,
+        mock_model_reg: MagicMock,
+        mock_prompt_reg: MagicMock,
+        mock_create: MagicMock,
+    ) -> None:
+        """SkillsGateMiddleware 位于 SessionTypeMiddleware 之后、BriefingMiddleware 之前。"""
+        mock_model_reg.get.return_value = MagicMock()
+        mock_prompt_reg.get.return_value = "You are a coach."
+        mock_create.return_value = MagicMock()
+
+        create_coach_agent()
+
+        middleware = mock_create.call_args.kwargs["middleware"]
+        types_in_order = [type(m).__name__ for m in middleware]
+        session_idx = types_in_order.index("SessionTypeMiddleware")
+        skills_idx = types_in_order.index("SkillsGateMiddleware")
+        briefing_idx = types_in_order.index("BriefingMiddleware")
+        assert session_idx < skills_idx < briefing_idx
+
+    @patch("voliti.agent.create_deep_agent")
+    @patch("voliti.agent.PromptRegistry")
+    @patch("voliti.agent.ModelRegistry")
+    def test_skills_coach_route_uses_readonly_filesystem(
+        self,
+        mock_model_reg: MagicMock,
+        mock_prompt_reg: MagicMock,
+        mock_create: MagicMock,
+    ) -> None:
+        """CompositeBackend 的 /skills/coach/ 路由应是 ReadOnlyFilesystemBackend。"""
+        mock_model_reg.get.return_value = MagicMock()
+        mock_prompt_reg.get.return_value = "You are a coach."
+        mock_create.return_value = MagicMock()
+
+        create_coach_agent()
+
+        backend_factory = mock_create.call_args.kwargs["backend"]
+        composite = backend_factory(MagicMock())
+        assert COACH_SKILLS_BACKEND_PREFIX in composite.routes
+        assert isinstance(
+            composite.routes[COACH_SKILLS_BACKEND_PREFIX], ReadOnlyFilesystemBackend
+        )
 
     @patch("voliti.agent.create_deep_agent")
     @patch("voliti.agent.PromptRegistry")
