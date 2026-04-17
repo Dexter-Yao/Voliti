@@ -12,6 +12,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from voliti.briefing import compute_and_write_briefing
 from voliti.config.models import ModelRegistry
+from voliti.config.prompts import PromptRegistry
 from voliti.store_contract import (
     CONVERSATION_ARCHIVE_PREFIX,
     DAY_SUMMARY_PREFIX,
@@ -21,17 +22,6 @@ from voliti.store_contract import (
 logger = logging.getLogger(__name__)
 
 _MAX_MESSAGE_CHARS = 500
-
-_SUMMARY_SYSTEM_PROMPT = """\
-你是一个日志摘要助手。根据以下教练会话记录，用一句话概括当天的核心内容。
-
-格式要求：
-- 一句话，不超过 60 字
-- 涵盖关键行为或状态（如有数据变动则包含）
-- 使用中文
-- 不要加任何前缀、标题或标点列表
-
-只输出摘要内容。"""
 
 
 def _thread_meta(t: Any) -> dict[str, Any]:
@@ -97,6 +87,30 @@ def _extract_messages_text(state: dict[str, Any]) -> str:
     return "\n\n".join(lines)
 
 
+def _build_day_summary_messages(
+    *,
+    date_str: str,
+    conversation_text: str,
+) -> list[SystemMessage | HumanMessage]:
+    """构造日摘要生成所需的消息列表。"""
+    return [
+        SystemMessage(
+            content=PromptRegistry.get(
+                "day_summary_system",
+                date_str=date_str,
+                conversation_text=conversation_text,
+            )
+        ),
+        HumanMessage(
+            content=PromptRegistry.get(
+                "day_summary_user",
+                date_str=date_str,
+                conversation_text=conversation_text,
+            )
+        ),
+    ]
+
+
 async def generate_day_summary(
     client: Any,
     thread_id: str,
@@ -121,10 +135,12 @@ async def generate_day_summary(
 
     try:
         model = ModelRegistry.get("summarizer")
-        response = await model.ainvoke([
-            SystemMessage(content=_SUMMARY_SYSTEM_PROMPT),
-            HumanMessage(content=f"日期：{date_str}\n\n会话记录：\n{conversation_text}"),
-        ])
+        response = await model.ainvoke(
+            _build_day_summary_messages(
+                date_str=date_str,
+                conversation_text=conversation_text,
+            )
+        )
         summary = response.content
         if not isinstance(summary, str) or not summary.strip():
             logger.warning("Pipeline: empty summary for thread %s", thread_id)

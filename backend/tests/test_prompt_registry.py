@@ -89,3 +89,12 @@ class TestPromptRegistry:
         assert '"key": "depth_choice"' in result
         assert '"kind": "multi_select"' in result
         assert '"key": "danger_scenarios"' in result
+
+    def test_onboarding_prompt_does_not_reference_removed_suggested_replies(self) -> None:
+        """onboarding prompt 不应继续要求已删除的 suggested replies 功能。"""
+        prompts_dir = Path(__file__).resolve().parents[1] / "prompts"
+        PromptRegistry.load(prompts_dir)
+
+        result = PromptRegistry.get("onboarding")
+
+        assert "suggested replies" not in result.lower()

@@ -173,6 +173,7 @@ InterventionPurpose = Literal[..., "new_type"]
 ### Modifying System Prompts
 
 System prompts use Jinja2 templates in `prompts/` directory.
+This includes both agent prompts and pipeline prompts such as day summary generation.
 
 **Example:**
 ```jinja2

@@ -4,13 +4,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from langchain_core.messages import HumanMessage, SystemMessage
 
+from voliti.config.prompts import PromptRegistry
 from voliti.pipeline.day_end import (
     _extract_messages_text,
     find_unsealed_threads,
+    generate_day_summary,
     run_day_end_pipeline,
     seal_thread,
 )
@@ -89,6 +93,63 @@ class TestExtractMessagesText:
         assert _extract_messages_text({"values": {"messages": []}}) == ""
         assert _extract_messages_text({"values": {}}) == ""
         assert _extract_messages_text({}) == ""
+
+
+class TestGenerateDaySummary:
+    def setup_method(self) -> None:
+        PromptRegistry.reset()
+
+    def teardown_method(self) -> None:
+        PromptRegistry.reset()
+
+    @pytest.mark.asyncio
+    async def test_uses_prompt_registry_templates_for_summary_messages(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        prompts_dir = tmp_path / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "day_summary_system.j2").write_text(
+            "系统提示：为 {{ date_str }} 生成摘要。"
+        )
+        (prompts_dir / "day_summary_user.j2").write_text(
+            "用户提示：{{ date_str }} => {{ conversation_text }}"
+        )
+        PromptRegistry.load(prompts_dir)
+
+        client = AsyncMock()
+        client.threads.get_state = AsyncMock(return_value={
+            "values": {
+                "messages": [
+                    {"type": "human", "content": "今天体重 72.3kg"},
+                    {"type": "ai", "content": "已记录并建议晚饭前散步 15 分钟"},
+                ]
+            }
+        })
+        client.store.put_item = AsyncMock()
+
+        model = AsyncMock()
+        model.ainvoke = AsyncMock(return_value=MagicMock(content="72.3kg，完成记录并安排散步"))
+
+        with patch("voliti.pipeline.day_end.ModelRegistry.get", return_value=model):
+            summary = await generate_day_summary(
+                client,
+                "thread-001",
+                date_str="2026-04-12",
+                namespace=("voliti", "u1"),
+            )
+
+        assert summary == "72.3kg，完成记录并安排散步"
+        model.ainvoke.assert_awaited_once_with([
+            SystemMessage(content="系统提示：为 2026-04-12 生成摘要。"),
+            HumanMessage(
+                content=(
+                    "用户提示：2026-04-12 => "
+                    "用户: 今天体重 72.3kg\n\nCoach: 已记录并建议晚饭前散步 15 分钟"
+                )
+            ),
+        ])
+        client.store.put_item.assert_awaited_once()
 
 
 class TestRunDayEndPipelineTimezone:

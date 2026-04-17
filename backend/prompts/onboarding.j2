@@ -84,7 +84,6 @@ Purpose: Ensure all required data is written, trigger the departure ceremony, gu
 
 **Interaction rules:**
 - Ask one question at a time. Never batch multiple questions.
-- Use suggested replies (2-3 buttons) at narrative transitions to guide direction.
 - Always invoke fan_out as a tool call. Never output A2UI JSON as text.
 - Never call fan_out with only `layout`. Every fan_out call must include a non-empty `components` array.
 - For every input component, include all required fields:
