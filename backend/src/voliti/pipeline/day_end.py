@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -16,7 +17,9 @@ from voliti.config.prompts import PromptRegistry
 from voliti.store_contract import (
     CONVERSATION_ARCHIVE_PREFIX,
     DAY_SUMMARY_PREFIX,
+    TIMELINE_MARKERS_KEY,
     make_file_value,
+    unwrap_file_value,
 )
 
 logger = logging.getLogger(__name__)
@@ -306,6 +309,57 @@ async def backfill_missing_summaries(
     return backfilled
 
 
+async def expire_passed_markers(
+    client: Any,
+    namespace: tuple[str, ...],
+    *,
+    now: datetime | None = None,
+) -> int:
+    """将日期已过的 upcoming markers 自动标记为 passed。
+
+    遍历 /timeline/markers.json 中所有 status="upcoming" 的条目，
+    若 marker 日期早于今天则将 status 改为 "passed"。
+    返回本次标记为 passed 的 marker 数量。
+    """
+    now = now or datetime.now(timezone.utc)
+    today_str = now.strftime("%Y-%m-%d")
+
+    try:
+        item = await client.store.get_item(namespace, TIMELINE_MARKERS_KEY)
+        if not item or not item.get("value"):
+            return 0
+        content = unwrap_file_value(item["value"])
+        data = json.loads(content)
+        markers = data.get("markers", [])
+    except Exception:  # noqa: BLE001
+        return 0
+
+    changed = 0
+    for m in markers:
+        if m.get("status") != "upcoming":
+            continue
+        try:
+            marker_date = datetime.fromisoformat(m["date"])
+            if marker_date.tzinfo is None:
+                marker_date = marker_date.replace(tzinfo=timezone.utc)
+            if marker_date.strftime("%Y-%m-%d") < today_str:
+                m["status"] = "passed"
+                changed += 1
+        except (KeyError, ValueError):
+            continue
+
+    if changed > 0:
+        new_content = json.dumps(data, ensure_ascii=False)
+        await client.store.put_item(
+            namespace,
+            TIMELINE_MARKERS_KEY,
+            value=make_file_value(new_content, now=now),
+        )
+        logger.info("Markers: expired %d markers for namespace %s", changed, namespace)
+
+    return changed
+
+
 async def run_day_end_pipeline(
     client: Any,
     *,
@@ -340,6 +394,7 @@ async def run_day_end_pipeline(
         "sealed": [],
         "summaries": [],
         "briefing_updated": False,
+        "markers_expired": 0,
         "errors": [],
     }
 
@@ -387,6 +442,14 @@ async def run_day_end_pipeline(
     except Exception:  # noqa: BLE001
         logger.warning("Pipeline: failed to backfill missing summaries for user %s", user_id)
         result["errors"].append("backfill failed")
+
+    # Step 2.75: 标记过期 markers
+    try:
+        expired_count = await expire_passed_markers(client, namespace, now=now)
+        result["markers_expired"] = expired_count
+    except Exception:  # noqa: BLE001
+        logger.warning("Pipeline: failed to expire markers for user %s", user_id)
+        result["errors"].append("marker expiry failed")
 
     # Step 3: 更新 briefing（共享 threads 避免重复查询）
     try:

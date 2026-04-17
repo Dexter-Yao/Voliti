@@ -27,8 +27,9 @@ from voliti.store_contract import (
 )
 from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
+from voliti.tools.marker import add_forward_marker
 
-COACH_TOOLS = [fan_out]
+COACH_TOOLS = [fan_out, add_forward_marker]
 """Coach 直接调用的工具，通过 A2UI 组件组合实现动态交互。"""
 
 

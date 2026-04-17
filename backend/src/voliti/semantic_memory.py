@@ -14,7 +14,6 @@ from voliti.store_contract import (
     LIFESIGNS_KEY,
     PROFILE_CONTEXT_KEY,
     PROFILE_DASHBOARD_CONFIG_KEY,
-    TIMELINE_CALENDAR_KEY,
     TIMELINE_MARKERS_KEY,
 )
 
@@ -37,7 +36,6 @@ _AUTHORITATIVE_PATHS = frozenset(
         TIMELINE_MARKERS_KEY,
         COACH_MEMORY_KEY,
         LIFESIGNS_KEY,
-        TIMELINE_CALENDAR_KEY,
     }
 )
 _GOAL_ARCHIVE_PATTERN = re.compile(r"^/goal/archive/[^/]+\.json$")

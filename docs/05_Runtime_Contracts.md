@@ -148,7 +148,7 @@ Voliti 的共享持久化真相由 backend 持有，并落于 LangGraph Store。
 /ledger/{yyyy-mm-dd}/{hhmmss}_{kind}.json
 /coach/AGENTS.md
 /lifesigns.md
-/timeline-calendar.md
+/timeline/markers.json
 /derived/briefing.md
 /day_summary/{yyyy-mm-dd}.md
 /conversation_archive/{yyyy-mm-dd}.md
@@ -421,7 +421,7 @@ A2UI Payload 的 `metadata: dict[str, str]` 承载一条交互形态分类约定
 6. `/chapter/archive/{id}.json`
 7. `/coach/AGENTS.md`
 8. `/lifesigns.md`
-9. `/timeline-calendar.md`
+9. `/timeline/markers.json`
 
 以下内容不属于权威语义记忆：
 
@@ -460,7 +460,7 @@ A2UI Payload 的 `metadata: dict[str, str]` 承载一条交互形态分类约定
 
 约束如下：
 
-1. `/profile/...`、`/goal/...`、`/chapter/...`、`/coach/AGENTS.md`、`/lifesigns.md`、`/timeline-calendar.md` 属于 `authoritative_semantic`。
+1. `/profile/...`、`/goal/...`、`/chapter/...`、`/coach/AGENTS.md`、`/lifesigns.md`、`/timeline/markers.json` 属于 `authoritative_semantic`。
 2. `/derived/...` 属于 `candidate_signal`。
 3. `/archive/...`、`/day_summary/...`、`/conversation_archive/...` 属于 `archive_source`。
 4. `/ledger/...` 属于 `runtime_only`。

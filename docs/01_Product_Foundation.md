@@ -224,7 +224,7 @@ Voliti 采用行为文件系统，而非传统数据库：
 - LifeSign 预案存储于 `/lifesigns.md`，简化 markdown 格式，最多 6 条，每条不超过 100 字（触发场景 → 应对策略）
 - 每日为目录，每次行为为带时间戳的事件文件；原始证据永久保存，结构层可演化
 - Coach 跨会话观察存储于 `/coach/AGENTS.md`，四分区结构（已验证模式 / 假设 / 沟通备忘 / 声称vs揭示差异），写入遵循信息凝练原则——最少 token 传递最大决策价值
-- 前瞻标记存储于 `/timeline-calendar.md`，markdown 按日期分组，支持 Coach 直接编辑与日终清理
+- 前瞻标记存储于 `/timeline/markers.json`，JSON 格式，支持 Coach 通过 `add_forward_marker` 工具写入，日终 Pipeline 自动标记过期事件
 
 派生层（`/derived/`）生成 briefing 与候选信号。Coach Agent 拥有指标治理能力，可新增或退役观测维度。日终 Pipeline 自动封存当天会话、生成日摘要（`/day_summary/`）并更新 briefing。
 
