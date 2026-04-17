@@ -139,6 +139,39 @@
 - **Depends on:** 移动端开发启动
 - **Source:** /design-review 2026-04-16
 
+## P2: Mirror 北极星 delta + 7 日趋势柱图
+- **What:** 在北极星数字旁显示周变化 delta（↓ 1.8），下方显示 7 天趋势柱图
+- **Why:** 单个数字缺乏时间维度，用户看不到趋势方向。知识库研究显示"模式 > 数字"是行为教练的核心原则
+- **Pros:** 让用户一眼看到方向而非只看到绝对值
+- **Cons:** 需要后端提供结构化历史数据，当前 Store 无此数据
+- **Context:** 当前 day_summary 是纯文本摘要无法解析数值。需要 Coach 写入 `/ledger/{date}/{time}_metric.json` 或新增专用趋势 Store key。指标类型由 Coach 动态决定，不限于体重
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Ledger 数据写入机制确定
+- **Source:** /design-shotgun 2026-04-17, Mirror 重设计
+
+## P2: Mirror 日志 Filter pills + 事件流
+- **What:** Mirror 底部添加日志区：动态 filter pills（按事件类型过滤）+ 时间线形式的事件条目列表
+- **Why:** DESIGN.md 规格中定义了日志区但从未实现。事件流让用户看到"今天发生了什么"的完整记录
+- **Pros:** 补全 Mirror 的信息层次（Chapter → 指标 → 预案 → 日志），让面板从"静态配置展示"变为"动态活动记录"
+- **Cons:** 需要扩展 store-sync.ts 读取 day_summary 或 ledger 前缀数据
+- **Context:** 当前 `fetchMirrorData` 不读取 day_summary。需要扩展读取最近 N 天数据。Ledger 前缀 `/ledger/` 已在 store_contract.py 定义
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Ledger 或 day_summary 的前端读取 API
+- **Source:** /design-shotgun 2026-04-17, Mirror 重设计
+
+## P2: LifeSign 触发/成功统计
+- **What:** 在 LifeSign 区域显示每个预案的触发次数和成功率（如"触发 3 次 · 成功 2 次"）
+- **Why:** 知识库研究指出"让记忆可见"是建立用户信任的关键。预案的使用追踪让用户感知到"Coach 在跟踪我的行为模式"
+- **Pros:** 把 LifeSign 从静态计划变为动态反馈，强化行为改变的自我监测机制
+- **Cons:** 需要 Coach 在对话中识别预案触发并记录到 Store
+- **Context:** 当前 coping plan 无使用追踪数据。需要后端在 Coach 对话中检测 LifeSign 激活并写入统计
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Coach 对话中的 LifeSign 激活检测机制
+- **Source:** /design-shotgun 2026-04-17, Mirror 重设计
+
 ## P2: LangGraph Cron API 能力调研
 - **What:** 在天级 Thread Phase 3 开始前调研 LangGraph Cloud Cron API，确认是否支持按用户时区触发定时 run、是否能绑定到特定 thread
 - **Why:** 日终 Pipeline 的编排依赖此能力，如果不支持需要设计替代方案
