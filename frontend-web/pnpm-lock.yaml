@@ -144,6 +144,9 @@ importers:
       '@eslint/js':
         specifier: ^9.27.0
         version: 9.39.4
+      '@next/eslint-plugin-next':
+        specifier: 15.2.2
+        version: 15.2.2
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.59.1

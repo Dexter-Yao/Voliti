@@ -1,11 +1,43 @@
+import nextPlugin from "@next/eslint-plugin-next";
 import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
+const reactRefreshAllowExportNames = [
+  "experimental_ppr",
+  "dynamic",
+  "dynamicParams",
+  "revalidate",
+  "fetchCache",
+  "runtime",
+  "preferredRegion",
+  "maxDuration",
+  "metadata",
+  "generateMetadata",
+  "viewport",
+  "generateViewport",
+  "generateImageMetadata",
+  "generateSitemaps",
+  "generateStaticParams",
+  "buttonVariants",
+  "ThreadContext",
+  "useThreads",
+  "useStreamContext",
+  "useArtifact",
+  "useArtifactOpen",
+  "useArtifactContext",
+];
+
 export default tseslint.config(
   { ignores: ["dist"] },
+  {
+    plugins: {
+      "@next/next": nextPlugin,
+    },
+    rules: {},
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -18,6 +50,8 @@ export default tseslint.config(
       "react-refresh": reactRefresh,
     },
     rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
       ...reactHooks.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": 0,
       "@typescript-eslint/no-unused-vars": [
@@ -26,7 +60,10 @@ export default tseslint.config(
       ],
       "react-refresh/only-export-components": [
         "warn",
-        { allowConstantExport: true },
+        {
+          allowConstantExport: true,
+          allowExportNames: reactRefreshAllowExportNames,
+        },
       ],
     },
   },

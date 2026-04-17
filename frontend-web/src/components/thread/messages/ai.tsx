@@ -34,7 +34,6 @@ function CustomComponent({
       {customComponents.map((customComponent) => (
         <LoadExternalComponent
           key={customComponent.id}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           stream={thread as any}
           message={customComponent}
           meta={{ ui: customComponent, artifact }}
@@ -223,14 +222,16 @@ const TOOL_STATUS_MAP: Record<string, { zh: string; en: string }> = {
 function PulsingDots() {
   return (
     <span className="ml-0.5 inline-flex items-center gap-0.5">
-      <span className="bg-[#1A1816]/40 h-1 w-1 animate-[pulse_1.5s_ease-in-out_infinite] rounded-full" />
-      <span className="bg-[#1A1816]/40 h-1 w-1 animate-[pulse_1.5s_ease-in-out_0.5s_infinite] rounded-full" />
-      <span className="bg-[#1A1816]/40 h-1 w-1 animate-[pulse_1.5s_ease-in-out_1s_infinite] rounded-full" />
+      <span className="h-1 w-1 animate-[pulse_1.5s_ease-in-out_infinite] rounded-full bg-[#1A1816]/40" />
+      <span className="h-1 w-1 animate-[pulse_1.5s_ease-in-out_0.5s_infinite] rounded-full bg-[#1A1816]/40" />
+      <span className="h-1 w-1 animate-[pulse_1.5s_ease-in-out_1s_infinite] rounded-full bg-[#1A1816]/40" />
     </span>
   );
 }
 
-export function AssistantMessageLoading({ toolName }: { toolName?: string } = {}) {
+export function AssistantMessageLoading({
+  toolName,
+}: { toolName?: string } = {}) {
   const status = toolName ? TOOL_STATUS_MAP[toolName] : undefined;
 
   if (status) {

@@ -19,11 +19,13 @@ import {
   ArrowDown,
   ArrowUp,
   LoaderCircle,
+  Mic,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
   Settings,
+  Square,
   XIcon,
 } from "lucide-react";
 import { useQueryState } from "nuqs";
@@ -37,24 +39,27 @@ import {
   ArtifactTitle,
   useArtifactContext,
 } from "./artifact";
-import {
-  Group,
-  Panel,
-  Separator,
-  usePanelRef,
-} from "react-resizable-panels";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "../ui/sheet";
+import { Group, Panel, Separator, usePanelRef } from "react-resizable-panels";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 import { MirrorPanel } from "../mirror/MirrorPanel";
 import { SettingsDrawer } from "../settings/SettingsDrawer";
-import { isThreadSealed, SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
+import {
+  isThreadSealed,
+  SESSION_TYPE_COACHING,
+  type SessionType,
+} from "@/lib/thread-utils";
 import { useThreads } from "@/providers/Thread";
 import { getUserId } from "@/lib/user";
 import { buildSubmitConfig } from "@/lib/stream-config";
+import {
+  applyVoiceTranscriptionToComposerDraft,
+  buildVoiceMessageAdditionalKwargs,
+  createEmptyComposerDraft,
+  updateComposerDraftText,
+  type ComposerDraft,
+  type VoiceTranscriptionResult,
+} from "@/lib/voice";
+import { useVoiceInput } from "@/hooks/use-voice-input";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -124,7 +129,9 @@ export function Thread({
     () => buildSubmitConfig(getUserId(), sessionType),
     [sessionType],
   );
-  const [input, setInput] = useState("");
+  const [composerDraft, setComposerDraft] = useState<ComposerDraft>(() =>
+    createEmptyComposerDraft(),
+  );
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
@@ -204,7 +211,12 @@ export function Thread({
     };
     stream.submit(
       { messages: [msg] },
-      { config: submitConfig, streamMode: ["values"], streamSubgraphs: true, streamResumable: true },
+      {
+        config: submitConfig,
+        streamMode: ["values"],
+        streamSubgraphs: true,
+        streamResumable: true,
+      },
     );
     onInitialMessageSent?.();
   }, [initialMessage, threadId, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -221,15 +233,31 @@ export function Thread({
     prevMessageLength.current = messages.length;
   }, [messages]);
 
+  const voiceInput = useVoiceInput({
+    disabled: isLoading || isSealed,
+    onDraftReady: useCallback((draft: VoiceTranscriptionResult) => {
+      setComposerDraft((previous) =>
+        applyVoiceTranscriptionToComposerDraft(previous, draft),
+      );
+    }, []),
+  });
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (input.trim().length === 0 || isLoading || isSealed) return;
+    if (composerDraft.text.trim().length === 0 || isLoading || isSealed) return;
     setFirstTokenReceived(false);
+
+    const voiceAdditionalKwargs = composerDraft.voiceMetadata
+      ? buildVoiceMessageAdditionalKwargs(composerDraft.voiceMetadata)
+      : undefined;
 
     const newHumanMessage: Message = {
       id: uuidv4(),
       type: "human",
-      content: [{ type: "text", text: input }] as Message["content"],
+      content: [
+        { type: "text", text: composerDraft.text },
+      ] as Message["content"],
+      additional_kwargs: voiceAdditionalKwargs,
     };
 
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
@@ -255,7 +283,7 @@ export function Thread({
       },
     );
 
-    setInput("");
+    setComposerDraft(createEmptyComposerDraft());
   };
 
   const handleRegenerate = (
@@ -322,9 +350,7 @@ export function Thread({
           )}
         </TooltipIconButton>
 
-        <span className="text-xl font-semibold tracking-tight">
-          Voliti
-        </span>
+        <span className="text-xl font-semibold tracking-tight">Voliti</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -366,10 +392,18 @@ export function Thread({
               const visible = messages.filter((m) => {
                 if (m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX)) return false;
                 if (m.type === "tool") return false;
-                if (m.type === "ai" && "tool_calls" in m && m.tool_calls?.length) {
-                  const text = typeof m.content === "string"
-                    ? m.content
-                    : (m.content ?? []).filter((c: any) => c.type === "text").map((c: any) => c.text).join("");
+                if (
+                  m.type === "ai" &&
+                  "tool_calls" in m &&
+                  m.tool_calls?.length
+                ) {
+                  const text =
+                    typeof m.content === "string"
+                      ? m.content
+                      : (m.content ?? [])
+                          .filter((c: any) => c.type === "text")
+                          .map((c: any) => c.text)
+                          .join("");
                   if (!text.trim()) return false;
                 }
                 return true;
@@ -405,8 +439,13 @@ export function Thread({
                   messages.length > 0
                     ? (() => {
                         const last = messages[messages.length - 1];
-                        const calls = last?.type === "ai" ? (last as any).tool_calls : undefined;
-                        return calls?.length ? calls[calls.length - 1].name : undefined;
+                        const calls =
+                          last?.type === "ai"
+                            ? (last as any).tool_calls
+                            : undefined;
+                        return calls?.length
+                          ? calls[calls.length - 1].name
+                          : undefined;
                       })()
                     : undefined
                 }
@@ -422,9 +461,7 @@ export function Thread({
                 <h1 className="font-serif-coach text-2xl text-[#1A1816]">
                   Voliti
                 </h1>
-                <p className="text-sm text-[#1A1816]/40">
-                  今天想聊什么？
-                </p>
+                <p className="text-sm text-[#1A1816]/40">今天想聊什么？</p>
               </div>
             )}
 
@@ -433,50 +470,156 @@ export function Thread({
             {/* Suggested reply pills */}
             {/* Input area */}
             <div className="relative z-10 mx-auto mb-6 w-full max-w-3xl">
-              <form
-                onSubmit={handleSubmit}
-                className="flex items-end gap-2 rounded-[4px] border border-[#1A1816]/10 bg-transparent px-4 py-3"
-              >
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      !e.shiftKey &&
-                      !e.metaKey &&
-                      !e.nativeEvent.isComposing
-                    ) {
-                      e.preventDefault();
-                      const el = e.target as HTMLElement | undefined;
-                      const form = el?.closest("form");
-                      form?.requestSubmit();
-                    }
-                  }}
-                  disabled={isSealed}
-                  placeholder={isSealed ? "本次对话已结束" : "输入消息…"}
-                  rows={1}
-                  className="field-sizing-content max-h-32 flex-1 resize-none border-none bg-transparent text-sm text-[#1A1816] shadow-none ring-0 outline-none placeholder:text-[#1A1816]/30 focus:ring-0 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-                />
+              {(() => {
+                const hasVoiceMetadata = Boolean(composerDraft.voiceMetadata);
+                const showVoiceStatus =
+                  voiceInput.isRecording ||
+                  voiceInput.isTranscribing ||
+                  voiceInput.hasError ||
+                  hasVoiceMetadata;
+                const voiceStatusLabel = voiceInput.isRecording
+                  ? "正在录音"
+                  : voiceInput.isTranscribing
+                    ? "正在转写"
+                    : voiceInput.hasError
+                      ? "转写失败"
+                      : hasVoiceMetadata
+                        ? composerDraft.voiceMetadata?.confirmed
+                          ? "语音待发送"
+                          : "语音已编辑"
+                        : null;
 
-                {stream.isLoading ? (
-                  <button
-                    type="button"
-                    onClick={() => stream.stop()}
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none bg-[#1A1816] text-[#F4F0E8]"
+                return (
+                  <form
+                    onSubmit={handleSubmit}
+                    className="flex items-end gap-2 rounded-[4px] border border-[#1A1816]/10 bg-transparent px-4 py-3"
                   >
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={isLoading || isSealed || !input.trim()}
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none bg-[#1A1816] text-[#F4F0E8] transition-opacity disabled:opacity-20"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </button>
-                )}
-              </form>
+                    <textarea
+                      value={composerDraft.text}
+                      onChange={(e) => {
+                        setComposerDraft((previous) =>
+                          updateComposerDraftText(previous, e.target.value),
+                        );
+                      }}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" &&
+                          !e.shiftKey &&
+                          !e.metaKey &&
+                          !e.nativeEvent.isComposing
+                        ) {
+                          e.preventDefault();
+                          const el = e.target as HTMLElement | undefined;
+                          const form = el?.closest("form");
+                          form?.requestSubmit();
+                        }
+                      }}
+                      disabled={isSealed}
+                      placeholder={isSealed ? "本次对话已结束" : "输入消息…"}
+                      rows={1}
+                      className="field-sizing-content max-h-32 flex-1 resize-none border-none bg-transparent text-sm text-[#1A1816] shadow-none ring-0 outline-none placeholder:text-[#1A1816]/30 focus:ring-0 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                    />
+
+                    {showVoiceStatus && (
+                      <div className="flex min-w-0 items-center gap-2 self-center">
+                        <span className="truncate font-mono text-[11px] text-[#1A1816]/50">
+                          {voiceStatusLabel}
+                        </span>
+                        {voiceInput.hasError ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void voiceInput.retryTranscription()
+                              }
+                              className="text-[11px] text-[#1A1816]/70 transition-colors hover:text-[#1A1816]"
+                            >
+                              重试
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                voiceInput.discardLastRecording();
+                              }}
+                              className="text-[11px] text-[#1A1816]/45 transition-colors hover:text-[#1A1816]/70"
+                            >
+                              丢弃
+                            </button>
+                          </>
+                        ) : composerDraft.voiceMetadata ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setComposerDraft((previous) => ({
+                                ...previous,
+                                voiceMetadata: null,
+                              }));
+                              voiceInput.clearError();
+                            }}
+                            className="text-[11px] text-[#1A1816]/45 transition-colors hover:text-[#1A1816]/70"
+                          >
+                            取消语音
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={
+                        isLoading || isSealed || voiceInput.isTranscribing
+                      }
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        void voiceInput.beginRecording();
+                      }}
+                      onPointerUp={() => {
+                        voiceInput.stopRecording();
+                      }}
+                      onPointerCancel={() => {
+                        voiceInput.stopRecording();
+                      }}
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none border border-[#1A1816]/10 text-[#1A1816] transition-colors disabled:cursor-not-allowed disabled:opacity-20"
+                      aria-label={
+                        voiceInput.isRecording
+                          ? "正在录音，松开发起转写"
+                          : "按住开始录音"
+                      }
+                    >
+                      {voiceInput.isTranscribing ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : voiceInput.isRecording ? (
+                        <Square className="h-4 w-4 fill-current text-[#B04F35]" />
+                      ) : (
+                        <Mic className="h-4 w-4" />
+                      )}
+                    </button>
+
+                    {stream.isLoading ? (
+                      <button
+                        type="button"
+                        onClick={() => stream.stop()}
+                        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none bg-[#1A1816] text-[#F4F0E8]"
+                      >
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={
+                          isLoading ||
+                          isSealed ||
+                          voiceInput.isTranscribing ||
+                          !composerDraft.text.trim()
+                        }
+                        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none bg-[#1A1816] text-[#F4F0E8] transition-opacity disabled:opacity-20"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </button>
+                    )}
+                  </form>
+                );
+              })()}
             </div>
           </div>
         }
@@ -490,7 +633,10 @@ export function Thread({
       open={mobileHistoryOpen}
       onOpenChange={setMobileHistoryOpen}
     >
-      <SheetContent side="left" className="w-[300px] p-0">
+      <SheetContent
+        side="left"
+        className="w-[300px] p-0"
+      >
         <SheetHeader className="px-4 pt-4">
           <SheetTitle>历史记录</SheetTitle>
         </SheetHeader>
@@ -505,7 +651,10 @@ export function Thread({
       open={mobileMirrorOpen}
       onOpenChange={setMobileMirrorOpen}
     >
-      <SheetContent side="right" className="w-[300px] p-0">
+      <SheetContent
+        side="right"
+        className="w-[300px] p-0"
+      >
         <SheetHeader className="px-4 pt-4">
           <SheetTitle>镜像</SheetTitle>
         </SheetHeader>
@@ -521,7 +670,10 @@ export function Thread({
         <>
           <div className="grid grid-cols-[1fr_auto] border-b p-4">
             <ArtifactTitle className="truncate overflow-hidden" />
-            <button onClick={closeArtifact} className="cursor-pointer">
+            <button
+              onClick={closeArtifact}
+              className="cursor-pointer"
+            >
               <XIcon className="size-5" />
             </button>
           </div>
@@ -541,7 +693,10 @@ export function Thread({
         {chatContent}
         {mobileHistorySheet}
         {mobileMirrorSheet}
-        <SettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />
+        <SettingsDrawer
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+        />
       </div>
     );
   }
@@ -549,7 +704,10 @@ export function Thread({
   // Desktop layout: three resizable panels
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <SettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDrawer
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
       <Group
         orientation="horizontal"
         id="voliti-layout"
@@ -570,10 +728,12 @@ export function Thread({
           </div>
         </Panel>
 
-        <Separator className={cn(
-          "group relative transition-all",
-          historyCollapsed ? "w-0" : "w-1 hover:w-1.5",
-        )}>
+        <Separator
+          className={cn(
+            "group relative transition-all",
+            historyCollapsed ? "w-0" : "w-1 hover:w-1.5",
+          )}
+        >
           {!historyCollapsed && (
             <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#1A1816]/10 transition-colors group-hover:bg-[#B87333] group-active:bg-[#B87333]" />
           )}
@@ -590,10 +750,12 @@ export function Thread({
           </div>
         </Panel>
 
-        <Separator className={cn(
-          "group relative transition-all",
-          mirrorCollapsed ? "w-0" : "w-1 hover:w-1.5",
-        )}>
+        <Separator
+          className={cn(
+            "group relative transition-all",
+            mirrorCollapsed ? "w-0" : "w-1 hover:w-1.5",
+          )}
+        >
           {!mirrorCollapsed && (
             <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#1A1816]/10 transition-colors group-hover:bg-[#B87333] group-active:bg-[#B87333]" />
           )}
@@ -609,9 +771,7 @@ export function Thread({
           maxSize="30%"
           defaultSize="22%"
         >
-          <div className="h-full overflow-hidden">
-            {rightPanelContent}
-          </div>
+          <div className="h-full overflow-hidden">{rightPanelContent}</div>
         </Panel>
       </Group>
     </div>
