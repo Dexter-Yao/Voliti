@@ -63,7 +63,7 @@ export function MirrorPanel() {
     <div className="flex h-full flex-col overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1A1816]/15 [&::-webkit-scrollbar-track]:bg-transparent">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#1A1816]/5 px-4 py-3">
-        <h2 className="text-sm font-medium text-[#1A1816]/60">Mirror</h2>
+        <h2 className="font-mono-system text-[11px] uppercase tracking-[2px] text-[#1A1816]/40">Mirror</h2>
         <button
           onClick={refresh}
           className="text-[#1A1816]/30 transition-colors hover:text-[#1A1816]/60"
@@ -76,7 +76,7 @@ export function MirrorPanel() {
         {/* Chapter info */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-[#B87333]">
+            <span className="font-mono-system text-[10px] uppercase tracking-[2px] text-[#B87333]">
               Chapter {chapter.chapter_number}
             </span>
             {chapter.start_date && (
@@ -105,20 +105,20 @@ export function MirrorPanel() {
         {dashboardConfig?.north_star && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <div className="flex items-baseline justify-between">
-              <span className="text-xs font-medium text-[#1A1816]/60">
-                {dashboardConfig.north_star.label}
+              <span className="font-mono-system text-[10px] uppercase tracking-[2px] text-[#B87333]">
+                ★ {dashboardConfig.north_star.label}
               </span>
             </div>
             <div className="flex items-end gap-3">
               {goal?.north_star_target ? (
-                <span className="text-2xl font-semibold text-[#1A1816]">
+                <span className="font-serif-coach text-[36px] font-semibold text-[#1A1816]">
                   {goal.north_star_target.baseline}
-                  <span className="text-sm font-normal text-[#1A1816]/40">
-                    {goal.north_star_target.unit}
+                  <span className="font-mono-system text-xs text-[#B87333]">
+                    {" "}{goal.north_star_target.unit}
                   </span>
                 </span>
               ) : (
-                <span className="text-2xl font-semibold text-[#1A1816]">—</span>
+                <span className="font-serif-coach text-[36px] font-semibold text-[#1A1816]">—</span>
               )}
               {goal?.north_star_target && (
                 <span className="text-xs text-[#1A1816]/30">
@@ -133,25 +133,18 @@ export function MirrorPanel() {
         {/* Support metrics */}
         {supportMetrics.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
-            <span className="text-xs font-medium text-[#1A1816]/40">
-              辅助指标
-            </span>
-            <div className="grid gap-2">
-              {supportMetrics.map((metric) => (
+            <div className="grid grid-cols-3 text-center">
+              {supportMetrics.map((metric, idx) => (
                 <div
                   key={metric.key}
-                  className="flex items-center justify-between text-sm"
+                  className={idx > 0 ? "border-l border-[#1A1816]/10" : ""}
                 >
-                  <span className="text-[#1A1816]/60">{metric.label}</span>
-                  <span className="font-medium text-[#1A1816]">
+                  <div className="font-serif-coach text-xl font-medium text-[#1A1816]">
                     {processGoalTargets.get(metric.key) ?? "—"}
-                    {metric.unit && (
-                      <span className="text-xs font-normal text-[#1A1816]/40">
-                        {" "}
-                        {metric.unit}
-                      </span>
-                    )}
-                  </span>
+                  </div>
+                  <div className="font-mono-system text-[9px] uppercase tracking-[1px] text-[#1A1816]/40">
+                    {metric.label}
+                  </div>
                 </div>
               ))}
             </div>
@@ -161,15 +154,21 @@ export function MirrorPanel() {
         {/* Coping plans / LifeSign */}
         {copingPlans.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
-            <span className="text-xs font-medium text-[#1A1816]/40">
-              LifeSign 方案
+            <span className="font-mono-system text-xs uppercase tracking-[2px] text-[#B87333]">
+              LifeSign
             </span>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-3">
               {copingPlans.map((plan, i) => (
-                <div key={i} className="text-xs">
-                  <span className="text-[#1A1816]/60">{plan.trigger}</span>
+                <div key={i}>
+                  <div className="text-xs">
+                    <span className="font-mono-system text-[10px] text-[#B87333]">IF </span>
+                    <span className="font-serif-coach text-[#1A1816]/60">{plan.trigger}</span>
+                  </div>
                   {plan.coping_response && (
-                    <span className="text-[#1A1816]/40"> → {plan.coping_response}</span>
+                    <div className="mt-0.5 text-xs">
+                      <span className="font-mono-system text-[10px] text-[#B87333]">THEN </span>
+                      <span className="font-serif-coach text-[#1A1816]/60">{plan.coping_response}</span>
+                    </div>
                   )}
                 </div>
               ))}
