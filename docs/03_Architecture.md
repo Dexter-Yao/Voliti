@@ -192,7 +192,7 @@ Voliti 在此基础上仅补四类最小产品语义定制：
 2. Prompt Layering Policy：五层提示词结构的分层与优先级规则。
 3. Semantic Boundary Policy：权威语义、候选信号、archive 证据、运行时状态、可观测性的统一分类。
 4. Memory Lifecycle Policy：记忆的捕获、蒸馏、注入与整理规则。当前包括六维用户画像结构、四分区 Coach 记忆协议、信息凝练原则、Chapter 转移时的强制 review，以及从原始事件到长期语义的分层蒸馏链路（ledger → day_summary → briefing → profile/coach memory）。
-5. Skills 机制：基于 DeepAgent `SkillsMiddleware` 承载四种体验式干预手段（未来自我对话、场景预演、隐喻协作、认知重构）；通过 `CompositeBackend` 新增 `/skills/coach/` 路由挂载只读 `FilesystemBackend`（指向仓库 `backend/skills/coach/`）；`SkillsGateMiddleware` 仅在 coaching session 注入元数据到 system prompt，onboarding 跳过以保持引导节奏。完整规格见 `docs/09_Experiential_Interventions.md`。
+5. Skills 机制：基于 DeepAgent `SkillsMiddleware` 承载四种体验式干预手段（未来自我对话、场景预演、隐喻协作、认知重构）；通过 `CompositeBackend` 新增 `/skills/coach/` 路由挂载只读 `FilesystemBackend`（指向仓库 `backend/skills/coach/`）；`SkillsGateMiddleware` 仅在 coaching session 注入元数据到 system prompt，onboarding 跳过以保持引导节奏。完整规格见 `docs/10_Experiential_Interventions.md`。
 
 ### 5.5 架构守护清单
 

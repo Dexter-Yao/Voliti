@@ -1,13 +1,13 @@
 # 体验式干预手段应用方案
 
-本文件给出四种体验式干预手段（未来自我对话、场景预演、隐喻协作、认知重构）在 Voliti 中的落地规格。定位为实施规格；学术依据参见 `docs/knowledge/experiential-interventions/`。目标读者是实施者（Coach、code-reviewer、前端开发）。
+本文件给出四种体验式干预手段（未来自我对话、场景预演、隐喻协作、认知重构）在 Voliti 中的落地规格。定位为实施规格；学术依据参见 `docs/experiential-interventions/`。目标读者是实施者（Coach、code-reviewer、前端开发）。
 
 ## 1. 架构一览
 
 | 组件 | 位置 | 职能 |
 |---|---|---|
 | Skill 定义 | `backend/skills/coach/<skill-name>/SKILL.md` | 四份独立 skill，渐进式披露 |
-| Skill 深度参考 | `backend/skills/coach/<skill-name>/references/theory.md` | 从 `docs/knowledge/experiential-interventions/` 物理复制，按需加载 |
+| Skill 深度参考 | `backend/skills/coach/<skill-name>/references/theory.md` | 从 `docs/experiential-interventions/` 物理复制，按需加载 |
 | Middleware | `deepagents.middleware.skills.SkillsMiddleware` | 自动注入 skill 元数据到 Coach 系统提示词（仅 coaching session；onboarding 薄条件包装跳过注入）|
 | Backend 路由 | `CompositeBackend` 新增 `/skills/coach/` → 只读 `FilesystemBackend` | 挂载 skill 目录；Coach 对该路径只读，禁止写入 |
 | Coach 入口节 | `coach_system.j2` 新增 `## Experiential Interventions` 小节（14 行） | 触发门槛 + 优先级 + 硬停 + 节奏 |
@@ -311,9 +311,9 @@ Layout: `"three-quarter"`.
 | `backend/skills/coach/scenario-rehearsal/SKILL.md` | §4.2 内容 |
 | `backend/skills/coach/metaphor-collaboration/SKILL.md` | §4.3 内容 |
 | `backend/skills/coach/cognitive-reframing/SKILL.md` | §4.4 内容 |
-| `backend/skills/coach/<4 个>/references/theory.md` | 从 `docs/knowledge/experiential-interventions/0X_*.md` 物理复制。`docs/knowledge/` 为真相源 |
+| `backend/skills/coach/<4 个>/references/theory.md` | 从 `docs/experiential-interventions/0X_*.md` 物理复制。`docs/knowledge/` 为真相源 |
 | `backend/skills/coach/scenario-rehearsal/references/dialogue-examples.md` | 仅该手法提取 WOOP 教学对话片段，标注来源（其他三手法无学术对话样本，不建此文件）|
-| `backend/tests/test_skills_sync.py`（新建）| CI 校验脚本：对 `backend/skills/coach/<name>/references/theory.md` 与 `docs/knowledge/experiential-interventions/0X_*.md` 做字节级 diff（或 hash 比对）；不一致则失败。防止真相源与 backend 复制品静默 drift |
+| `backend/tests/test_skills_sync.py`（新建）| CI 校验脚本：对 `backend/skills/coach/<name>/references/theory.md` 与 `docs/experiential-interventions/0X_*.md` 做字节级 diff（或 hash 比对）；不一致则失败。防止真相源与 backend 复制品静默 drift |
 | `backend/tests/test_agent.py` | 新增单测：`SkillsMiddleware` 装配；四份 skill 加载；**onboarding session 的 system prompt 不含 `## Skills System` 字样**；`surface="intervention"` 时 `intervention_kind` 必填的构造侧断言 |
 
 ### 5.2 前端
@@ -342,7 +342,7 @@ Layout: `"three-quarter"`.
 | Skill 加载失败 | `SkillsMiddleware` 有容错（解析失败 warning 跳过）；单测覆盖装配与 YAML 解析 |
 | 东方传统引用被用户理解为"学术对等" | Guardrails 禁止向用户提及任何理论名；分册 `theory.md` 内部已标注"借鉴性对应" |
 | Witness Card 与 intervention 的 `metadata` 同 dict 共存造成渲染错乱 | `surface` 四取值集定死；Witness Card composer 必写 `surface="witness-card"`；前端分支按 surface 值分派，不依赖"有 card_id 即 Witness Card"的隐式约定 |
-| 真相源 `docs/knowledge/experiential-interventions/` 与 backend 复制品 drift | CI 校验脚本 `test_skills_sync.py` 在每次 CI 跑 diff；任何修改必须两边同步落盘 |
+| 真相源 `docs/experiential-interventions/` 与 backend 复制品 drift | CI 校验脚本 `test_skills_sync.py` 在每次 CI 跑 diff；任何修改必须两边同步落盘 |
 
 **回滚层级**：
 

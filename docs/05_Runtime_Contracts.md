@@ -324,7 +324,7 @@ A2UI Payload 的 `metadata: dict[str, str]` 承载一条交互形态分类约定
 2. `surface` 与 `intervention_kind` 的正确写入依赖 Coach 系统提示词约束（`coach_system.j2` Section 3.5 + 四份 SKILL.md 的 A2UI Composition 节）与后续 eval 覆盖。
 3. payload 构造侧需做最小断言：若 `surface="intervention"` 必带 `intervention_kind`。
 
-完整规格见 `docs/09_Experiential_Interventions.md`。
+完整规格见 `docs/10_Experiential_Interventions.md`。
 
 ## 九、错误封装契约
 

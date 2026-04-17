@@ -24,7 +24,6 @@ Voliti 是 AI 减脂行为教练。底层提供饮食指导、运动建议、方
 | 竞品格局 | `docs/09_Competitive_Landscape.md` | **中美竞品矩阵、白空间/红海判断、渠道与 AI 演进趋势** |
 | Design Tokens | `docs/design-system/design-tokens.json` | 色彩、字体、间距精确值（机器可读） |
 | 组件规则 | `docs/design-system/component-rules.json` | 组件渲染规则（机器可读） |
-| 设计系统参考 | `docs/design-system-reference/` | 设计语言、视觉规范、AI 生成指引（人类可读） |
 | 用户研究原始数据 | `docs/user-research/` | 访谈记录、社媒分析、问卷数据与平台级洞察 |
 | 知识库 | `docs/knowledge/` | 行为科学理论基础、AI 教练有效性实证、评估方法论 |
 
@@ -173,4 +172,4 @@ Key routing rules:
 | 2026-04-15 | 认证重构：`VOLITI_USER_MAP` 密码门禁 → Supabase Auth（邮箱+密码）；`user_id` 使用 Supabase UUID；middleware 验证 session 并同步 `voliti_user_id` cookie；运行时契约与架构文档同步 |
 | 2026-04-16 | 记忆体系重构：六维用户画像（profile/context.md）、四分区 Coach 记忆协议（coach/AGENTS.md）、剥离 DeepAgent 默认 memory_guidelines、Briefing 纳入 Goal/Chapter 摘要、Onboarding 扩展六维采集 |
 | 2026-04-17 | 新增用户旅程地图文档（docs/08_Customer_Journey_Map.md）；补充核心 Persona 端到端旅程、关键时刻与优化优先级 |
-| 2026-04-17 | 四种体验式干预手段 Skill 化：新增 `backend/skills/coach/` 四份 SKILL.md（future-self-dialogue / scenario-rehearsal / metaphor-collaboration / cognitive-reframing）；学术调研分册落入 `docs/knowledge/experiential-interventions/`；新增 `docs/09_Experiential_Interventions.md` 应用方案；`SkillsGateMiddleware` 仅 coaching session 注入；`CompositeBackend` 新增 `/skills/coach/` 只读路由；A2UI 契约新增 `metadata.surface`（四取值含 `witness-card`）与 `intervention_kind`；Witness Card composer 补 `surface="witness-card"` |
+| 2026-04-17 | 四种体验式干预手段 Skill 化：新增 `backend/skills/coach/` 四份 SKILL.md（future-self-dialogue / scenario-rehearsal / metaphor-collaboration / cognitive-reframing）；学术调研分册落入 `docs/experiential-interventions/`；新增 `docs/10_Experiential_Interventions.md` 应用方案；`SkillsGateMiddleware` 仅 coaching session 注入；`CompositeBackend` 新增 `/skills/coach/` 只读路由；A2UI 契约新增 `metadata.surface`（四取值含 `witness-card`）与 `intervention_kind`；Witness Card composer 补 `surface="witness-card"` |

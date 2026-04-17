@@ -415,7 +415,7 @@ IF [触发情境] → THEN [应对行为]
 - ❌ 禁止：理想化身材、身体对比、任何聚焦于体重/体型的内容
 - ✅ 聚焦：行为能力、情境掌控、价值观具象化
 
-**干预手段**：四类方法均通过 Coach 文字对话 + A2UI 结构化交互实现（详见 4.1 节"教练干预体系"）。干预成功后可触发 Witness Card 见证用户的成就（详见 4.1 节"见证系统"）。四种手法的完整学术依据（西方主流轴 + 东方传统视角）、SKILL 级操作规格与 A2UI 契约详见 `docs/09_Experiential_Interventions.md` 与 `docs/knowledge/experiential-interventions/`。
+**干预手段**：四类方法均通过 Coach 文字对话 + A2UI 结构化交互实现（详见 4.1 节"教练干预体系"）。干预成功后可触发 Witness Card 见证用户的成就（详见 4.1 节"见证系统"）。四种手法的完整学术依据（西方主流轴 + 东方传统视角）、SKILL 级操作规格与 A2UI 契约详见 `docs/10_Experiential_Interventions.md` 与 `docs/experiential-interventions/`。
 
 ---
 
