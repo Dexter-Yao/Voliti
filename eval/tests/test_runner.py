@@ -2,7 +2,11 @@
 # ABOUTME: 保证评估入口会将 interrupt_id 原样带回 backend
 
 from voliti_eval.models import DimensionScore, ScoreCard
-from voliti_eval.runner import assemble_score_card, build_a2ui_resume_response
+from voliti_eval.runner import (
+    _format_blocking_reason,
+    assemble_score_card,
+    build_a2ui_resume_response,
+)
 
 
 def test_build_a2ui_resume_response_copies_interrupt_id_from_payload() -> None:
@@ -64,8 +68,10 @@ def test_assemble_score_card_merges_deterministic_and_llm_scores() -> None:
     assert score_card.user_gate_met is False
     assert score_card.runtime_gate_met is True
     assert score_card.user_gate_pass_rate == 0.0
-    assert score_card.runtime_gate_pass_rate == 0.0
+    assert score_card.runtime_gate_pass_rate is None
     assert score_card.diagnostic_pass_rate == 1.0
+    assert score_card.execution_status == "completed"
+    assert score_card.assessed_dimension_count == 2
 
 
 def test_assemble_score_card_fails_when_primary_dimension_is_missing() -> None:
@@ -115,6 +121,7 @@ def test_assemble_score_card_preserves_judge_metadata() -> None:
     assert score_card.must_pass_met is True
     assert score_card.user_gate_met is True
     assert score_card.runtime_gate_met is True
+    assert score_card.runtime_gate_pass_rate is None
     assert score_card.judge_requested_dimensions == ["if_then_quality"]
     assert score_card.judge_dimension_definitions == {
         "if_then_quality": "只评模型生成的 if-then 文本质量。"
@@ -137,11 +144,6 @@ def test_assemble_score_card_separates_gate_and_diagnostic_outcomes() -> None:
         ),
     }
     llm = {
-        "metaphor_collaboration_fit": DimensionScore(
-            passed=True,
-            justification="Stayed in the user's metaphor and moved it forward.",
-            score_source="llm",
-        ),
         "source_domain_integrity": DimensionScore(
             passed=False,
             justification="One follow-up line drifted into a battery metaphor.",
@@ -154,14 +156,29 @@ def test_assemble_score_card_separates_gate_and_diagnostic_outcomes() -> None:
         seed_id="19_metaphor_collaboration_trigger",
         primary_dimensions=[
             "intervention_kind_selection",
-            "metaphor_collaboration_fit",
         ],
         deterministic_scores=deterministic,
         llm_scores=llm,
-        overall_assessment="Helpful enough for the user, but diagnostics still found drift.",
+        overall_assessment="Runtime gate passed and diagnostics still found drift.",
     )
 
     assert score_card.must_pass_met is True
     assert score_card.user_gate_met is True
     assert score_card.runtime_gate_met is True
     assert score_card.diagnostic_pass_rate == 0.0
+    assert score_card.user_gate_pass_rate is None
+
+
+def test_score_card_defaults_to_blocked_safe_state() -> None:
+    score_card = ScoreCard(seed_id="17_future_self_dialogue_trigger")
+
+    assert score_card.execution_status == "blocked"
+    assert score_card.must_pass_met is False
+    assert score_card.user_gate_met is False
+    assert score_card.runtime_gate_met is False
+    assert score_card.pass_rate is None
+
+
+def test_format_blocking_reason_falls_back_to_exception_type_when_message_empty() -> None:
+    assert _format_blocking_reason(TimeoutError()) == "TimeoutError"
+    assert _format_blocking_reason(RuntimeError("backend unavailable")) == "backend unavailable"

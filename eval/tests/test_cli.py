@@ -223,3 +223,15 @@ scoring_focus:
 
     assert result.exit_code == 0
     assert captured["runs"] == 3
+
+
+def test_cli_rejects_runs_less_than_one() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        __import__("voliti_eval.cli", fromlist=["main"]).main,
+        ["--runs", "0"],
+    )
+
+    assert result.exit_code != 0
+    assert "x>=1" in result.output or "1 <= x" in result.output

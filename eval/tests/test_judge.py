@@ -155,7 +155,7 @@ def test_build_judge_payload_extracts_text_summary_from_a2ui_components() -> Non
                 },
             },
             "expected_artifacts": {},
-            "judge_dimensions": ["metaphor_collaboration_fit", "metaphor_verbatim_preservation"],
+            "judge_dimensions": ["metaphor_verbatim_preservation", "source_domain_integrity"],
         }
     )
     transcript = Transcript.model_validate(

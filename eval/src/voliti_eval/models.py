@@ -9,11 +9,40 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator
 
 from voliti_eval.dimensions import (
+    CONTRACT_ONBOARDING_ARTIFACTS,
+    INTERVENTION_KIND_SELECTION,
+    INTERVENTION_METADATA_CORRECTNESS,
+    INTERVENTION_SCENE_ANCHOR_PRESENT,
     KNOWN_DIMENSIONS,
+    REFRAME_VERDICT_COMPONENT_PRESENT,
     is_diagnostic_dimension,
     is_gate_dimension,
     is_llm_dimension,
 )
+
+_INTERVENTION_SEED_IDS = {
+    "17_future_self_dialogue_trigger",
+    "18_scenario_rehearsal_trigger",
+    "19_metaphor_collaboration_trigger",
+    "20_cognitive_reframing_trigger",
+}
+
+_DETERMINISTIC_APPLICABILITY: dict[str, set[str] | None] = {
+    CONTRACT_ONBOARDING_ARTIFACTS: None,
+    INTERVENTION_KIND_SELECTION: _INTERVENTION_SEED_IDS,
+    INTERVENTION_METADATA_CORRECTNESS: _INTERVENTION_SEED_IDS,
+    INTERVENTION_SCENE_ANCHOR_PRESENT: {"18_scenario_rehearsal_trigger"},
+    REFRAME_VERDICT_COMPONENT_PRESENT: {"20_cognitive_reframing_trigger"},
+}
+
+
+def _is_dimension_applicable_to_seed(seed_id: str, entry_mode: str, dimension_id: str) -> bool:
+    if dimension_id == CONTRACT_ONBOARDING_ARTIFACTS:
+        return entry_mode in {"new", "resume", "re_entry"}
+    allowed_seed_ids = _DETERMINISTIC_APPLICABILITY.get(dimension_id)
+    if allowed_seed_ids is None:
+        return True
+    return seed_id in allowed_seed_ids
 
 
 class Persona(BaseModel):
@@ -241,6 +270,27 @@ class Seed(BaseModel):
                 "Secondary scoring_focus dimensions must be diagnostic dimensions: "
                 + ", ".join(non_diagnostic_secondary)
             )
+        focus_llm_dimensions = sorted(
+            dimension_id
+            for dimension_id in [*self.scoring_focus.primary, *self.scoring_focus.secondary]
+            if is_llm_dimension(dimension_id) and dimension_id not in self.judge_dimensions
+        )
+        if focus_llm_dimensions:
+            raise ValueError(
+                "Scoring focus LLM dimensions must be declared in judge_dimensions: "
+                + ", ".join(focus_llm_dimensions)
+            )
+        non_applicable_deterministic = sorted(
+            dimension_id
+            for dimension_id in [*self.scoring_focus.primary, *self.scoring_focus.secondary]
+            if not is_llm_dimension(dimension_id)
+            and not _is_dimension_applicable_to_seed(self.id, self.entry_mode, dimension_id)
+        )
+        if non_applicable_deterministic:
+            raise ValueError(
+                "Deterministic scoring_focus dimensions are not applicable to this seed: "
+                + ", ".join(non_applicable_deterministic)
+            )
         return self
 
 
@@ -346,13 +396,19 @@ class ScoreCard(BaseModel):
     scores: dict[str, DimensionScore] = Field(default_factory=dict)
     overall_assessment: str = ""
     critical_failures: list[str] = Field(default_factory=list)
-    pass_rate: float = 0.0
-    must_pass_met: bool = True
-    user_gate_pass_rate: float = 0.0
-    runtime_gate_pass_rate: float = 0.0
-    diagnostic_pass_rate: float = 0.0
-    user_gate_met: bool = True
-    runtime_gate_met: bool = True
+    pass_rate: float | None = None
+    must_pass_met: bool = False
+    user_gate_pass_rate: float | None = None
+    runtime_gate_pass_rate: float | None = None
+    diagnostic_pass_rate: float | None = None
+    user_gate_met: bool = False
+    runtime_gate_met: bool = False
+    assessed_dimension_count: int = 0
+    user_gate_assessed_count: int = 0
+    runtime_gate_assessed_count: int = 0
+    diagnostic_assessed_count: int = 0
+    execution_status: Literal["completed", "blocked"] = "blocked"
+    blocking_reason: str = ""
     judge_requested_dimensions: list[str] = Field(default_factory=list)
     judge_dimension_definitions: dict[str, str] = Field(default_factory=dict)
     judge_prompt_rendered: str = ""

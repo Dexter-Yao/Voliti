@@ -86,7 +86,12 @@ def filter_seeds(all_seeds: list[SeedLike], selector: str) -> list[SeedLike]:
 @click.option("--verbose", is_flag=True, help="详细日志")
 @click.option("--compare", is_flag=True, help="对多个模型运行相同 seed 并生成对比报告")
 @click.option("--models", default=None, help="逗号分隔的 assistant ID（如 'coach,coach_qwen'）")
-@click.option("--runs", default=1, type=int, help="每个 seed 重复运行次数（统计可靠性）")
+@click.option(
+    "--runs",
+    default=1,
+    type=click.IntRange(min=1),
+    help="每个 seed 重复运行次数（统计可靠性，最小为 1）",
+)
 @click.option(
     "--profile",
     default="lite",
@@ -201,6 +206,9 @@ async def _run(seeds: list[Seed], config: EvalConfig, *, profile: str, runs: int
             judge_fn=judge.score,
             output_dir=str(run_dir),
         )
+        result.config_snapshot["report_output_subdir"] = (
+            run_dir.relative_to(output_dir).as_posix() if run_dir != output_dir else ""
+        )
         _save_results(result, transcripts_dir, scores_dir)
         results.append(result)
 
@@ -253,10 +261,13 @@ async def _run_compare(
                 judge_fn=judge.score,
                 output_dir=str(run_dir),
             )
+            result.config_snapshot["report_output_subdir"] = (
+                run_dir.relative_to(compare_dir / model_id).as_posix()
+            )
             _save_results(result, transcripts_dir, scores_dir)
             model_results.append(result)
 
-        generate_report(model_results[-1], compare_dir / model_id)
+        generate_report(model_results[-1], compare_dir / model_id, run_history=model_results)
         all_results[model_id] = model_results
 
     comparison_path = generate_comparison_report(all_results, config.model_labels, compare_dir)
@@ -294,14 +305,19 @@ def _print_summary(results: list[EvalResult], indent: int = 2) -> None:
     prefix = " " * indent
     for result in results:
         for seed_result in result.seed_results:
-            status = (
-                "✓"
-                if seed_result.score_card.must_pass_met and seed_result.score_card.pass_rate >= 0.7
-                else "!"
+            if seed_result.score_card.execution_status == "blocked":
+                status = "X"
+            else:
+                pass_rate = seed_result.score_card.pass_rate or 0.0
+                status = "✓" if seed_result.score_card.must_pass_met and pass_rate >= 0.7 else "!"
+            pass_rate_label = (
+                f"{seed_result.score_card.pass_rate:.0%}"
+                if seed_result.score_card.pass_rate is not None
+                else "N/A"
             )
             click.echo(
                 f"{prefix}[{status}] {seed_result.seed.id} — "
-                f"pass {seed_result.score_card.pass_rate:.0%} "
+                f"pass {pass_rate_label} "
                 f"must={'✓' if seed_result.score_card.must_pass_met else '✗'} "
                 f"({seed_result.transcript.end_reason})"
             )

@@ -42,12 +42,11 @@ def test_auditor_prompt_includes_user_outcome_and_allowed_variants_constraints()
                 "challenge_rules": [],
                 "stop_rules": {
                     "min_user_turns": 2,
-                    "complete_when": ["metaphor_collaboration_invoked"],
-                    "continue_until": ["metaphor_collaboration_invoked"],
+                    "complete_when": ["user_experiences_same_domain_metaphor_mirroring"],
+                    "continue_until": ["user_experiences_same_domain_metaphor_mirroring"],
                 },
             },
             "judge_dimensions": [
-                "metaphor_collaboration_fit",
                 "metaphor_verbatim_preservation",
                 "source_domain_integrity",
             ],
@@ -55,7 +54,6 @@ def test_auditor_prompt_includes_user_outcome_and_allowed_variants_constraints()
                 "primary": [
                     "intervention_kind_selection",
                     "intervention_metadata_correctness",
-                    "metaphor_collaboration_fit",
                 ],
                 "secondary": [
                     "metaphor_verbatim_preservation",

@@ -68,10 +68,10 @@ auditor_policy:
   stop_rules:
     min_user_turns: 3
     complete_when:
-      - "scenario_rehearsal_invoked"
-      - "if_then_drafted"
+      - "user_receives_a_concrete_scene_rehearsal"
+      - "user_receives_an_if_then_candidate"
     continue_until:
-      - "scenario_rehearsal_invoked"
+      - "user_receives_a_concrete_scene_rehearsal"
 
 expected_artifacts:
   required_keys: []

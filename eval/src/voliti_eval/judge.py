@@ -149,6 +149,7 @@ class Judge:
             return ScoreCard(
                 seed_id=seed.id,
                 overall_assessment="Seed 未声明任何行为维度，Judge 未执行评分。",
+                execution_status="completed",
             )
 
         payload = build_judge_payload(
@@ -197,7 +198,7 @@ class Judge:
             data = json.loads(content)
         except json.JSONDecodeError:
             logger.error("Failed to parse Judge JSON: %s", content[:500])
-            return ScoreCard(seed_id=seed.id, overall_assessment="Judge parse error")
+            raise ValueError("Judge parse error")
 
         scores: dict[str, DimensionScore] = {}
         for dimension_id in requested_dimensions:
@@ -212,6 +213,15 @@ class Judge:
                 score_source="llm",
             )
 
+        missing_dimensions = [
+            dimension_id for dimension_id in requested_dimensions if dimension_id not in scores
+        ]
+        if missing_dimensions:
+            raise ValueError(
+                "Judge returned no usable score for dimensions: "
+                + ", ".join(missing_dimensions)
+            )
+
         pass_rate, must_pass_met = _compute_pass_metrics(scores, seed.scoring_focus.primary)
         return ScoreCard(
             seed_id=seed.id,
@@ -222,6 +232,9 @@ class Judge:
             must_pass_met=must_pass_met,
             user_gate_pass_rate=pass_rate,
             user_gate_met=must_pass_met,
+            assessed_dimension_count=len(scores),
+            user_gate_assessed_count=len(scores),
+            execution_status="completed",
             judge_requested_dimensions=requested_dimensions,
             judge_dimension_definitions={
                 dimension_id: BEHAVIOR_DIMENSIONS[dimension_id]
@@ -366,9 +379,9 @@ def _payload_from_intervention_tool_call(call: ToolCallRecord) -> dict[str, Any]
 def _compute_pass_metrics(
     scores: dict[str, DimensionScore],
     primary_dimensions: list[str],
-) -> tuple[float, bool]:
+) -> tuple[float | None, bool]:
     if not scores:
-        return 0.0, True
+        return None, False
 
     pass_rate = round(sum(1 for score in scores.values() if score.passed) / len(scores), 2)
     primary_set = set(primary_dimensions)

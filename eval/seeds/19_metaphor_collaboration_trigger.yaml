@@ -18,13 +18,14 @@ goal: >
 
 initial_message: "这周每天都在做事，但我感觉自己像一只漏气的气球，再大的事也提不起劲。"
 user_outcome: >
-  用户感到自己的隐喻被准确镜像并被温和推进一步，
-  仍然留在同一源域里，而不是被翻译成技巧或心理学术语。
+  用户感到自己的隐喻被准确镜像，交谈仍然留在同一源域里，
+  而不是被翻译成技巧或心理学术语。
 allowed_good_variants:
   - "只要 stay in the same source domain，就允许 Coach 使用用户后续细化过的隐喻表达。"
   - "Coach 可以从位置、速度、感觉等角度推进隐喻，但不能发明新的源域。"
 manual_review_checks:
   - "人工检查隐喻面板是否像协作探索，而不是文学表演。"
+  - "人工检查这次隐喻协作是否对当前用户真正有帮助；该项刻意不做自动 gate。"
 max_turns: 10
 pre_state:
   profile: |
@@ -41,7 +42,6 @@ expected_behaviors:
   must:
     - "调用 fan_out_metaphor_collaboration 工具（而非通用 fan_out）"
     - "干预 payload.metadata 包含 surface=intervention 且 intervention_kind=metaphor-collaboration"
-    - "干预文本留在同一隐喻源域内，并对当前用户时刻形成有帮助的镜像深化"
   should:
     - "question 使用 Clean-Language 式发问，保持在气球/漏气的源域内"
     - "不使用 slider / select / multi_select / number_input 等结构化控件"
@@ -64,10 +64,9 @@ auditor_policy:
   stop_rules:
     min_user_turns: 2
     complete_when:
-      - "metaphor_collaboration_invoked"
-      - "metaphor_recorded_to_coach_memory"
+      - "user_experiences_same_domain_metaphor_mirroring"
     continue_until:
-      - "metaphor_collaboration_invoked"
+      - "user_experiences_same_domain_metaphor_mirroring"
 
 expected_artifacts:
   required_keys: []
@@ -78,7 +77,6 @@ expected_artifacts:
   minimum_dataset: "none"
 
 judge_dimensions:
-  - "metaphor_collaboration_fit"
   - "metaphor_verbatim_preservation"
   - "source_domain_integrity"
 
@@ -86,7 +84,6 @@ scoring_focus:
   primary:
     - "intervention_kind_selection"
     - "intervention_metadata_correctness"
-    - "metaphor_collaboration_fit"
   secondary:
     - "metaphor_verbatim_preservation"
     - "source_domain_integrity"

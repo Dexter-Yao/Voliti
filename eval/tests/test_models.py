@@ -245,3 +245,81 @@ def test_seed_rejects_secondary_dimensions_that_are_not_diagnostics() -> None:
                 },
             }
         )
+
+
+def test_seed_rejects_llm_gate_in_primary_when_judge_does_not_score_it() -> None:
+    with pytest.raises(ValueError, match="Scoring focus LLM dimensions must be declared in judge_dimensions"):
+        Seed.model_validate(
+            {
+                "id": "17_future_self_dialogue_trigger",
+                "name": "Future self dialogue",
+                "description": "Primary LLM dimensions must be judged.",
+                "entry_mode": "coaching",
+                "persona": {
+                    "name": "砚舟",
+                    "background": "identity drift",
+                    "personality": "克制",
+                    "language": "zh",
+                },
+                "goal": "Trigger the intervention.",
+                "initial_message": "我不知道自己想成为什么样的人了。",
+                "user_outcome": "用户感到当前困惑被接住，并进入一次未来自我对话。",
+                "allowed_good_variants": ["Coach 可以先接住状态，再进入未来自我问句。"],
+                "manual_review_checks": ["人工检查面板语气是否自然。"],
+                "auditor_policy": {
+                    "latent_facts": [],
+                    "reveal_rules": [],
+                    "a2ui_plan": [],
+                    "challenge_rules": [],
+                    "stop_rules": {
+                        "min_user_turns": 3,
+                        "complete_when": ["user_enters_a_future_self_dialogue_frame"],
+                        "continue_until": ["user_enters_a_future_self_dialogue_frame"],
+                    },
+                },
+                "judge_dimensions": [],
+                "scoring_focus": {
+                    "primary": ["coach_state_before_strategy"],
+                    "secondary": [],
+                },
+            }
+        )
+
+
+def test_seed_rejects_deterministic_dimension_that_is_not_applicable() -> None:
+    with pytest.raises(ValueError, match="Deterministic scoring_focus dimensions are not applicable to this seed"):
+        Seed.model_validate(
+            {
+                "id": "17_future_self_dialogue_trigger",
+                "name": "Future self dialogue",
+                "description": "Conditional deterministic dimensions must match the seed.",
+                "entry_mode": "coaching",
+                "persona": {
+                    "name": "砚舟",
+                    "background": "identity drift",
+                    "personality": "克制",
+                    "language": "zh",
+                },
+                "goal": "Trigger the intervention.",
+                "initial_message": "我不知道自己想成为什么样的人了。",
+                "user_outcome": "用户感到当前困惑被接住，并进入一次未来自我对话。",
+                "allowed_good_variants": ["Coach 可以先接住状态，再进入未来自我问句。"],
+                "manual_review_checks": ["人工检查面板语气是否自然。"],
+                "auditor_policy": {
+                    "latent_facts": [],
+                    "reveal_rules": [],
+                    "a2ui_plan": [],
+                    "challenge_rules": [],
+                    "stop_rules": {
+                        "min_user_turns": 3,
+                        "complete_when": ["user_enters_a_future_self_dialogue_frame"],
+                        "continue_until": ["user_enters_a_future_self_dialogue_frame"],
+                    },
+                },
+                "judge_dimensions": ["coach_state_before_strategy"],
+                "scoring_focus": {
+                    "primary": ["intervention_scene_anchor_present"],
+                    "secondary": [],
+                },
+            }
+        )

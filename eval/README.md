@@ -66,6 +66,15 @@ Judge 负责：
 - 只评分模型拥有的、用户可感知的行为与文本
 - 允许多个合理好解
 - intervention 场景只评模型生成文本，不评 UI 呈现与布局
+- 不把无法稳定判断的“深层帮助感”强行变成正式 gate
+
+以下内容刻意不做自动 gate，统一进入 `Manual Follow-up`：
+
+- Future Self 对话是否真正有帮助
+- Metaphor Collaboration 是否真正形成有帮助的隐喻协作
+- UI / 布局 / 视觉 / 语气审美
+
+这些部分不会通过 RAG 或额外检索被强行补判，而是直接进入人工复核。
 
 ## 维度通道
 
@@ -79,7 +88,6 @@ Judge 负责：
 - `coach_action_transparency`
 - `coach_safety_and_grounded_guidance`
 - `if_then_quality`
-- `metaphor_collaboration_fit`
 - `reframe_text_fit`
 
 ### Runtime Contract Gate
@@ -197,21 +205,27 @@ uv run python -m voliti_eval --dry-run --profile full
 
 单模型报告固定顺序为：
 
-1. `User Gate Summary`
-2. `Runtime Contract Summary`
-3. `Diagnostics Summary`
-4. `Seed Detail`
-5. `Manual Review Appendix`
+1. `Execution Blockers`
+2. `User Gate Summary`
+3. `Runtime Contract Summary`
+4. `Diagnostics Summary`
+5. `Seed Detail`
+6. `Manual Review Appendix`
 
 其中：
 
 - 正式放行只看 User Gate 与 Runtime Contract Gate
 - Diagnostics 只看诊断，不阻断
 - Manual Appendix 只承接人工复核，不参与 pass/fail
+- `BLOCKED` 表示运行或评分过程中出现阻断，本次正式 gate 直接不通过
+- `N/A` 表示该通道本次未被评估，不等于失败
+- `Manual Follow-up` 表示这部分刻意不做自动评估，需要人工复核
 
 每个 seed 详情会包含：
 
 - 结果摘要
+- Latest run detail
+- What was intentionally not auto-scored
 - 为什么过 / 为什么没过
 - 核心证据 turn
 - Diagnostic findings

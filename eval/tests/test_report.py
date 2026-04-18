@@ -95,7 +95,7 @@ def _make_seed_result(
             },
         }
     )
-    user_gate_ids = {"coach_state_before_strategy", "coach_action_transparency", "metaphor_collaboration_fit"}
+    user_gate_ids = {"coach_state_before_strategy", "coach_action_transparency", "reframe_text_fit"}
     runtime_gate_ids = {"contract_onboarding_artifacts", "intervention_kind_selection", "intervention_metadata_correctness", "intervention_scene_anchor_present", "reframe_verdict_component_present", "contract_a2ui"}
     user_gate_scores = [score for dim_id, score in scores.items() if dim_id in user_gate_ids]
     runtime_gate_scores = [score for dim_id, score in scores.items() if dim_id in runtime_gate_ids]
@@ -116,9 +116,14 @@ def _make_seed_result(
             must_pass_met=all(score.passed for score in user_gate_scores + runtime_gate_scores),
             user_gate_met=all(score.passed for score in user_gate_scores) if user_gate_scores else True,
             runtime_gate_met=all(score.passed for score in runtime_gate_scores) if runtime_gate_scores else True,
-            user_gate_pass_rate=round(sum(1 for item in user_gate_scores if item.passed) / len(user_gate_scores), 2) if user_gate_scores else 0.0,
-            runtime_gate_pass_rate=round(sum(1 for item in runtime_gate_scores if item.passed) / len(runtime_gate_scores), 2) if runtime_gate_scores else 0.0,
-            diagnostic_pass_rate=round(sum(1 for item in diagnostic_scores if item.passed) / len(diagnostic_scores), 2) if diagnostic_scores else 0.0,
+            user_gate_pass_rate=round(sum(1 for item in user_gate_scores if item.passed) / len(user_gate_scores), 2) if user_gate_scores else None,
+            runtime_gate_pass_rate=round(sum(1 for item in runtime_gate_scores if item.passed) / len(runtime_gate_scores), 2) if runtime_gate_scores else None,
+            diagnostic_pass_rate=round(sum(1 for item in diagnostic_scores if item.passed) / len(diagnostic_scores), 2) if diagnostic_scores else None,
+            assessed_dimension_count=len(scores),
+            user_gate_assessed_count=len(user_gate_scores),
+            runtime_gate_assessed_count=len(runtime_gate_scores),
+            diagnostic_assessed_count=len(diagnostic_scores),
+            execution_status="completed",
             judge_requested_dimensions=["coach_state_before_strategy"],
             judge_dimension_definitions={
                 "coach_state_before_strategy": "Understand state before strategy.",
@@ -199,7 +204,7 @@ def test_build_comparison_summary_reports_dual_pass_axes() -> None:
     coach_summary = summary["model_summaries"][0]
     assert coach_summary["runtime_gate_pass_rate"] == 1.0
     assert coach_summary["user_gate_pass_rate"] == 0.0
-    assert coach_summary["diagnostic_pass_rate"] == 0.0
+    assert coach_summary["diagnostic_pass_rate"] is None
 
 
 def test_generate_reports_render_html_files(tmp_path) -> None:
@@ -380,6 +385,7 @@ def test_generate_report_orders_user_runtime_diagnostic_sections_first(tmp_path)
     report_path = generate_report(run, tmp_path / "single")
     html = report_path.read_text(encoding="utf-8")
 
+    assert html.index("Execution Blockers") < html.index("User Gate Summary")
     assert html.index("User Gate Summary") < html.index("Runtime Contract Summary")
     assert html.index("Runtime Contract Summary") < html.index("Diagnostics Summary")
     assert html.index("Diagnostics Summary") < html.index("Seed Detail")
@@ -401,9 +407,9 @@ def test_build_report_context_includes_manual_review_appendix() -> None:
                 _make_seed_result(
                     "19_metaphor_collaboration_trigger",
                     {
-                        "metaphor_collaboration_fit": DimensionScore(
+                        "source_domain_integrity": DimensionScore(
                             passed=True,
-                            justification="Stayed in the same source domain and moved the user forward.",
+                            justification="Stayed in the same source domain.",
                             score_source="llm",
                         ),
                     },
@@ -416,3 +422,86 @@ def test_build_report_context_includes_manual_review_appendix() -> None:
     seed_row = context["seed_rows"][0]
 
     assert seed_row["manual_review_checks"] == ["人工检查界面呈现是否自然。"]
+    assert seed_row["manual_follow_up_notes"] == [
+        "隐喻协作是否真正有帮助，当前刻意不做自动 gate，需人工复核。"
+    ]
+
+
+def test_build_report_context_tracks_blocked_seed_and_na_rates() -> None:
+    seed_result = _make_seed_result(
+        "17_future_self_dialogue_trigger",
+        {
+            "coach_state_before_strategy": DimensionScore(
+                passed=True,
+                justification="先接住了状态。",
+                score_source="llm",
+            ),
+        },
+    )
+    seed_result.score_card.execution_status = "blocked"
+    seed_result.score_card.blocking_reason = "Judge parse error"
+    seed_result.score_card.must_pass_met = False
+    seed_result.score_card.user_gate_met = False
+    seed_result.score_card.runtime_gate_met = False
+    seed_result.score_card.pass_rate = None
+    seed_result.score_card.user_gate_pass_rate = None
+    seed_result.score_card.runtime_gate_pass_rate = None
+    seed_result.score_card.diagnostic_pass_rate = None
+
+    run = EvalResult(
+        run_id="run_007",
+        started_at="2026-04-17T00:00:00Z",
+        seed_results=[seed_result],
+    )
+
+    context = build_report_context(run)
+
+    assert context["summary"]["execution_blocker_count"] == 1
+    assert context["seed_rows"][0]["execution_status"] == "blocked"
+    assert context["seed_rows"][0]["pass_rate"] is None
+    assert context["execution_blocker_rows"][0]["blocking_reason"] == "Judge parse error"
+
+
+def test_build_report_context_includes_run_history_paths_for_manual_review() -> None:
+    failing = _make_seed_result(
+        "20_cognitive_reframing_trigger",
+        {
+            "reframe_text_fit": DimensionScore(
+                passed=False,
+                justification="候选新读法仍然太空泛。",
+                failure_severity="notable",
+                score_source="llm",
+            ),
+        },
+    )
+    passing = _make_seed_result(
+        "20_cognitive_reframing_trigger",
+        {
+            "reframe_text_fit": DimensionScore(
+                passed=True,
+                justification="候选新读法具体且可用。",
+                score_source="llm",
+            ),
+        },
+    )
+    first_run = EvalResult(
+        run_id="run_fail",
+        started_at="2026-04-17T00:00:00Z",
+        config_snapshot={"report_output_subdir": "run_1"},
+        seed_results=[failing],
+    )
+    second_run = EvalResult(
+        run_id="run_pass",
+        started_at="2026-04-17T00:05:00Z",
+        config_snapshot={"report_output_subdir": "run_2"},
+        seed_results=[passing],
+    )
+
+    context = build_report_context(second_run, run_history=[first_run, second_run])
+    seed_row = context["seed_rows"][0]
+
+    assert seed_row["gate_flaky"] is True
+    assert seed_row["latest_run"]["run_id"] == "run_pass"
+    assert seed_row["run_history"][0]["transcript_path"] == "run_1/transcripts/20_cognitive_reframing_trigger.json"
+    assert seed_row["run_history"][0]["score_path"] == "run_1/scores/20_cognitive_reframing_trigger.json"
+    assert seed_row["run_history"][1]["transcript_path"] == "run_2/transcripts/20_cognitive_reframing_trigger.json"

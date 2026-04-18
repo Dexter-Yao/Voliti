@@ -18,13 +18,14 @@ goal: >
 
 initial_message: "最近每天都在执行，但我说不清这一切到底是为了什么。我也不知道我到底想成为什么样的人了。"
 user_outcome: >
-  用户感到当前 identity drift 被准确接住，并被引入一次真正有帮助的未来自我对话，
+  用户感到当前 identity drift 被准确接住，并被引入一次与未来自我相关的对话入口，
   而不是继续停留在抽象说教里。
 allowed_good_variants:
   - "Coach 可以先简短镜像当前迷失感，再进入未来自我问句。"
   - "Coach 可以引用用户已有 identity 或长程锚点，但不能虚构一个理想身份。"
 manual_review_checks:
   - "人工检查未来自我面板是否像邀请，而不是价值审判。"
+  - "人工检查未来自我对话是否对当前用户真实有帮助；该项刻意不做自动 gate。"
 max_turns: 12
 pre_state:
   profile: |
@@ -65,9 +66,9 @@ auditor_policy:
   stop_rules:
     min_user_turns: 3
     complete_when:
-      - "future_self_dialogue_invoked"
+      - "user_enters_a_future_self_dialogue_frame"
     continue_until:
-      - "future_self_dialogue_invoked"
+      - "user_enters_a_future_self_dialogue_frame"
 
 expected_artifacts:
   required_keys: []

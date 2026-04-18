@@ -236,16 +236,6 @@ DIMENSION_SPECS: dict[str, DimensionSpec] = dict(
             score_source="llm",
         ),
         _spec(
-            "metaphor_collaboration_fit",
-            """
-            Score only the model-generated intervention text. Pass when the coach mirrors and deepens
-            the user's metaphor in a way that feels helpful now, while staying inside the same source domain.
-            Do not require anchoring to the user's very first phrase if the user later deepens the same metaphor.
-            """,
-            lane="user_gate",
-            score_source="llm",
-        ),
-        _spec(
             "metaphor_verbatim_preservation",
             """
             Score only the model-generated intervention text. Pass when the coach preserves the user's

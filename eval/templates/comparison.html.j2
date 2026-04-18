@@ -89,6 +89,7 @@
       <tr>
         <th>模型</th>
         <th>运行次数</th>
+        <th>Blocked</th>
         <th>总体通过率</th>
         <th>硬契约通过率</th>
         <th>行为维度通过率</th>
@@ -100,10 +101,11 @@
       <tr>
         <td>{{ row.label }}</td>
         <td>{{ row.run_count }}</td>
-        <td>{{ (row.overall_pass_rate * 100) | round | int }}%</td>
-        <td>{{ (row.contract_pass_rate * 100) | round | int }}%</td>
-        <td>{{ (row.behavior_pass_rate * 100) | round | int }}%</td>
-        <td>{{ (row.must_pass_rate * 100) | round | int }}%</td>
+        <td>{{ row.blocked_count }}</td>
+        <td>{{ row.overall_pass_rate | display_percent }}</td>
+        <td>{{ row.contract_pass_rate | display_percent }}</td>
+        <td>{{ row.behavior_pass_rate | display_percent }}</td>
+        <td>{{ row.must_pass_rate | display_percent }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -125,9 +127,10 @@
         <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
         {% for model in row.models %}
         <td>
-          <div>overall={{ (model.average_pass_rate * 100) | round | int }}%</div>
-          <div>contract={{ (model.contract_pass_rate * 100) | round | int }}%</div>
-          <div>behavior={{ (model.behavior_pass_rate * 100) | round | int }}%</div>
+          <div>overall={{ model.average_pass_rate | display_percent }}</div>
+          <div>contract={{ model.contract_pass_rate | display_percent }}</div>
+          <div>behavior={{ model.behavior_pass_rate | display_percent }}</div>
+          <div>blocked={{ model.blocked_count }}</div>
         </td>
         {% endfor %}
       </tr>
@@ -155,7 +158,7 @@
         <td>{{ row.score_source }}</td>
         {% for model in row.models %}
         <td>
-          {{ (model.pass_rate * 100) | round | int }}%
+          {{ model.pass_rate | display_percent }}
           <div class="mono">{{ model.pass_count }}/{{ model.total_count }}</div>
         </td>
         {% endfor %}
@@ -176,18 +179,24 @@
         <thead>
           <tr>
             <th>Run</th>
+            <th>Status</th>
             <th>Pass Rate</th>
             <th>Must-Pass</th>
             <th>End Reason</th>
+            <th>Transcript</th>
+            <th>Score</th>
           </tr>
         </thead>
         <tbody>
           {% for run in model.runs %}
           <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ (run.pass_rate * 100) | round | int }}%</td>
-            <td>{% if run.must_pass_met %}YES{% else %}NO{% endif %}</td>
+            <td>{{ run.run_id }}</td>
+            <td>{% if run.execution_status == "blocked" %}BLOCKED{% else %}COMPLETED{% endif %}</td>
+            <td>{{ run.pass_rate | display_percent }}</td>
+            <td>{% if run.execution_status == "blocked" %}BLOCKED{% elif run.must_pass_met %}YES{% else %}NO{% endif %}</td>
             <td>{{ run.end_reason }}</td>
+            <td class="mono">{{ run.transcript_path }}</td>
+            <td class="mono">{{ run.score_path }}</td>
           </tr>
           {% endfor %}
         </tbody>

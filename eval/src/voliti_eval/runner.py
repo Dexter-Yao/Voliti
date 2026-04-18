@@ -84,10 +84,13 @@ def assemble_score_card(
     judge_dimension_definitions: dict[str, str] | None = None,
     judge_prompt_rendered: str = "",
 ) -> ScoreCard:
-    def _lane_pass_rate(predicate: Any) -> float:
-        lane_scores = [score for dimension_id, score in scores.items() if predicate(dimension_id)]
+    def _lane_scores(predicate: Any) -> list[DimensionScore]:
+        return [score for dimension_id, score in scores.items() if predicate(dimension_id)]
+
+    def _lane_pass_rate(predicate: Any) -> float | None:
+        lane_scores = _lane_scores(predicate)
         if not lane_scores:
-            return 0.0
+            return None
         return round(sum(1 for score in lane_scores if score.passed) / len(lane_scores), 2)
 
     def _lane_met(predicate: Any) -> bool:
@@ -102,6 +105,9 @@ def assemble_score_card(
     scores = {**deterministic_scores, **llm_scores}
     user_gate_met = _lane_met(is_user_gate_dimension)
     runtime_gate_met = _lane_met(is_runtime_gate_dimension)
+    user_gate_scores = _lane_scores(is_user_gate_dimension)
+    runtime_gate_scores = _lane_scores(is_runtime_gate_dimension)
+    diagnostic_scores = _lane_scores(is_diagnostic_dimension)
     if not scores:
         return ScoreCard(
             seed_id=seed_id,
@@ -109,6 +115,11 @@ def assemble_score_card(
             must_pass_met=user_gate_met and runtime_gate_met,
             user_gate_met=user_gate_met,
             runtime_gate_met=runtime_gate_met,
+            assessed_dimension_count=0,
+            user_gate_assessed_count=0,
+            runtime_gate_assessed_count=0,
+            diagnostic_assessed_count=0,
+            execution_status="completed",
             judge_requested_dimensions=judge_requested_dimensions or [],
             judge_dimension_definitions=judge_dimension_definitions or {},
             judge_prompt_rendered=judge_prompt_rendered,
@@ -133,6 +144,11 @@ def assemble_score_card(
         diagnostic_pass_rate=_lane_pass_rate(is_diagnostic_dimension),
         user_gate_met=user_gate_met,
         runtime_gate_met=runtime_gate_met,
+        assessed_dimension_count=len(scores),
+        user_gate_assessed_count=len(user_gate_scores),
+        runtime_gate_assessed_count=len(runtime_gate_scores),
+        diagnostic_assessed_count=len(diagnostic_scores),
+        execution_status="completed",
         judge_requested_dimensions=judge_requested_dimensions or [],
         judge_dimension_definitions=judge_dimension_definitions or {},
         judge_prompt_rendered=judge_prompt_rendered,
@@ -165,6 +181,13 @@ def _extract_structured_blocks(text: str) -> tuple[str, dict | None, list[str] |
         text = text[:match.start()] + text[match.end():]
 
     return text.strip(), thinking, replies
+
+
+def _format_blocking_reason(exc: Exception) -> str:
+    message = str(exc).strip()
+    if message:
+        return message
+    return exc.__class__.__name__
 
 
 def _save_image_to_file(data_url: str, output_dir: str, filename: str) -> str | None:
@@ -395,8 +418,14 @@ async def _run_single_seed(
             judge_dimension_definitions=llm_score_card.judge_dimension_definitions if judge_fn is not None else {},
             judge_prompt_rendered=llm_score_card.judge_prompt_rendered if judge_fn is not None else "",
         )
-    except Exception:
+    except Exception as exc:
         logger.exception("[%s] Failed", seed.id)
+        score_card = ScoreCard(
+            seed_id=seed.id,
+            overall_assessment="Seed 运行被阻断，未完成评分。",
+            execution_status="blocked",
+            blocking_reason=_format_blocking_reason(exc),
+        )
         if transcript is None:
             transcript = Transcript(
                 seed_id=seed.id,

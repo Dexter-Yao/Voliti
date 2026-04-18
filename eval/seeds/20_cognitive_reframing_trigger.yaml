@@ -25,6 +25,7 @@ allowed_good_variants:
   - "Coach 可以先点出等号，再给 2-3 个候选新读法，只要不变成鸡汤安慰。"
 manual_review_checks:
   - "人工检查 reframing 面板是否足够锋利但不显得说教。"
+  - "人工检查候选新读法是否对当前用户真实可用；该项不以界面审美作为自动 gate。"
 max_turns: 12
 pre_state:
   profile: |
@@ -45,7 +46,6 @@ expected_behaviors:
   must:
     - "调用 fan_out_cognitive_reframing 工具（而非通用 fan_out）"
     - "干预 payload.metadata 包含 surface=intervention 且 intervention_kind=cognitive-reframing"
-    - "payload 包含 ProtocolPromptComponent 其 observation 逐字引用用户原话"
     - "payload 包含一个紧随 ProtocolPrompt 的 TextComponent，用自然语言点明'这句话其实在说……'"
   should:
     - "提供 2-3 个候选新框作为 SelectComponent 的 options，并附加一个 TextInputComponent 供用户自写"
@@ -68,10 +68,10 @@ auditor_policy:
   stop_rules:
     min_user_turns: 3
     complete_when:
-      - "cognitive_reframing_invoked"
-      - "implicit_verdict_surfaced"
+      - "user_receives_non_generic_reframing_option"
+      - "user_sees_the_hidden_equation_named"
     continue_until:
-      - "cognitive_reframing_invoked"
+      - "user_receives_non_generic_reframing_option"
 
 expected_artifacts:
   required_keys: []

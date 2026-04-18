@@ -6,10 +6,10 @@ from __future__ import annotations
 import html
 import json
 import logging
-from pathlib import Path
 import re
 from statistics import mean
 from typing import Any
+from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
@@ -36,6 +36,12 @@ _BLOCKQUOTE_RE = re.compile(r"^>\s?(.*)$")
 
 def _pretty_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2)
+
+
+def _display_percent(value: float | None) -> str:
+    if value is None:
+        return "N/A"
+    return f"{round(value * 100)}%"
 
 
 def _render_inline_markdown(text: str) -> str:
@@ -157,10 +163,52 @@ def _score_payload(dimension_id: str, score: DimensionScore) -> dict[str, Any]:
     }
 
 
-def _pass_rate(scores: list[DimensionScore]) -> float:
+def _pass_rate(scores: list[DimensionScore]) -> float | None:
     if not scores:
-        return 0.0
+        return None
     return round(sum(1 for score in scores if score.passed) / len(scores), 2)
+
+
+def _mean_defined(values: list[float | None]) -> float | None:
+    defined = [value for value in values if value is not None]
+    if not defined:
+        return None
+    return round(mean(defined), 2)
+
+
+def _run_output_paths(run: EvalResult, seed_id: str) -> tuple[str, str]:
+    subdir = str(run.config_snapshot.get("report_output_subdir", "")).strip("/")
+    prefix = f"{subdir}/" if subdir else ""
+    return (
+        f"{prefix}transcripts/{seed_id}.json",
+        f"{prefix}scores/{seed_id}.json",
+    )
+
+
+def _manual_follow_up_notes(seed_result: SeedResult) -> list[str]:
+    notes: list[str] = []
+    if seed_result.seed.id == "17_future_self_dialogue_trigger":
+        notes.append("Future Self 对话是否真正有帮助，当前刻意不做自动 gate，需人工复核。")
+    if seed_result.seed.id == "19_metaphor_collaboration_trigger":
+        notes.append("隐喻协作是否真正有帮助，当前刻意不做自动 gate，需人工复核。")
+    return notes
+
+
+def _build_run_snapshot(run: EvalResult, seed_result: SeedResult) -> dict[str, Any]:
+    transcript_path, score_path = _run_output_paths(run, seed_result.seed.id)
+    return {
+        "run_id": run.run_id,
+        "execution_status": seed_result.score_card.execution_status,
+        "blocking_reason": seed_result.score_card.blocking_reason,
+        "pass_rate": seed_result.score_card.pass_rate,
+        "user_gate_met": seed_result.score_card.user_gate_met,
+        "runtime_gate_met": seed_result.score_card.runtime_gate_met,
+        "must_pass_met": seed_result.score_card.must_pass_met,
+        "gate_pass_k": seed_result.score_card.must_pass_met,
+        "end_reason": seed_result.transcript.end_reason,
+        "transcript_path": transcript_path,
+        "score_path": score_path,
+    }
 
 
 def _build_relevant_final_files(seed_result: SeedResult) -> list[dict[str, str]]:
@@ -242,13 +290,19 @@ def _build_seed_row(seed_result: SeedResult) -> dict[str, Any]:
         "entry_mode": seed_result.seed.entry_mode,
         "turn_count": seed_result.transcript.turn_count,
         "end_reason": seed_result.transcript.end_reason,
-        "pass_rate_pct": round(seed_result.score_card.pass_rate * 100),
+        "execution_status": seed_result.score_card.execution_status,
+        "blocking_reason": seed_result.score_card.blocking_reason,
+        "pass_rate": seed_result.score_card.pass_rate,
         "user_gate_pass_rate": seed_result.score_card.user_gate_pass_rate,
         "runtime_gate_pass_rate": seed_result.score_card.runtime_gate_pass_rate,
         "diagnostic_pass_rate": seed_result.score_card.diagnostic_pass_rate,
         "must_pass_met": seed_result.score_card.must_pass_met,
         "user_gate_met": seed_result.score_card.user_gate_met,
         "runtime_gate_met": seed_result.score_card.runtime_gate_met,
+        "assessed_dimension_count": seed_result.score_card.assessed_dimension_count,
+        "user_gate_assessed_count": seed_result.score_card.user_gate_assessed_count,
+        "runtime_gate_assessed_count": seed_result.score_card.runtime_gate_assessed_count,
+        "diagnostic_assessed_count": seed_result.score_card.diagnostic_assessed_count,
         "overall_assessment": seed_result.score_card.overall_assessment,
         "critical_failures": seed_result.score_card.critical_failures,
         "failed_dimension_ids": failed_dimension_ids,
@@ -267,6 +321,7 @@ def _build_seed_row(seed_result: SeedResult) -> dict[str, Any]:
         "user_outcome": seed_result.seed.user_outcome,
         "allowed_good_variants": seed_result.seed.allowed_good_variants,
         "manual_review_checks": seed_result.seed.manual_review_checks,
+        "manual_follow_up_notes": _manual_follow_up_notes(seed_result),
         "judge_requested_dimensions": seed_result.score_card.judge_requested_dimensions,
         "judge_dimension_definitions": seed_result.score_card.judge_dimension_definitions,
         "judge_prompt_rendered": seed_result.score_card.judge_prompt_rendered,
@@ -319,17 +374,13 @@ def _build_stability_context(run_history: list[EvalResult]) -> dict[str, Any] | 
         "flake_count": flake_count,
         "per_seed_runs": {
             seed_id: [
-                {
-                    "run_id": run_id,
-                    "pass_rate": seed_result.score_card.pass_rate,
-                    "user_gate_met": seed_result.score_card.user_gate_met,
-                    "runtime_gate_met": seed_result.score_card.runtime_gate_met,
-                    "must_pass_met": seed_result.score_card.must_pass_met,
-                    "end_reason": seed_result.transcript.end_reason,
-                }
-                for run_id, seed_result in seed_runs
+                _build_run_snapshot(run, seed_result)
+                for run in run_history
+                for current_seed_result in run.seed_results
+                if current_seed_result.seed.id == seed_id
+                for seed_result in [current_seed_result]
             ]
-            for seed_id, seed_runs in per_seed_runs.items()
+            for seed_id in per_seed_runs
         },
     }
 
@@ -342,13 +393,17 @@ def build_report_context(eval_result: EvalResult, *, run_history: list[EvalResul
         for row in seed_rows:
             history_rows = stability["per_seed_runs"].get(row["seed_id"], [])
             row["run_history"] = history_rows
-            row["gate_flaky"] = len({item["must_pass_met"] for item in history_rows}) > 1
+            row["latest_run"] = history_rows[-1] if history_rows else None
+            row["gate_flaky"] = len(
+                {(item["execution_status"], item["must_pass_met"]) for item in history_rows}
+            ) > 1
             row["gate_pass_k"] = any(item["must_pass_met"] for item in history_rows)
     else:
         for row in seed_rows:
             row["run_history"] = []
             row["gate_flaky"] = False
             row["gate_pass_k"] = row["must_pass_met"]
+            row["latest_run"] = _build_run_snapshot(eval_result, row["seed_result"])
 
     all_scores = [
         score
@@ -361,6 +416,9 @@ def build_report_context(eval_result: EvalResult, *, run_history: list[EvalResul
     user_gate_failures = [row for row in seed_rows if row["user_gate_failures"]]
     runtime_gate_failures = [row for row in seed_rows if row["runtime_gate_failures"]]
     diagnostic_failures = [row for row in seed_rows if row["diagnostic_failures"]]
+    execution_blocker_rows = [
+        row for row in seed_rows if row["execution_status"] == "blocked"
+    ]
 
     return {
         "run_id": eval_result.run_id,
@@ -376,12 +434,14 @@ def build_report_context(eval_result: EvalResult, *, run_history: list[EvalResul
             "user_gate_pass_rate": _pass_rate(user_gate_scores),
             "runtime_gate_pass_rate": _pass_rate(runtime_gate_scores),
             "diagnostic_pass_rate": _pass_rate(diagnostic_scores),
+            "execution_blocker_count": len(execution_blocker_rows),
             "user_gate_failure_count": sum(len(row["user_gate_failures"]) for row in seed_rows),
             "runtime_gate_failure_count": sum(len(row["runtime_gate_failures"]) for row in seed_rows),
             "diagnostic_failure_count": sum(len(row["diagnostic_failures"]) for row in seed_rows),
             "must_pass_success_count": sum(1 for row in seed_rows if row["must_pass_met"]),
         },
         "seed_rows": seed_rows,
+        "execution_blocker_rows": execution_blocker_rows,
         "user_gate_failure_rows": user_gate_failures,
         "runtime_gate_failure_rows": runtime_gate_failures,
         "diagnostic_failure_rows": diagnostic_failures,
@@ -416,26 +476,32 @@ def build_comparison_summary(
             for run in results[model_id]
             for seed_result in run.seed_results
         ]
+        completed_seed_results = [
+            seed_result for seed_result in seed_results if seed_result.score_card.execution_status == "completed"
+        ]
+        blocked_seed_results = [
+            seed_result for seed_result in seed_results if seed_result.score_card.execution_status == "blocked"
+        ]
         all_scores = [
             score
-            for seed_result in seed_results
+            for seed_result in completed_seed_results
             for score in seed_result.score_card.scores.values()
         ]
         user_gate_scores = [
             score
-            for seed_result in seed_results
+            for seed_result in completed_seed_results
             for dimension_id, score in seed_result.score_card.scores.items()
             if is_user_gate_dimension(dimension_id)
         ]
         runtime_gate_scores = [
             score
-            for seed_result in seed_results
+            for seed_result in completed_seed_results
             for dimension_id, score in seed_result.score_card.scores.items()
             if is_runtime_gate_dimension(dimension_id)
         ]
         diagnostic_scores = [
             score
-            for seed_result in seed_results
+            for seed_result in completed_seed_results
             for dimension_id, score in seed_result.score_card.scores.items()
             if is_diagnostic_dimension(dimension_id)
         ]
@@ -450,19 +516,19 @@ def build_comparison_summary(
                 "diagnostic_pass_rate": _pass_rate(diagnostic_scores),
                 "contract_pass_rate": _pass_rate(runtime_gate_scores),
                 "behavior_pass_rate": _pass_rate(user_gate_scores),
-                "must_pass_rate": round(
-                    sum(1 for seed_result in seed_results if seed_result.score_card.must_pass_met)
-                    / len(seed_results),
-                    2,
-                )
-                if seed_results
-                else 0.0,
-                "average_seed_pass_rate": round(
-                    mean(seed_result.score_card.pass_rate for seed_result in seed_results),
-                    2,
-                )
-                if seed_results
-                else 0.0,
+                "blocked_count": len(blocked_seed_results),
+                "must_pass_rate": (
+                    round(
+                        sum(1 for seed_result in completed_seed_results if seed_result.score_card.must_pass_met)
+                        / len(completed_seed_results),
+                        2,
+                    )
+                    if completed_seed_results
+                    else None
+                ),
+                "average_seed_pass_rate": _mean_defined(
+                    [seed_result.score_card.pass_rate for seed_result in completed_seed_results]
+                ),
             }
         )
 
@@ -476,21 +542,26 @@ def build_comparison_summary(
                 for seed_result in run.seed_results
                 if seed_result.seed.id == seed_id
             ]
+            completed_matching = [
+                (run_id, seed_result)
+                for run_id, seed_result in matching
+                if seed_result.score_card.execution_status == "completed"
+            ]
             user_gate_scores = [
                 score
-                for _, seed_result in matching
+                for _, seed_result in completed_matching
                 for dimension_id, score in seed_result.score_card.scores.items()
                 if is_user_gate_dimension(dimension_id)
             ]
             runtime_gate_scores = [
                 score
-                for _, seed_result in matching
+                for _, seed_result in completed_matching
                 for dimension_id, score in seed_result.score_card.scores.items()
                 if is_runtime_gate_dimension(dimension_id)
             ]
             diagnostic_scores = [
                 score
-                for _, seed_result in matching
+                for _, seed_result in completed_matching
                 for dimension_id, score in seed_result.score_card.scores.items()
                 if is_diagnostic_dimension(dimension_id)
             ]
@@ -498,25 +569,37 @@ def build_comparison_summary(
                 {
                     "model_id": model_id,
                     "label": model_labels.get(model_id, model_id),
-                    "average_pass_rate": round(
-                        mean(seed_result.score_card.pass_rate for _, seed_result in matching),
-                        2,
-                    )
-                    if matching
-                    else 0.0,
+                    "average_pass_rate": _mean_defined(
+                        [seed_result.score_card.pass_rate for _, seed_result in completed_matching]
+                    ),
                     "user_gate_pass_rate": _pass_rate(user_gate_scores),
                     "runtime_gate_pass_rate": _pass_rate(runtime_gate_scores),
                     "diagnostic_pass_rate": _pass_rate(diagnostic_scores),
                     "contract_pass_rate": _pass_rate(runtime_gate_scores),
                     "behavior_pass_rate": _pass_rate(user_gate_scores),
+                    "blocked_count": sum(
+                        1
+                        for _, seed_result in matching
+                        if seed_result.score_card.execution_status == "blocked"
+                    ),
                     "runs": [
                         {
                             "run_id": run_id,
                             "pass_rate": seed_result.score_card.pass_rate,
+                            "execution_status": seed_result.score_card.execution_status,
+                            "blocking_reason": seed_result.score_card.blocking_reason,
                             "user_gate_met": seed_result.score_card.user_gate_met,
                             "runtime_gate_met": seed_result.score_card.runtime_gate_met,
                             "must_pass_met": seed_result.score_card.must_pass_met,
                             "end_reason": seed_result.transcript.end_reason,
+                            "transcript_path": _run_output_paths(
+                                next(run for run in results[model_id] if run.run_id == run_id),
+                                seed_result.seed.id,
+                            )[0],
+                            "score_path": _run_output_paths(
+                                next(run for run in results[model_id] if run.run_id == run_id),
+                                seed_result.seed.id,
+                            )[1],
                         }
                         for run_id, seed_result in matching
                     ],
@@ -584,6 +667,7 @@ def generate_report(
         loader=FileSystemLoader(str(_TEMPLATE_DIR)),
         autoescape=True,
     )
+    env.filters["display_percent"] = _display_percent
     env.filters["pretty_json"] = _pretty_json
     env.filters["markdown_html"] = _render_markdown_html
     template = env.get_template("report.html.j2")
@@ -608,6 +692,7 @@ def generate_comparison_report(
         loader=FileSystemLoader(str(_TEMPLATE_DIR)),
         autoescape=True,
     )
+    env.filters["display_percent"] = _display_percent
     template = env.get_template("comparison.html.j2")
 
     html = template.render(**build_comparison_summary(results, model_labels))

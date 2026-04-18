@@ -71,6 +71,38 @@ Judge 只在以下三类场景允许把 exact wording 当作硬要求：
 2. 明确的 runtime contract
 3. 产品真实要求逐字引用的技术协议场景
 
+## Assessability Boundary
+
+评估模块必须先判断“能否稳定判断”，再决定是否自动评分。
+
+### 可自动 gate
+
+- 运行时契约
+- onboarding 最小产物
+- intervention 专用工具选择与 metadata
+- 具体、即时、可从 transcript / payload 稳定观察的文本行为
+  - 例如 `if_then_quality`
+  - 例如 `reframe_text_fit`
+
+### 可自动 diagnostic
+
+- exact wording 是否更贴近用户原话
+- 源域连续性
+- 干预剂量
+- store / memory / witness 的结构性健康度
+
+这些信息有价值，但默认不阻断放行。
+
+### 仅人工复核
+
+- 开放式 reflective intervention 的深层帮助感
+- Future Self 对话是否真正让用户更靠近未来身份
+- Metaphor Collaboration 是否真正形成有帮助的隐喻协作
+- UI / 布局 / 视觉 / 语气审美
+- 长期效果或跨时间真实帮助
+
+若某项无法在当前 transcript、tool calls、store diff 与最终文件中稳定判断，就不得被强行放进正式 gate，也不得用 RAG 补判。
+
 ## Seed Charter
 
 每个 seed 都必须显式声明：
@@ -121,6 +153,9 @@ Auditor 必须：
 - 正式放行只看 User Gate 与 Runtime Contract Gate
 - Diagnostics 只提供诊断，不阻断
 - Manual Appendix 只承接人工复核，不参与 pass/fail
+- 无法完成评估或运行报错统一记为 `BLOCKED`
+- 未被当前 seed 评估的通道统一显示为 `N/A`
+- 刻意退出自动评估的内容统一显示为 `Manual Follow-up`
 
 每个 seed 的详情必须提供：
 
