@@ -1,6 +1,8 @@
 # ABOUTME: Coach Agent 工厂函数
 # ABOUTME: 组装 DeepAgent 配置，创建 Coach Agent 实例（含 A2UI fan_out 工具与 Witness Card Composer Subagent）
 
+import importlib.util
+import logging
 from collections.abc import Callable
 from typing import Any
 
@@ -29,8 +31,62 @@ from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
 from voliti.tools.marker import add_forward_marker
 
-COACH_TOOLS = [fan_out, add_forward_marker]
-"""Coach 直接调用的工具，通过 A2UI 组件组合实现动态交互。"""
+logger = logging.getLogger(__name__)
+
+
+def _load_intervention_tools() -> list[Any]:
+    """扫描 backend/skills/coach/*/tool.py，加载每个 skill 目录导出的 TOOL 工具。
+
+    约定：每个 intervention skill 在其目录内提供 tool.py，末尾以 `TOOL = <tool>`
+    暴露 langchain `@tool` 实例。本函数按目录名排序加载以保证工具列表稳定。
+
+    发现但加载失败的 tool.py 以 warning 记录并跳过，不阻断 Coach 启动。
+    """
+    tools: list[Any] = []
+    if not COACH_SKILLS_ROOT.is_dir():
+        return tools
+
+    for skill_dir in sorted(COACH_SKILLS_ROOT.iterdir()):
+        if not skill_dir.is_dir():
+            continue
+        tool_path = skill_dir / "tool.py"
+        if not tool_path.is_file():
+            continue
+        module_name = f"voliti_intervention_tools.{skill_dir.name.replace('-', '_')}"
+        try:
+            spec = importlib.util.spec_from_file_location(module_name, tool_path)
+            if spec is None or spec.loader is None:
+                logger.warning("intervention tool loader: spec missing for %s", tool_path)
+                continue
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        except Exception:  # noqa: BLE001
+            logger.exception("intervention tool loader: failed to import %s", tool_path)
+            continue
+
+        tool_obj = getattr(module, "TOOL", None)
+        if tool_obj is None:
+            logger.warning(
+                "intervention tool loader: %s does not export a TOOL constant", tool_path
+            )
+            continue
+        tools.append(tool_obj)
+
+    return tools
+
+
+COACH_TOOLS = [fan_out, add_forward_marker, *_load_intervention_tools()]
+"""Coach 直接调用的工具。
+
+构成：
+- `fan_out` / `add_forward_marker`：通用工具
+- `fan_out_<intervention_kind>`：四种体验式干预专用工具，由 `_load_intervention_tools`
+  从 `backend/skills/coach/*/tool.py` 动态加载；metadata 与 layout 由工具硬编码。
+
+新增第五种 intervention 只需在 `backend/skills/coach/<kind>/` 下加 SKILL.md + tool.py，
+无需修改 agent.py。SkillsGateMiddleware 会自动注入新的 SKILL.md description 到 coaching
+session 的 system prompt，Coach 即可学会调用新工具。
+"""
 
 
 def _build_coach_memory_paths(profiles: tuple[SessionProfile, ...]) -> list[str]:

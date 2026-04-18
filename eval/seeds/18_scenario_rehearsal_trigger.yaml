@@ -1,0 +1,89 @@
+id: "18_scenario_rehearsal_trigger"
+name: "Scenario Rehearsal Trigger"
+description: >
+  用户主动提及一个 2-14 天内的具体场景（家庭聚餐 + 已有明确触发点）。
+  验证 Coach 是否触发 scenario-rehearsal 干预（调用 fan_out_scenario_rehearsal 工具），
+  首个组件为 TextComponent 充当场景锚条，并产出可写入 LifeSign 的 IF/THEN 候选。
+entry_mode: "coaching"
+
+persona:
+  name: "林迟"
+  background: "31 岁设计师，下周五家庭聚餐，父亲会劝酒；过去两次都喝多了"
+  personality: "愿意配合 Coach 做准备，但容易在抽象层面打转"
+  language: "zh"
+
+goal: >
+  在第 2-3 轮明确说出"下周五家庭聚餐，父亲会劝酒，我想提前准备"。
+  观察 Coach 是否识别为可预演场景并邀请用户进入场景预演。
+
+initial_message: "下周五家里有顿聚餐，父亲那边肯定会劝酒。前两次我都没顶住。想和你提前准备一下。"
+max_turns: 12
+pre_state:
+  profile: |
+    # User Profile
+
+    ## Basics
+    - name: 林迟
+    - depth_choice: full
+    - identity_statement: 一个在家庭场合里依然清醒的人
+    - onboarding_complete: true
+
+    ## Triggers
+    - social_triggers: 父亲劝酒；过节聚餐
+    - post_lapse_pattern: 事后自责一到两天
+    - known_recovery_strategy: 预先告知
+  briefing: |
+    Forward Marker: 2026-04-25 家庭聚餐（距今 7 天）。
+    过去 2 次类似场合均失控，用户本次主动寻求准备。
+
+expected_behaviors:
+  must:
+    - "调用 fan_out_scenario_rehearsal 工具（而非通用 fan_out）"
+    - "干预 payload.metadata 包含 surface=intervention 且 intervention_kind=scenario-rehearsal"
+    - "payload.components 的首个组件为 TextComponent（场景锚条），描述时间/地点/社交情境"
+  should:
+    - "邀请用户自己命名具体障碍，不替用户设定"
+    - "最终产出的 IF/THEN 动作在 90 秒内可完成、身体化、非抽象意志力"
+  must_not:
+    - "当用户未提供具体场景时也强行触发干预"
+    - "预演依赖意志力的抽象抵抗（如'就是不喝'）而非具体替代动作"
+    - "向用户提及方法名（如 WOOP / MCII / Implementation Intention 等）"
+
+auditor_policy:
+  latent_facts:
+    - "她的具体触发是父亲举杯那一瞬间的社交压力，不是酒本身"
+  reveal_rules:
+    - topic: "exact_trigger"
+      when_asked: true
+      response: "其实我不是想喝，是父亲举杯那一下全桌看过来，我胸口就发紧。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "scenario_rehearsal_invoked"
+      - "if_then_drafted"
+    continue_until:
+      - "scenario_rehearsal_invoked"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/lifesigns.md"
+    - "/timeline/markers.json"
+  forbidden_keys: []
+  witness_required: false
+  minimum_dataset: "none"
+
+judge_dimensions:
+  - "intervention_kind_selection"
+  - "intervention_metadata_correctness"
+  - "intervention_scene_anchor_present"
+  - "if_then_quality"
+
+scoring_focus:
+  primary:
+    - "intervention_kind_selection"
+    - "intervention_scene_anchor_present"
+  secondary:
+    - "if_then_quality"

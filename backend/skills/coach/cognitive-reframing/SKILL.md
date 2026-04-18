@@ -28,20 +28,28 @@ license: internal
 5. Close by naming one concrete observation the lapse actually contains — information, not verdict.
 
 ## A2UI Composition
-Opening component: `ProtocolPromptComponent`
-- `observation`: quote the user's catastrophizing sentence directly, verbatim
-- `question`: surface the "=" in their sentence and ask whether they consciously signed it
 
-Mid-turn components, one or two of:
-- `text_input` for the user's new frame (they write it, not you)
-- `select` for picking between 2-3 candidate frames when the user hesitates
-- No slider — reframing is not measured
+Invoke the dedicated tool `fan_out_cognitive_reframing(components=[...])`. The tool
+injects `surface="intervention"`, `intervention_kind="cognitive-reframing"`, and
+`layout="full"` automatically — do not pass metadata or layout.
 
-Payload metadata (required):
-- `surface`: `"intervention"`
-- `intervention_kind`: `"cognitive-reframing"`
+Component sequence (the frontend maps these to the side-by-side frame layout by
+position):
 
-Layout: `"three-quarter"`.
+1. `ProtocolPromptComponent`
+    - `observation`: quote the user's catastrophizing sentence directly, verbatim.
+      Rendered as the upper-left frame ("what you just said").
+    - `question`: surface the "=" and ask whether they consciously signed it.
+      Rendered as the center inquiry under the frames.
+2. `TextComponent` — a brief reading of the implicit verdict inside the original
+   sentence ("what this sentence is really saying"). Rendered as the upper-right
+   frame. **Strongly recommended**: omitting this component leaves the right frame
+   as a greyed placeholder and weakens the "=" visibility.
+3. Zero or more of:
+    - `SelectComponent` — 2-3 alternative readings as options (lower row, "other
+      readings to place beside yours")
+    - `TextInputComponent` — the user writes their own new frame (lower row)
+    - No slider — reframing is not measured
 
 ## Guardrails
 - Never dispute the user's feelings. Dispute the inferential leap, not the pain.

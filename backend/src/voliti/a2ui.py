@@ -136,7 +136,23 @@ class A2UIPayload(BaseModel):
     components: list[Component]
     layout: Literal["half", "three-quarter", "full"] = "three-quarter"
     metadata: dict[str, str] = {}
-    """透传给前端的引用信息（如 card_id），不参与组件渲染。"""
+    """扁平字符串字典；承担"视觉分派 + 上下文观测 + 行为追踪"三重职能。
+
+    三类语义键（soft convention，非强制 schema；完整契约见
+    `docs/05_Runtime_Contracts.md § 8.5`）：
+
+    - **分派键**（前端消费）：`surface`、`intervention_kind`、`layout` 的前端变体。
+      由工具代码硬编码注入（如 `fan_out_future_self_dialogue` 等专用工具、
+      `compose_witness_card`）；Coach 不参与写入。
+    - **身份键**（追踪消费）：`card_id` 等。由写入它的工具硬编码，供前端/LangSmith
+      去重与聚合。
+    - **上下文键**（观测消费）：`trigger_reason` / `chapter_id` / `user_state` 等。
+      目前仅作为未来扩展点保留；当前所有工具签名均不暴露 metadata 参数，Coach 无写
+      入路径。
+
+    后端不做 metadata 键级强制校验；类型保持 `dict[str, str]` 弹性以支持未来扩展。
+    前端仅按分派键路由渲染，其他键纯观测用途，不读取。
+    """
 
 
 class A2UIResponse(BaseModel):

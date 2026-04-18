@@ -25,17 +25,23 @@ license: internal
 4. Let the user find the resource, the shift, or the next question. Do not translate the metaphor back to behavioral terms unless the user moves there themselves.
 
 ## A2UI Composition
-Opening component: `ProtocolPromptComponent`
-- `observation`: mirror the user's metaphor verbatim, no paraphrase
-- `question`: a Clean-Language-style question staying inside the metaphor (e.g., "what kind of fog?", "and when the balloon is losing air, what happens just before?")
 
-Mid-turn components: one `text_input` for the user's elaboration. No structured inputs — structure kills the metaphor.
+Invoke the dedicated tool `fan_out_metaphor_collaboration(components=[...])`. The
+tool injects `surface="intervention"`, `intervention_kind="metaphor-collaboration"`,
+and `layout="full"` automatically — do not pass metadata or layout.
 
-Payload metadata (required):
-- `surface`: `"intervention"`
-- `intervention_kind`: `"metaphor-collaboration"`
+Component sequence (the frontend maps these to the depth-of-field layout by kind):
 
-Layout: `"three-quarter"`.
+1. `ProtocolPromptComponent` — the depth-of-field focus.
+    - `observation`: mirror the user's metaphor verbatim, no paraphrase. Rendered as
+      the foreground (34px serif italic with copper quote marks).
+    - `question`: a Clean-Language-style question staying inside the metaphor
+      (e.g., "what kind of fog?", "and when the balloon is losing air, what happens
+      just before?"). Rendered as the background (15px, muted).
+2. `TextInputComponent` — the user's elaboration.
+
+Do not attach slider, select, multi_select, or number_input — structure kills the
+metaphor.
 
 ## Guardrails
 - Never change the source domain. If the user says "balloon", do not shift to "battery", "engine", or any other vehicle. You may add resource inside the balloon world; you may not switch worlds.

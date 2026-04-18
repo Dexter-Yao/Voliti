@@ -295,36 +295,50 @@ resume 同时校验以下两类约束：
 
 原始 A2UI payload snapshot 不进入长期 Store。长期 Store 只保存该次交互真正产生的业务结果。
 
-### 8.5 Surface 与 Intervention 分类
+### 8.5 A2UI Metadata 语义键
 
-A2UI Payload 的 `metadata: dict[str, str]` 承载一条交互形态分类约定，供前端渲染层选择视觉外壳。
+A2UI Payload 的 `metadata: dict[str, str]` 承担"视觉分派 + 上下文观测 + 行为追踪"三重职能，是 A2UI 协议的一等公民元素。类型保持扁平字符串字典以支持弹性扩展，后端不做键级强制校验。
 
-`metadata.surface` 取值（封闭集）：
+**三类语义键**（soft convention，前端仅消费分派键，其他键纯观测用途）：
 
-| 取值 | 形态 | 使用方 |
+| 类别 | 键 | 写入方 | 消费方 |
+|---|---|---|---|
+| 分派键 | `surface` / `intervention_kind` | 工具代码硬编码 | 前端视觉外壳选择 |
+| 身份键 | `card_id`、`achievement_type`、`linked_lifesign_id`、`chapter_id` | 工具代码硬编码（如 `compose_witness_card`）| 前端去重、LangSmith 聚合 |
+| 上下文键 | `trigger_reason` / `user_state` 等 | 目前无工具暴露写入路径 | 预留扩展点 |
+
+#### 分派键：`metadata.surface`（封闭集）
+
+| 取值 | 形态 | 写入方 |
 |---|---|---|
-| `"onboarding"` | 全屏引导采集 | Onboarding session 的 Coach |
-| `"coaching"` | 日常对话内嵌（默认）| 常规 coaching session 的 Coach |
-| `"intervention"` | 体验式干预形态 | `future-self-dialogue` / `scenario-rehearsal` / `metaphor-collaboration` / `cognitive-reframing` 四份 skill |
-| `"witness-card"` | 见证卡片 | `compose_witness_card` 工具 |
+| `"onboarding"` | 全屏引导采集 | Onboarding session 的 Coach（通过通用 `fan_out` 传 metadata；当前实现默认为 `"coaching"`） |
+| `"coaching"` | 日常对话内嵌（默认）| 常规 coaching session 的 `fan_out` |
+| `"intervention"` | 体验式干预全屏外壳 | `fan_out_future_self_dialogue` / `fan_out_scenario_rehearsal` / `fan_out_metaphor_collaboration` / `fan_out_cognitive_reframing` 四个专用工具硬编码 |
+| `"witness-card"` | 见证卡片 | `compose_witness_card` 工具硬编码 |
 
-`metadata.intervention_kind` 取值（仅当 `surface="intervention"` 时必填）：
+#### 分派键：`metadata.intervention_kind`（仅当 `surface="intervention"`）
 
-- `"future-self-dialogue"` / `"scenario-rehearsal"` / `"metaphor-collaboration"` / `"cognitive-reframing"`
+`"future-self-dialogue"` / `"scenario-rehearsal"` / `"metaphor-collaboration"` / `"cognitive-reframing"`。由对应的 `fan_out_<kind>` 专用工具硬编码注入。
 
-**前端契约**：
+#### 写入责任
 
-1. `surface` 缺失或不识别时，前端降级为 `"coaching"` 视觉，不抛错。
-2. `intervention` 形态使用独立视觉外壳（更多留白、copper 细线、仪式化揭示）；具体视觉规格由 `/design-shotgun` 或 `/design-consultation` 单独产出，契约只约定分类键。
-3. 其他三类形态保持现有视觉。
+- **Coach 不写 metadata**。四个 intervention 专用工具签名只接 `components`，`surface` / `intervention_kind` / `layout="full"` 完全由代码承担。Coach 的唯一决策是"调哪个工具"。
+- **通用 `fan_out`**：当前签名不接 metadata，保留为未来扩展上下文键的接入点（如 `trigger_reason`）。
+- **`compose_witness_card`**：metadata 由 Python 代码硬编码，Coach 同样不传。
 
-**运行时约束**：
+#### 前端契约
+
+1. `surface` 缺失或不识别时降级为 `"coaching"` 视觉，不抛错。
+2. `intervention` 形态下按 `intervention_kind` 分派到四种 Layout 全屏外壳；具体视觉规格见 `DESIGN.md § Intervention 模式`。
+3. 其他键前端不读取，纯观测用途。
+
+#### 运行时约束
 
 1. `metadata` 键由 `A2UIPayload.metadata` 透传，后端 `validate_a2ui_response` 仅校验 `data` 字段，**不对 metadata 键做运行时校验**。
-2. `surface` 与 `intervention_kind` 的正确写入依赖 Coach 系统提示词约束（`coach_system.j2` Section 3.5 + 四份 SKILL.md 的 A2UI Composition 节）与后续 eval 覆盖。
-3. payload 构造侧需做最小断言：若 `surface="intervention"` 必带 `intervention_kind`。
+2. 分派键正确性由写入方工具代码保证，`test_intervention_tools.py` 字节级断言四工具 metadata 内容。
+3. SKILL.md 的 A2UI Composition 节描述组件序列和槽位约束，供 Coach LLM 消费；不再写 metadata 约束（由代码处理）。
 
-完整规格见 `docs/10_Experiential_Interventions.md`。
+完整应用边界见 `docs/10_Experiential_Interventions.md`。
 
 ## 九、错误封装契约
 

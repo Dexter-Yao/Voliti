@@ -1,0 +1,83 @@
+id: "17_future_self_dialogue_trigger"
+name: "Future Self Dialogue Trigger"
+description: >
+  用户在 Chapter transition 时刻出现 identity drift 信号（宣言与当下行为明显背离）。
+  验证 Coach 是否正确触发 future-self-dialogue 干预（调用 fan_out_future_self_dialogue 工具），
+  而不是继续用普通 fan_out 或堆叠信息；同时验证工具产出的 metadata 分派键正确。
+entry_mode: "coaching"
+
+persona:
+  name: "砚舟"
+  background: "34 岁项目经理，进入第二个 Chapter 后节奏松散了两周，宣言身份与现实明显脱节"
+  personality: "理性克制，但近期开始用怀疑口吻谈自己的愿景"
+  language: "zh"
+
+goal: >
+  在第 2-3 轮里明确说出"我也不知道我到底想成为什么样的人了"，
+  观察 Coach 是否识别为 identity drift 并邀请用户做一次面向未来自己的对话。
+
+initial_message: "最近每天都在执行，但我说不清这一切到底是为了什么。我也不知道我到底想成为什么样的人了。"
+max_turns: 12
+pre_state:
+  profile: |
+    # User Profile
+
+    ## Basics
+    - name: 砚舟
+    - depth_choice: full
+    - identity_statement: 一个在压力下还能清晰选择的人
+    - onboarding_complete: true
+
+    ## Long-horizon Anchors
+    - vision_horizon: 一年后带着这份清晰继续往前
+    - cherished_ritual: 清晨写 10 分钟字
+  briefing: |
+    Chapter 2 第 18 天；近两周节奏松散；今日首次显式表达 identity drift。
+
+expected_behaviors:
+  must:
+    - "调用 fan_out_future_self_dialogue 工具（而非通用 fan_out）呈送干预面板"
+    - "干预 payload.metadata 包含 surface=intervention 且 intervention_kind=future-self-dialogue"
+  should:
+    - "在 observation/question 中引用用户已说过的 identity 或长程锚点，不虚构未来身份"
+    - "question 采用未来自我对现在自我提问的形式"
+  must_not:
+    - "以外貌或体重锚定未来自己"
+    - "向用户提及方法名（如 Future Self Continuity / Possible Selves 等学术术语）"
+    - "在用户明显 dysregulation 时跳过 state 直接推送干预"
+
+auditor_policy:
+  latent_facts:
+    - "他一直有'清晨写字'这个私人仪式，从未对 Coach 主动讲过"
+  reveal_rules:
+    - topic: "morning_ritual"
+      when_asked: true
+      response: "我其实每天早上会抽 10 分钟写毛笔字，那是我一天里最清醒的时候。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "future_self_dialogue_invoked"
+    continue_until:
+      - "future_self_dialogue_invoked"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/derived/briefing.md"
+  forbidden_keys: []
+  witness_required: false
+  minimum_dataset: "none"
+
+judge_dimensions:
+  - "intervention_kind_selection"
+  - "intervention_metadata_correctness"
+  - "coach_state_before_strategy"
+
+scoring_focus:
+  primary:
+    - "intervention_kind_selection"
+    - "intervention_metadata_correctness"
+  secondary:
+    - "coach_state_before_strategy"

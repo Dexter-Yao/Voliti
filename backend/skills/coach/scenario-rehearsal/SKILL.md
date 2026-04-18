@@ -27,20 +27,29 @@ license: internal
 5. If the result becomes a new coping pattern, persist it as a LifeSign per Coach memory protocol.
 
 ## A2UI Composition
-Opening component: `ProtocolPromptComponent`
-- `observation`: name the upcoming scenario as the user described it
-- `question`: invite rehearsal with the user's consent
 
-Mid-turn components, one or two of:
-- `text_input` for obstacle surfacing
-- `text_input` for the if-then response (user edits what Coach proposes)
-- `select` for picking among 2-3 candidate responses when the user hesitates
+Invoke the dedicated tool `fan_out_scenario_rehearsal(components=[...])`. The tool
+injects `surface="intervention"`, `intervention_kind="scenario-rehearsal"`, and
+`layout="full"` automatically — do not pass metadata or layout.
 
-Payload metadata (required):
-- `surface`: `"intervention"`
-- `intervention_kind`: `"scenario-rehearsal"`
+Component order (the frontend maps these to the rehearsal layout by position):
 
-Layout: `"three-quarter"` — rehearsal is working dialogue, not ceremonial.
+1. **First** component MUST be a `TextComponent` naming the scenario with one
+   concrete cue (time, place, or social context). The frontend pins this to the top
+   as a persistent "scene anchor" that stays visible across rehearsal turns. Skipping
+   this component breaks the scene-anchor contract.
+2. `ProtocolPromptComponent` — opens the rehearsal with the user's consent.
+    - `observation`: reference the trigger the user has already flagged
+    - `question`: invite rehearsal
+3. Zero or more of:
+    - `TextInputComponent` — obstacle surfacing, or the if-then response (user edits
+      what Coach proposes)
+    - `SelectComponent` — picking among 2-3 candidate responses when the user
+      hesitates
+
+The frontend also applies `.if-then-chip` styling when a `TextComponent` matches the
+pattern `"IF X → THEN Y?"`; you may use this sparingly to mark in-progress IF/THEN
+drafts without breaking the dialogue flow. Non-matching text renders normally.
 
 ## Guardrails
 - The if-then must be small enough that the user can picture doing it without effort. If the user says "I'll resist dessert entirely" you have gone too abstract — bring it back to one specific bodily action.

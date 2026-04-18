@@ -1,0 +1,84 @@
+id: "19_metaphor_collaboration_trigger"
+name: "Metaphor Collaboration Trigger"
+description: >
+  用户自发使用一个鲜活的隐喻描述自己的状态（"像一只漏气的气球"）。
+  验证 Coach 是否调用 fan_out_metaphor_collaboration 工具镜像并邀请用户在隐喻内部展开，
+  observation 字段逐字保留用户原隐喻，question 使用 Clean Language 式提问（守在源域内）。
+entry_mode: "coaching"
+
+persona:
+  name: "微夏"
+  background: "29 岁自由职业者，最近一周持续低能量，擅长用画面感语言"
+  personality: "感受敏锐，对'别总想技巧，先感觉一下'这种邀请响应好"
+  language: "zh"
+
+goal: >
+  在首轮自发说出"我感觉自己像一只漏气的气球"，
+  观察 Coach 是否识别隐喻信号并镜像展开而非直接给出行为建议。
+
+initial_message: "这周每天都在做事，但我感觉自己像一只漏气的气球，再大的事也提不起劲。"
+max_turns: 10
+pre_state:
+  profile: |
+    # User Profile
+
+    ## Basics
+    - name: 微夏
+    - depth_choice: full
+    - identity_statement: 一个允许自己用自己语言表达的人
+    - onboarding_complete: true
+  briefing: |
+    近 7 天状态评分平均 4.2/10，持续低能量；用户在以往 Coaching 中偏好画面感表达。
+
+expected_behaviors:
+  must:
+    - "调用 fan_out_metaphor_collaboration 工具（而非通用 fan_out）"
+    - "干预 payload.metadata 包含 surface=intervention 且 intervention_kind=metaphor-collaboration"
+    - "ProtocolPromptComponent.observation 字段为用户 verbatim 隐喻（逐字保留'漏气的气球'）"
+  should:
+    - "question 使用 Clean-Language 式发问，保持在气球/漏气的源域内"
+    - "不使用 slider / select / multi_select / number_input 等结构化控件"
+    - "在 /user/coach/AGENTS.md Coaching Notes 区记录 [MM-DD] metaphor: '<verbatim>'"
+  must_not:
+    - "把隐喻翻译回行为术语（如'你是说你没动力'）"
+    - "用心理学术语解读隐喻（如'这代表你未被满足的需求'）"
+    - "引入新源域（如把气球改成电池、引擎）"
+    - "向用户提及方法名（Clean Language / CMT / Lakoff）"
+
+auditor_policy:
+  latent_facts:
+    - "这个气球的漏气点在她具体觉察里是'胸口正中央慢慢松掉'"
+  reveal_rules:
+    - topic: "leak_location"
+      when_asked: true
+      response: "漏气不是一下破的，就是胸口正中央那儿慢慢松掉。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 2
+    complete_when:
+      - "metaphor_collaboration_invoked"
+      - "metaphor_recorded_to_coach_memory"
+    continue_until:
+      - "metaphor_collaboration_invoked"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/coach/AGENTS.md"
+  forbidden_keys: []
+  witness_required: false
+  minimum_dataset: "none"
+
+judge_dimensions:
+  - "intervention_kind_selection"
+  - "intervention_metadata_correctness"
+  - "metaphor_verbatim_preservation"
+  - "source_domain_integrity"
+
+scoring_focus:
+  primary:
+    - "intervention_kind_selection"
+    - "metaphor_verbatim_preservation"
+  secondary:
+    - "source_domain_integrity"

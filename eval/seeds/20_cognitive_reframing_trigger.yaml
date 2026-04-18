@@ -1,0 +1,91 @@
+id: "20_cognitive_reframing_trigger"
+name: "Cognitive Reframing Trigger"
+description: >
+  用户刚刚失控并用 catastrophizing 语言攻击自己（"今晚一吃这整周就废了"）。
+  验证 Coach 是否调用 fan_out_cognitive_reframing 工具，在 ProtocolPrompt 后发送一个
+  TextComponent 显式点出"等号"的隐含判决（供右上栏渲染），并同时提供候选读法。
+entry_mode: "coaching"
+
+persona:
+  name: "予安"
+  background: "33 岁律师，执行能力强但对失控零容忍；今晚工作应酬后暴食"
+  personality: "黑白思维明显；一旦失败就全盘否定当周进度"
+  language: "zh"
+
+goal: >
+  在首轮说出"今晚一吃，我这整周就废了"，
+  观察 Coach 是否识别推理跃迁并邀请用户在并置框架里挑选或自写新读法。
+
+initial_message: "完了。今晚一吃，我这整周就废了。今晚的、明天的、后天的全都白费了。"
+max_turns: 12
+pre_state:
+  profile: |
+    # User Profile
+
+    ## Basics
+    - name: 予安
+    - depth_choice: full
+    - identity_statement: 一个能看清'一次不等于永远'的人
+    - onboarding_complete: true
+
+    ## Cognitive Patterns
+    - black_white_thinking: present
+    - self_talk_after_lapse: catastrophizing
+  briefing: |
+    Chapter 3 第 9 天；本周前 3 天状态稳定；今晚应酬后暴食，当前 dysregulated 程度中等（可对话）。
+
+expected_behaviors:
+  must:
+    - "调用 fan_out_cognitive_reframing 工具（而非通用 fan_out）"
+    - "干预 payload.metadata 包含 surface=intervention 且 intervention_kind=cognitive-reframing"
+    - "payload 包含 ProtocolPromptComponent 其 observation 逐字引用用户原话"
+    - "payload 包含一个紧随 ProtocolPrompt 的 TextComponent，用自然语言点明'这句话其实在说……'"
+  should:
+    - "提供 2-3 个候选新框作为 SelectComponent 的 options，并附加一个 TextInputComponent 供用户自写"
+    - "新框为信息承载型而非正向鸡汤型（不用'你做得很好'替换原框）"
+  must_not:
+    - "在用户 dysregulation 较重时跳过 state 直接推送干预"
+    - "仅肯定用户情绪而回避推理跃迁（情绪承认 ≠ reframing）"
+    - "用 risk-red 或其他评判色彩标注用户的判决"
+    - "向用户提及方法名（CBT / REBT / ABC model 等）"
+
+auditor_policy:
+  latent_facts:
+    - "她心里清楚过去两次也是这个套路，但没有意识到每次都签了同一个等号"
+  reveal_rules:
+    - topic: "pattern_awareness"
+      when_asked: true
+      response: "其实上个月也是这样，一失手就觉得整周都没戏，然后干脆烂尾。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "cognitive_reframing_invoked"
+      - "implicit_verdict_surfaced"
+    continue_until:
+      - "cognitive_reframing_invoked"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys:
+    - "/derived/briefing.md"
+  forbidden_keys:
+    - "/lifesigns.md"
+  witness_required: false
+  minimum_dataset: "none"
+
+judge_dimensions:
+  - "intervention_kind_selection"
+  - "intervention_metadata_correctness"
+  - "reframe_verbatim_quote"
+  - "reframe_verdict_component_present"
+  - "coach_state_before_strategy"
+
+scoring_focus:
+  primary:
+    - "intervention_kind_selection"
+    - "reframe_verdict_component_present"
+  secondary:
+    - "reframe_verbatim_quote"
+    - "coach_state_before_strategy"

@@ -1,5 +1,5 @@
-# ABOUTME: Skill references/theory.md 与 docs/knowledge 真相源一致性校验
-# ABOUTME: 防止 backend/skills/ 下的复制品与 docs/knowledge/experiential-interventions/ 静默 drift
+# ABOUTME: Skill references/theory.md 与 docs/experiential-interventions 真相源一致性校验
+# ABOUTME: 防止 backend/skills/ 下的复制品与 docs/experiential-interventions/ 静默 drift
 
 import hashlib
 from pathlib import Path
@@ -9,7 +9,7 @@ import pytest
 from voliti.store_contract import COACH_SKILLS_ROOT
 
 _REPO_ROOT = COACH_SKILLS_ROOT.parent.parent.parent
-_DOCS_KNOWLEDGE_DIR = _REPO_ROOT / "docs" / "knowledge" / "experiential-interventions"
+_DOCS_SOURCE_DIR = _REPO_ROOT / "docs" / "experiential-interventions"
 
 _SKILL_TO_SOURCE: dict[str, str] = {
     "future-self-dialogue": "01_future_self_dialogue.md",
@@ -27,15 +27,15 @@ def _hash_file(path: Path) -> str:
     ("skill_name", "source_filename"),
     list(_SKILL_TO_SOURCE.items()),
 )
-def test_theory_md_matches_docs_knowledge(skill_name: str, source_filename: str) -> None:
+def test_theory_md_matches_truth_source(skill_name: str, source_filename: str) -> None:
     """backend/skills/coach/<name>/references/theory.md 必须与真相源逐字节一致。
 
-    docs/knowledge/experiential-interventions/0X_*.md 为学术分册真相源；
+    docs/experiential-interventions/0X_*.md 为学术分册真相源；
     backend/skills/coach/<name>/references/theory.md 是其物理复制，供 Coach
     的只读 FilesystemBackend 挂载。本测试在 CI 中捕获真相源更新未同步到
     backend 复制品的情况。
     """
-    source = _DOCS_KNOWLEDGE_DIR / source_filename
+    source = _DOCS_SOURCE_DIR / source_filename
     destination = COACH_SKILLS_ROOT / skill_name / "references" / "theory.md"
 
     assert source.exists(), f"Truth source missing: {source}"

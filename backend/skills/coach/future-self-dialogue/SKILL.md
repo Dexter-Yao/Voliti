@@ -27,17 +27,24 @@ license: internal
 4. Close by naming the bridge action — no more than one. The bridge belongs to the present, not the future.
 
 ## A2UI Composition
-Opening component: `ProtocolPromptComponent`
-- `observation`: one-sentence mirror of a future self the user has already named or hinted at
-- `question`: a question the future self would ask the present self
 
-Mid-turn components: one `text_input` for the user's response. No slider, no multi-select — future-self work is narrative, not measured.
+Invoke the dedicated tool `fan_out_future_self_dialogue(components=[...])`. The tool
+injects `surface="intervention"`, `intervention_kind="future-self-dialogue"`, and
+`layout="full"` automatically — do not pass metadata or layout.
 
-Payload metadata (required):
-- `surface`: `"intervention"`
-- `intervention_kind`: `"future-self-dialogue"`
+Component sequence (the frontend maps these to the three-column layout by kind):
 
-Layout: `"full"` — the surface deserves the visual weight.
+1. `TextComponent` — a memory quote the user has said, referenced from their Chapter
+   identity or profile. Rendered as the faded left column ("you said").
+2. `ProtocolPromptComponent` — rendered as the copper-edged right column ("the future
+   self speaks").
+    - `observation`: one-sentence mirror of a future self the user has already named
+      or hinted at
+    - `question`: a question the future self would ask the present self
+3. `TextInputComponent` — the user's narrative reply. Rendered as the center column
+   ("what you send to them").
+
+No slider, no multi_select, no select — future-self work is narrative, not measured.
 
 ## Guardrails
 - Never anchor on appearance, weight, or body shape. Anchor on capability, rhythm, relationships, and small daily rituals.
