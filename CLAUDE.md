@@ -23,6 +23,7 @@ Voliti 是 AI 减脂行为教练。底层提供饮食指导、运动建议、方
 | 用户旅程地图 | `docs/08_Customer_Journey_Map.md` | **核心 Persona 端到端旅程、关键时刻、流失触发器** |
 | 竞品格局 | `docs/09_Competitive_Landscape.md` | **中美竞品矩阵、白空间/红海判断、渠道与 AI 演进** |
 | 体验式干预 | `docs/10_Experiential_Interventions.md` | 四种干预手段（未来自我 / 场景预演 / 隐喻协作 / 认知重构）的 skill 架构、成品 SKILL.md、代码落地规格 |
+| 已知问题 | `docs/11_Known_Issues.md` | 当前确认存在、暂不阻断发布的问题边界、升级条件与跟踪入口 |
 | 干预学术依据 | `docs/experiential-interventions/` | 四手法学术调研分册（西方主流轴 + 东方传统视角）|
 | Design Tokens | `docs/design-system/design-tokens.json` | 色彩、字体、间距精确值（机器可读） |
 | 组件规则 | `docs/design-system/component-rules.json` | 组件渲染规则（机器可读） |
@@ -175,3 +176,4 @@ Key routing rules:
 | 2026-04-16 | 记忆体系重构：六维用户画像（profile/context.md）、四分区 Coach 记忆协议（coach/AGENTS.md）、剥离 DeepAgent 默认 memory_guidelines、Briefing 纳入 Goal/Chapter 摘要、Onboarding 扩展六维采集 |
 | 2026-04-17 | 四种体验式干预手段 Skill 化：新增 `backend/skills/coach/` 四份 SKILL.md（future-self-dialogue / scenario-rehearsal / metaphor-collaboration / cognitive-reframing）；学术调研分册（西方主流轴 + 东方传统视角）落入 `docs/experiential-interventions/`；新增 `docs/10_Experiential_Interventions.md` 应用方案；`SkillsGateMiddleware` 仅 coaching session 注入；`CompositeBackend` 新增 `/skills/coach/` 只读路由；A2UI 契约新增 `metadata.surface`（四取值含 `witness-card`）与 `intervention_kind`；Witness Card composer 补 `surface="witness-card"` |
 | 2026-04-18 | Intervention 完整落地：四种 skill 各配专用工具 `fan_out_<kind>`（metadata + layout="full" 由代码硬编码）+ `agent.py` 动态扫描加载；`fan_out` 抽取 `_fan_out_core`；前端新增 `InterventionShell` + 四个 Layout（FutureSelf / Scenario / Metaphor / Reframing）+ 全屏 overlay（非 Sheet）；`DESIGN.md` 新增 Intervention 模式子章节（Common Shell / 四 Layout 规格 / 字号 clamp 最小值表）；`docs/05 § 8.5` 更新为 A2UI Metadata 语义键表；eval/seeds 新增 4 个 intervention 触发场景（full 16→20）；`docs/10` 精简为架构索引 |
+| 2026-04-18 | 新增 `docs/11_Known_Issues.md`；记录 DeepAgents FilesystemMiddleware `context` 序列化 warning 的当前影响、升级条件与跟踪入口 |
