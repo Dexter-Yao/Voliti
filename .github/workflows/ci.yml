@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-and-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Run backend tests
+        working-directory: backend
+        run: uv run python -m pytest
+
+      - name: Run eval tests
+        working-directory: eval
+        run: uv run python -m pytest
+
+      - name: Validate eval seed configuration
+        working-directory: eval
+        run: uv run python -m voliti_eval --dry-run --profile full
+
+  frontend-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "pnpm"
+          cache-dependency-path: frontend-web/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: frontend-web
+        run: pnpm install --frozen-lockfile
+
+      - name: Run frontend tests
+        working-directory: frontend-web
+        run: pnpm test
+
+      - name: Run frontend build
+        working-directory: frontend-web
+        run: pnpm build

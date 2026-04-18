@@ -58,7 +58,7 @@ describe("onboarding surface contract", () => {
     expect(surface).toBe("conversation");
     expect(shouldAutoEnsureCoachingThread({ surface, onboardingEntryIntent: input.onboardingEntryIntent })).toBe(false);
     expect(shouldAutoStartReentrySession(input)).toBe(false);
-    expect(shouldMountPrimaryWorkspace(surface)).toBe(true);
+    expect(shouldMountPrimaryWorkspace(surface)).toBe(false);
     expect(shouldMountOnboardingConversation(surface)).toBe(true);
   });
 

@@ -1,5 +1,5 @@
 // ABOUTME: Stream provider，封装 LangGraph useStream hook
-// ABOUTME: 预创建/复用每日 Thread，注入 user_id + date metadata
+// ABOUTME: 预创建或复用每日 Thread，并通过受信任代理边界补全真实用户身份
 
 import React, {
   createContext,
@@ -20,7 +20,6 @@ import {
 import { useQueryState } from "nuqs";
 import { ThreadContext } from "./Thread";
 import { toast } from "sonner";
-import { getUserId } from "@/lib/user";
 import { ensureTodayThread } from "@/lib/thread-bootstrap";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
@@ -83,11 +82,9 @@ const StreamSession = ({
   useEffect(() => {
     if (!autoEnsureThread) return;
     if (threadId || ensureInFlight.current) return;
-    const userId = getUserId();
-    if (!userId) return;
 
     ensureInFlight.current = true;
-    ensureTodayThread(apiUrl, userId, assistantId)
+    ensureTodayThread(apiUrl, assistantId)
       .then((result) => {
         if (result) {
           setThreadId(result.threadId);
@@ -124,11 +121,7 @@ const StreamSession = ({
     checkGraphStatus(apiUrl).then((ok) => {
       if (!ok) {
         toast.error("Failed to connect to LangGraph server", {
-          description: () => (
-            <p>
-              Please ensure your graph is running at <code>{apiUrl}</code>.
-            </p>
-          ),
+          description: () => <p>当前无法连接教练服务，请稍后重试。</p>,
           duration: 10000,
           richColors: true,
           closeButton: true,

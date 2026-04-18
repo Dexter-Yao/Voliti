@@ -9,7 +9,6 @@ import type { Message } from "@langchain/langgraph-sdk";
 import { useStreamContext } from "@/providers/Stream";
 import { extractA2UIPayload, extractInterruptId, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
 import { A2UIRenderer } from "./a2ui/A2UIRenderer";
-import { getUserId } from "@/lib/user";
 import { ONBOARDING_GREETING, SESSION_TYPE_ONBOARDING } from "@/lib/thread-utils";
 import { buildSubmitConfig } from "@/lib/stream-config";
 import { DO_NOT_RENDER_ID_PREFIX } from "@/lib/ensure-tool-responses";
@@ -32,7 +31,7 @@ export function OnboardingConversation({
   const initialSent = useRef(false);
 
   const submitConfig = useMemo(
-    () => buildSubmitConfig(getUserId(), SESSION_TYPE_ONBOARDING),
+    () => buildSubmitConfig(SESSION_TYPE_ONBOARDING),
     [],
   );
 

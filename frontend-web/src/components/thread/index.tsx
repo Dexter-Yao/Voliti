@@ -49,7 +49,6 @@ import {
   type SessionType,
 } from "@/lib/thread-utils";
 import { useThreads } from "@/providers/Thread";
-import { getUserId } from "@/lib/user";
 import { buildSubmitConfig } from "@/lib/stream-config";
 import {
   applyVoiceTranscriptionToComposerDraft,
@@ -60,6 +59,8 @@ import {
   type VoiceTranscriptionResult,
 } from "@/lib/voice";
 import { useVoiceInput } from "@/hooks/use-voice-input";
+import { fetchCoachContext, type CoachContextData } from "@/lib/store-sync";
+import { CoachContextSummary } from "@/components/coach/CoachContextSummary";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -126,12 +127,13 @@ export function Thread({
     return (meta?.session_type as SessionType) ?? SESSION_TYPE_COACHING;
   }, [threadId, threads]);
   const submitConfig = useMemo(
-    () => buildSubmitConfig(getUserId(), sessionType),
+    () => buildSubmitConfig(sessionType),
     [sessionType],
   );
   const [composerDraft, setComposerDraft] = useState<ComposerDraft>(() =>
     createEmptyComposerDraft(),
   );
+  const [coachContext, setCoachContext] = useState<CoachContextData | null>(null);
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
@@ -149,6 +151,27 @@ export function Thread({
   const isLoading = stream.isLoading;
 
   const lastError = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (messages.length > 0) return;
+    let cancelled = false;
+
+    fetchCoachContext()
+      .then((context) => {
+        if (!cancelled) {
+          setCoachContext(context);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCoachContext(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages.length, threadId]);
 
   // Sync collapsed state from panel resize events
   const syncCollapsedState = useCallback(() => {
@@ -457,11 +480,18 @@ export function Thread({
           <div className="sticky bottom-0 flex flex-col items-center gap-4 bg-[#F4F0E8]">
             {/* Empty state welcome */}
             {!chatStarted && (
-              <div className="flex flex-col items-center gap-2 pb-4">
+              <div className="flex w-full flex-col items-center gap-4 pb-4">
                 <h1 className="font-serif-coach text-2xl text-[#1A1816]">
                   Voliti
                 </h1>
-                <p className="text-sm text-[#1A1816]/40">今天想聊什么？</p>
+                <p className="text-sm text-[#1A1816]/40">
+                  {coachContext ? "你现在最值得先守住的是这些。" : "今天想聊什么？"}
+                </p>
+                {coachContext && (
+                  <div className="w-full">
+                    <CoachContextSummary context={coachContext} compact />
+                  </div>
+                )}
               </div>
             )}
 

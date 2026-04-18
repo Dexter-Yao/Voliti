@@ -13,7 +13,6 @@ export type EnsureThreadResult = { threadId: string; isNew: boolean };
 
 export async function ensureTodayThread(
   apiUrl: string,
-  userId: string,
   assistantId: string,
   sessionType: SessionType = "coaching",
 ): Promise<EnsureThreadResult | null> {
@@ -22,7 +21,7 @@ export async function ensureTodayThread(
 
   try {
     const existing = await client.threads.search({
-      metadata: { user_id: userId, date: today, session_type: sessionType },
+      metadata: { date: today, session_type: sessionType },
       limit: 1,
     });
 
@@ -32,7 +31,6 @@ export async function ensureTodayThread(
 
     const thread = await client.threads.create({
       metadata: {
-        user_id: userId,
         date: today,
         session_type: sessionType,
         graph_id: assistantId,
@@ -50,7 +48,6 @@ export async function ensureTodayThread(
 
 export async function startOnboardingThread(
   apiUrl: string,
-  userId: string,
   assistantId: string,
 ): Promise<EnsureThreadResult | null> {
   const client = createClient(apiUrl, undefined, undefined);
@@ -59,7 +56,6 @@ export async function startOnboardingThread(
   try {
     const thread = await client.threads.create({
       metadata: {
-        user_id: userId,
         date: today,
         session_type: SESSION_TYPE_ONBOARDING,
         graph_id: assistantId,

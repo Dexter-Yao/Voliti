@@ -3,13 +3,9 @@
 
 import { type SessionType } from "./thread-utils";
 
-export function buildSubmitConfig(
-  userId: string | null | undefined,
-  sessionType: SessionType,
-) {
+export function buildSubmitConfig(sessionType: SessionType) {
   return {
     configurable: {
-      user_id: userId ?? "",
       session_type: sessionType,
     },
   };

@@ -8,7 +8,6 @@ import { useStreamContext } from "@/providers/Stream";
 import { extractA2UIPayload, extractInterruptId, type A2UIPayload, type A2UIResponse } from "@/lib/a2ui";
 import { A2UIDrawer } from "./A2UIDrawer";
 import { toast } from "sonner";
-import { getUserId } from "@/lib/user";
 import { SESSION_TYPE_COACHING, type SessionType } from "@/lib/thread-utils";
 import { buildSubmitConfig } from "@/lib/stream-config";
 
@@ -32,7 +31,7 @@ export function A2UIInterruptHandler({
   );
 
   const submitConfig = useMemo(
-    () => buildSubmitConfig(getUserId(), sessionType),
+    () => buildSubmitConfig(sessionType),
     [sessionType],
   );
 

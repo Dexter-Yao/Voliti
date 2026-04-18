@@ -204,6 +204,27 @@ uv run python -m voliti_eval --dry-run --profile full
 - 硬契约通过率
 - 行为维度通过率
 
+## 发布前最终行为确认
+
+邀请制试用前，评估流程按以下顺序执行并作为硬门槛：
+
+```bash
+cd backend && uv run python -m pytest
+cd eval && uv run python -m pytest
+cd frontend-web && pnpm test
+cd frontend-web && pnpm build
+cd eval && uv run python -m voliti_eval --profile full
+cd eval && uv run python -m voliti_eval --compare --models coach,coach_qwen --runs 3 --profile full
+```
+
+执行后必须人工阅读最新 `report.html` 与 `comparison.html`。
+
+放行标准：
+
+- `full` 不存在未解释的 must-pass 失败
+- `compare` 不显示主模型在关键维度上的明显不稳定
+- 失败项必须被归类为：契约失败 / 行为失败 / seed 失真
+
 ## 目录结构
 
 ```text

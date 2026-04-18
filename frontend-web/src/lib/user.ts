@@ -1,15 +1,5 @@
-// ABOUTME: 从 cookie 读取当前登录用户的 user_id（Supabase Auth UUID）
-// ABOUTME: voliti_user_id cookie 由 middleware 在验证 Supabase session 后同步设置
-
-export function getUserId(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("voliti_user_id="));
-  if (!match) return null;
-  const eqIdx = match.indexOf("=");
-  return decodeURIComponent(match.slice(eqIdx + 1));
-}
+// ABOUTME: 前端日期辅助函数
+// ABOUTME: 仅用于本地 thread 日期键与当日 UI 展示，不承载身份信息
 
 export function getTodayDateString(): string {
   const now = new Date();

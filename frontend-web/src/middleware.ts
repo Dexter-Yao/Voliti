@@ -1,5 +1,5 @@
 // ABOUTME: Supabase session 刷新 + 认证守卫
-// ABOUTME: 每次请求刷新 JWT，未认证用户重定向 /login；同步设置 voliti_user_id cookie 供客户端读取
+// ABOUTME: 每次请求刷新 JWT，未认证用户重定向 /login
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
@@ -51,15 +51,6 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
-
-  // 同步 user_id 到客户端可读 cookie，供 getUserId() 和下游 LangGraph 调用使用
-  supabaseResponse.cookies.set("voliti_user_id", user.id, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
 
   return supabaseResponse;
 }

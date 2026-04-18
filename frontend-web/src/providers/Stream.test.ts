@@ -32,13 +32,11 @@ describe("thread bootstrap contract", () => {
 
     const result = await ensureTodayThread(
       "http://127.0.0.1:2025",
-      "u_dexter",
       "coach",
     );
 
     expect(searchMock).toHaveBeenCalledWith({
       metadata: {
-        user_id: "u_dexter",
         date: "2026-04-15",
         session_type: "coaching",
       },
@@ -56,7 +54,6 @@ describe("thread bootstrap contract", () => {
 
     const result = await startOnboardingThread(
       "http://127.0.0.1:2025",
-      "u_dexter",
       "coach",
     );
 
@@ -64,7 +61,6 @@ describe("thread bootstrap contract", () => {
     expect(createMock).toHaveBeenCalledTimes(1);
     expect(createMock).toHaveBeenCalledWith({
       metadata: expect.objectContaining({
-        user_id: "u_dexter",
         date: "2026-04-15",
         session_type: "onboarding",
         graph_id: "coach",

@@ -1,4 +1,4 @@
-// ABOUTME: Thread 管理 provider，按 user_id 搜索所有 Thread
+// ABOUTME: Thread 管理 provider，按受信任代理边界搜索当前用户的所有 Thread
 // ABOUTME: 支持按天分组显示对话历史
 
 import { Thread } from "@langchain/langgraph-sdk";
@@ -12,7 +12,6 @@ import {
   SetStateAction,
 } from "react";
 import { createClient } from "./client";
-import { getUserId } from "@/lib/user";
 
 interface ThreadContextType {
   getThreads: () => Promise<Thread[]>;
@@ -31,14 +30,10 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
 
   const getThreads = useCallback(async (): Promise<Thread[]> => {
     if (!apiUrl) return [];
-    const userId = getUserId();
-    if (!userId) return [];
 
     const client = createClient(apiUrl, undefined, undefined);
     const threads = await client.threads.search({
-      metadata: {
-        user_id: userId,
-      },
+      metadata: {},
       limit: 100,
     });
 

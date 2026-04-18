@@ -34,6 +34,16 @@ export async function signupAction(
   _prevState: { error: string } | null,
   formData: FormData,
 ): Promise<{ error: string }> {
+  const allowSelfSignup = process.env.VOLITI_ALLOW_SELF_SIGNUP === "true";
+  if (!allowSelfSignup) {
+    const contact = process.env.VOLITI_TRIAL_CONTACT?.trim();
+    return {
+      error: contact
+        ? `当前为邀请制试用，请联系 ${contact} 获取账号。`
+        : "当前为邀请制试用，请联系 Dexter 获取账号。",
+    };
+  }
+
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -46,10 +56,14 @@ export async function signupAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (!data.session) {
+    return { error: "注册成功。请先完成邮箱验证，再返回登录。" };
   }
 
   revalidatePath("/", "layout");

@@ -3,6 +3,7 @@
 
 "use client";
 
+import Image from "next/image";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import type {
   Component,
@@ -54,9 +55,12 @@ function TextDisplay({ text }: { text: string }) {
 
 function ImageDisplay({ src, alt }: { src: string; alt: string }) {
   return (
-    <img
+    <Image
       src={src}
       alt={alt}
+      width={1200}
+      height={1200}
+      unoptimized
       className="w-full rounded-none object-cover"
     />
   );

@@ -11,8 +11,7 @@ import { A2UIInterruptHandler } from "@/components/a2ui/A2UIInterruptHandler";
 import { OnboardingWelcome } from "@/components/OnboardingWelcome";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
-import { getUserId } from "@/lib/user";
-import { fetchOnboardingComplete } from "@/lib/store-sync";
+import { fetchCoachContext, fetchOnboardingComplete, type CoachContextData } from "@/lib/store-sync";
 import {
   type OnboardingEntryIntent,
   shouldAutoStartReentrySession,
@@ -27,17 +26,29 @@ import { SESSION_TYPE_COACHING } from "@/lib/thread-utils";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
+import { CoachContextSummary } from "@/components/coach/CoachContextSummary";
 
 function OnboardingComplete({ onConfirm }: { onConfirm: () => void }) {
+  const [context, setContext] = useState<CoachContextData | null>(null);
+
+  useEffect(() => {
+    fetchCoachContext().then(setContext).catch(() => null);
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F4EDE3]">
-      <div className="mx-auto max-w-md px-8 text-center">
+      <div className="mx-auto max-w-3xl px-8 text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-[#1A1816]">
           准备好了
         </h1>
         <p className="mt-4 font-serif-coach text-base leading-relaxed text-[#1A1816]/70">
           我已经记住了你告诉我的一切。从现在开始，我会陪你走这段路。
         </p>
+        {context && (
+          <div className="mt-8 text-left">
+            <CoachContextSummary context={context} />
+          </div>
+        )}
         <Button
           onClick={onConfirm}
           className="mt-8 w-full bg-[#1A1816] px-8 py-3 text-[#F4F0E8] hover:bg-[#1A1816]/90"
@@ -97,10 +108,9 @@ function MainApp() {
   const handleOnboardingStart = async (name: string) => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
-    const userId = getUserId();
-    if (!apiUrl || !assistantId || !userId) {
-      console.error("[onboarding] guard failed:", { apiUrl: !!apiUrl, assistantId: !!assistantId, userId });
-      toast.error(`无法启动引导：${!apiUrl ? "缺少 API_URL" : !assistantId ? "缺少 ASSISTANT_ID" : "未获取到用户身份，请刷新页面"}`);
+    if (!apiUrl || !assistantId) {
+      console.error("[onboarding] guard failed:", { apiUrl: !!apiUrl, assistantId: !!assistantId });
+      toast.error(`无法启动引导：${!apiUrl ? "缺少 API_URL" : "缺少 ASSISTANT_ID"}`);
       return;
     }
 
@@ -109,7 +119,6 @@ function MainApp() {
     try {
       const result = await startOnboardingThread(
         apiUrl,
-        userId,
         assistantId,
       );
       if (!result) {
@@ -135,10 +144,9 @@ function MainApp() {
       if (!done || cancelled) return;
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
-      const userId = getUserId();
-      if (!apiUrl || !assistantId || !userId) return;
+      if (!apiUrl || !assistantId) return;
       const result = await ensureTodayThread(
-        apiUrl, userId, assistantId, SESSION_TYPE_COACHING,
+        apiUrl, assistantId, SESSION_TYPE_COACHING,
       );
       if (result && !cancelled) {
         pendingCoachingThreadRef.current = result.threadId;
@@ -175,13 +183,12 @@ function MainApp() {
     if (!shouldAutoStartReentrySession(onboardingInput) || startingOnboarding) return;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
-    const userId = getUserId();
-    if (!apiUrl || !assistantId || !userId) return;
+    if (!apiUrl || !assistantId) return;
 
     let cancelled = false;
     setStartingOnboarding(true);
 
-    startOnboardingThread(apiUrl, userId, assistantId)
+    startOnboardingThread(apiUrl, assistantId)
       .then((result) => {
         if (!result || cancelled) {
           toast.error("暂时无法进入补充引导，请稍后重试");
@@ -234,11 +241,10 @@ function MainApp() {
   const handleExitReentry = useCallback(async () => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
-    const userId = getUserId();
-    if (!apiUrl || !assistantId || !userId) return;
+    if (!apiUrl || !assistantId) return;
 
     const result = await ensureTodayThread(
-      apiUrl, userId, assistantId, SESSION_TYPE_COACHING,
+      apiUrl, assistantId, SESSION_TYPE_COACHING,
     );
     if (!result) {
       toast.error("暂时无法返回教练主页，请重试");

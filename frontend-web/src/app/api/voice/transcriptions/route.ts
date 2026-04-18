@@ -3,6 +3,7 @@
 
 import { NextResponse } from "next/server";
 
+import { getAuthenticatedUser } from "@/lib/auth/server-user";
 import { detectAudioDurationMs } from "@/lib/audio-duration";
 import {
   isVoiceUploadMimeTypeSupported,
@@ -74,6 +75,11 @@ async function requestDashScopeTranscription(
 
 export async function POST(request: Request) {
   try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return jsonError(401, "请先登录后再继续。");
+    }
+
     const formData = await request.formData();
     const audio = formData.get("audio");
 

@@ -111,7 +111,7 @@ export function parseCopingPlans(markdown: string): CopingPlan[] {
 
 export function parseIdentityStatement(markdown: string): string | null {
   for (const line of markdown.split("\n")) {
-    const match = line.match(/^identity_statement:\s*(.+)$/);
+    const match = line.match(/^(?:-\s*)?identity_statement:\s*(.+)$/);
     if (match) return match[1].trim();
   }
   return null;

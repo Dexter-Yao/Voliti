@@ -7,6 +7,8 @@ import { useActionState, useState } from "react";
 import { loginAction, signupAction } from "./actions";
 
 export default function LoginPage() {
+  const allowSelfSignup = process.env.NEXT_PUBLIC_ALLOW_SELF_SIGNUP === "true";
+  const pilotContact = process.env.NEXT_PUBLIC_TRIAL_CONTACT;
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [loginState, loginFormAction, loginPending] = useActionState(
     loginAction,
@@ -17,7 +19,7 @@ export default function LoginPage() {
     null,
   );
 
-  const isLogin = mode === "login";
+  const isLogin = !allowSelfSignup || mode === "login";
   const error = isLogin ? loginState?.error : signupState?.error;
   const isPending = isLogin ? loginPending : signupPending;
 
@@ -28,6 +30,10 @@ export default function LoginPage() {
           <h1 className="text-2xl font-semibold text-[#1A1816]">Voliti</h1>
           <p className="mt-1 font-serif-coach text-sm text-[#1A1816]/60">
             AI 减脂行为教练
+          </p>
+          <p className="mt-4 text-xs leading-5 text-[#1A1816]/45">
+            当前为邀请制试用，仅面向受邀用户开放。
+            {pilotContact ? ` 账号与支持请联系 ${pilotContact}。` : ""}
           </p>
         </div>
 
@@ -65,16 +71,18 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-[#1A1816]/40">
-          {isLogin ? "没有账号？" : "已有账号？"}
-          <button
-            type="button"
-            onClick={() => setMode(isLogin ? "signup" : "login")}
-            className="ml-1 text-[#1A1816]/60 underline underline-offset-2 hover:text-[#1A1816]"
-          >
-            {isLogin ? "注册" : "登录"}
-          </button>
-        </p>
+        {allowSelfSignup && (
+          <p className="mt-6 text-center text-xs text-[#1A1816]/40">
+            {isLogin ? "没有账号？" : "已有账号？"}
+            <button
+              type="button"
+              onClick={() => setMode(isLogin ? "signup" : "login")}
+              className="ml-1 text-[#1A1816]/60 underline underline-offset-2 hover:text-[#1A1816]"
+            >
+              {isLogin ? "注册" : "登录"}
+            </button>
+          </p>
+        )}
       </div>
     </div>
   );

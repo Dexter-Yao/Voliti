@@ -3,6 +3,7 @@
 
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { fetchMirrorData, type MirrorData } from "@/lib/store-sync";
 import { getWitnessCards, type WitnessCard } from "@/lib/witness-card-store";
@@ -20,17 +21,23 @@ function EmptyState() {
 
 export function MirrorPanel() {
   const [data, setData] = useState<MirrorData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<WitnessCard[]>([]);
   const [expandedCard, setExpandedCard] = useState<WitnessCard | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const result = await fetchMirrorData();
       setData(result);
-    } catch {
-      // Silently fail — panel shows empty state
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "暂时无法读取 Mirror，请稍后重试。",
+      );
     } finally {
       setLoading(false);
     }
@@ -45,6 +52,22 @@ export function MirrorPanel() {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1A1816]/10 border-t-[#B87333]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="max-w-[240px] text-center">
+          <p className="text-sm leading-6 text-[#1A1816]/60">{error}</p>
+          <button
+            onClick={refresh}
+            className="mt-4 text-xs text-[#B87333] transition-colors hover:text-[#965f29]"
+          >
+            重新加载
+          </button>
+        </div>
       </div>
     );
   }
@@ -213,9 +236,12 @@ export function MirrorPanel() {
                   onClick={() => setExpandedCard(card)}
                   className="aspect-square overflow-hidden bg-[#1A1816]/5 transition-opacity hover:opacity-80"
                 >
-                  <img
+                  <Image
                     src={card.src}
                     alt={card.alt}
+                    width={512}
+                    height={512}
+                    unoptimized
                     className="h-full w-full object-cover"
                   />
                 </button>
@@ -238,9 +264,12 @@ export function MirrorPanel() {
             >
               <X className="size-4" />
             </button>
-            <img
+            <Image
               src={expandedCard.src}
               alt={expandedCard.alt}
+              width={1200}
+              height={1200}
+              unoptimized
               className="max-h-[80vh] max-w-full object-contain"
             />
           </div>

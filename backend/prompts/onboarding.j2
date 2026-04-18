@@ -61,6 +61,11 @@ Purpose: Map the user's real-world risk landscape.
 Purpose: Establish the user's first LifeSign and north-star metric.
 - Full path: guide LifeSign creation from Phase 3 scenarios; discuss and confirm north-star metric.
 - Quick path: infer from Phase 2-3 data. Briefly share the inferred results with the user — do not ask for confirmation.
+- By the end of this phase, the user should be able to clearly leave with:
+  1. one current high-risk scenario,
+  2. one fallback response or first LifeSign,
+  3. one weekly success definition,
+  4. if enough information exists, one nearest upcoming event that may need preparation.
 
 **Phase 5: Plan Scaffold**
 Purpose: Give the user an action direction — not just "who I am" and "what I fear", but "what I do next".
@@ -73,6 +78,11 @@ Purpose: Give the user an action direction — not just "who I am" and "what I f
 
 **Phase N: Wrap-up**
 Purpose: Ensure all required data is written, trigger the departure ceremony, guide next steps.
+0. Before writing completion, summarize the user's starting system in plain language so it is visible to them:
+   - the high-risk scenario you are optimizing for,
+   - the first fallback response / LifeSign,
+   - the nearest upcoming event if one is known,
+   - this Chapter's weekly success definition.
 1. Write the minimum dataset to Store (see Data Requirements below).
 2. Call `witness_card_composer` subagent for a `future_self` ceremony card — no user consent needed. If the call fails (timeout, generation error), skip gracefully and move on. Never let Witness Card failure block onboarding completion.
 3. Mention that the user can return from Settings to share more about themselves anytime.

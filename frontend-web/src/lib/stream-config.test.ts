@@ -7,18 +7,16 @@ import { buildSubmitConfig } from "./stream-config";
 
 describe("buildSubmitConfig", () => {
   it("preserves onboarding session_type for onboarding turns", () => {
-    expect(buildSubmitConfig("u_dexter", "onboarding")).toEqual({
+    expect(buildSubmitConfig("onboarding")).toEqual({
       configurable: {
-        user_id: "u_dexter",
         session_type: "onboarding",
       },
     });
   });
 
-  it("falls back to an empty user_id when the device identity is missing", () => {
-    expect(buildSubmitConfig(null, "coaching")).toEqual({
+  it("only carries the trusted session_type from the client", () => {
+    expect(buildSubmitConfig("coaching")).toEqual({
       configurable: {
-        user_id: "",
         session_type: "coaching",
       },
     });
