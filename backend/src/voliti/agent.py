@@ -14,6 +14,7 @@ from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 
 from voliti.backends.readonly_filesystem import ReadOnlyFilesystemBackend
 from voliti.config.models import ModelRegistry
+from voliti.config.prompts import PromptRegistry
 from voliti.middleware.briefing import BriefingMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
 from voliti.middleware.skills_gate import SkillsGateMiddleware
