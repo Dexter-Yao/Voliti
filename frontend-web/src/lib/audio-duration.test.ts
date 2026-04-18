@@ -1,6 +1,8 @@
 // ABOUTME: 音频时长提取测试
 // ABOUTME: 校验 ffprobe 输出解析与服务端权威时长计算边界
 
+import { access, readFile } from "node:fs/promises";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -51,11 +53,32 @@ describe("audio duration helpers", () => {
     expect(parseFfprobeDurationMs("not-a-number")).toBeNull();
   });
 
-  it("detects audio duration from the uploaded file itself", async () => {
-    const durationMs = await detectAudioDurationMs(createWavFile(1000));
+  it("detects audio duration from file bytes without relying on system ffprobe", async () => {
+    let tempPath = "";
+    const durationMs = await detectAudioDurationMs(
+      createWavFile(1000),
+      async (filePath) => {
+        tempPath = filePath;
+        const buffer = await readFile(filePath);
+        expect(buffer.byteLength).toBeGreaterThan(44);
+        return "1.000\n";
+      },
+    );
 
     expect(durationMs).not.toBeNull();
     expect(durationMs).toBeGreaterThanOrEqual(950);
     expect(durationMs).toBeLessThanOrEqual(1050);
+    await expect(access(tempPath)).rejects.toThrow();
+  });
+
+  it("returns null when ffprobe execution fails", async () => {
+    const durationMs = await detectAudioDurationMs(
+      createWavFile(1000),
+      async () => {
+        throw new Error("ffprobe unavailable");
+      },
+    );
+
+    expect(durationMs).toBeNull();
   });
 });

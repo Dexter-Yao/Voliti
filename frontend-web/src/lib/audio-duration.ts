@@ -8,6 +8,7 @@ import { extname, join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+type FfprobeExecutor = (filePath: string) => Promise<string>;
 
 function inferAudioExtension(file: File): string {
   const nameExtension = extname(file.name);
@@ -39,8 +40,23 @@ export function parseFfprobeDurationMs(rawValue: string): number | null {
   return Math.round(parsed * 1000);
 }
 
+async function runFfprobeDuration(filePath: string): Promise<string> {
+  const { stdout } = await execFileAsync("ffprobe", [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration",
+    "-of",
+    "default=noprint_wrappers=1:nokey=1",
+    filePath,
+  ]);
+
+  return stdout;
+}
+
 export async function detectAudioDurationMs(
   file: File,
+  runFfprobe: FfprobeExecutor = runFfprobeDuration,
 ): Promise<number | null> {
   const tempDirectory = await mkdtemp(join(tmpdir(), "voliti-voice-"));
   const tempPath = join(tempDirectory, `recording${inferAudioExtension(file)}`);
@@ -48,17 +64,7 @@ export async function detectAudioDurationMs(
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(tempPath, buffer);
-
-    const { stdout } = await execFileAsync("ffprobe", [
-      "-v",
-      "error",
-      "-show_entries",
-      "format=duration",
-      "-of",
-      "default=noprint_wrappers=1:nokey=1",
-      tempPath,
-    ]);
-
+    const stdout = await runFfprobe(tempPath);
     return parseFfprobeDurationMs(stdout);
   } catch {
     return null;
