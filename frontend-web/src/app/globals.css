@@ -115,3 +115,65 @@
     border-radius: 999px;
   }
 }
+
+/*
+ * Intervention 模式专属 tokens（四种体验式干预共享外壳）
+ * 参考 DESIGN.md § Web 端适配 § A2UI 渲染（Web 适配）§ Intervention 模式
+ */
+@layer utilities {
+  /* 共享外壳 */
+  .intervention-backdrop {
+    background: rgba(26, 24, 22, 0.55);
+  }
+
+  .intervention-ribbon {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--copper) 50%,
+      transparent 100%
+    );
+  }
+
+  .intervention-ribbon-breathing {
+    animation: intervention-ribbon-breathing 4s ease-in-out infinite;
+  }
+
+  @keyframes intervention-ribbon-breathing {
+    0%, 100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  /* Reframing 专项：clamp 字号锚点 */
+  .intervention-reframing-verbatim {
+    font-size: clamp(16px, 1.8vw, 22px);
+  }
+
+  .intervention-reframing-verdict {
+    font-size: clamp(14px, 1.5vw, 18px);
+  }
+
+  .intervention-reframing-equals {
+    font-size: clamp(32px, 3.5vw, 48px);
+  }
+
+  .intervention-reframing-inquiry {
+    font-size: clamp(14px, 1.4vw, 18px);
+  }
+
+  .intervention-reframing-candidate {
+    font-size: clamp(12px, 1.2vw, 16px);
+  }
+
+  /* Scenario 专项：IF/THEN chip 样式 */
+  .intervention-if-then-chip {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--copper);
+  }
+}

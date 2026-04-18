@@ -536,6 +536,91 @@ iOS 只有 tap/no-tap。Web 端需要完整的交互状态链：
 - 混合组件按顺序垂直排列，底部统一确认按钮
 - 详见「Onboarding — 全屏居中引导 / 用户输入区域」
 
+**Intervention 模式（四种体验式干预）**
+
+当 `payload.metadata.surface === "intervention"` 时走此模式，再按 `intervention_kind` 分派到四种 Layout。分派键由后端 `fan_out_<kind>` 专用工具代码硬编码，前端零解析。
+
+#### Common Shell（四 Layout 共享骨架）
+
+| 元素 | 规格 |
+|------|------|
+| 容器 | `position: fixed; inset: 0`（非 Sheet）· 全屏覆盖 |
+| Backdrop | `rgba(26, 24, 22, 0.55)`（比 coaching 的 0.4 深一度） |
+| 顶部呼吸线 | 1px · `linear-gradient(90deg, transparent, copper, transparent)` · opacity 0.3↔0.6 · 4s cycle |
+| Top signature | 左：copper Mono 10px `体验式 · <kind 中文>`；右：obsidian-40 Mono 10px 日期 · letter-spacing 2px |
+| 底部 footer 条 | 独立一行（不与按钮重叠）· 左 sig `EXPERIENTIAL · 体验式` copper Mono 10px opacity 0.7 · 右 hint + action buttons |
+| 入场节奏 | 1.8–2.8s 分层淡入（framer-motion）· 分层顺序：backdrop → 呼吸线 → top-sig → Layout 主体 → footer |
+| Escape 行为 | Escape 键关闭；**遮罩点击不关闭**（防误触） |
+| 控件收缩 | intervention 禁用 slider；metaphor / future-self 仅接 `text_input`；scenario / reframing 允许 `select` |
+
+#### Layout 1 · Future Self Dialogue（三栏状态格式塔）
+
+`intervention_kind: "future-self-dialogue"` · Chinese: **和未来自我对话**
+
+Layout 结构：三栏横向，左→右权重递增，每栏顶部独立"时间胶囊"。A2UI 字段 → 槽位映射：
+
+| 槽位 | A2UI 组件 | 视觉规格 |
+|---|---|---|
+| 左栏（记忆） | `TextComponent` | opacity 0.55 · 虚线右边界 · Serif italic 15px 褪色引文 · 时间胶囊 `Serif italic 24px "04-17"` + `Mono 10px "← 过去 / 你说过"` |
+| 中栏（通道） | `TextInputComponent` | 居中 · Mono 字体反差 · 时间胶囊 `Mono 18px "→ 送达"` + `Mono 10px "此刻 · 通道"` · 底部 hint 行 `Cmd + Enter` 与 `→ 送到一年后` 左右分列 |
+| 右栏（在场） | `ProtocolPromptComponent` | copper 3px 左边框 · 轻微 copper 径向背景 · role banner `TA 正在对你说` + copper 横线延伸 · observation 13px obsidian-60 · question 18px Serif italic + copper 引号角 · speaker-tag `— 04-17 · 一年后的你` · 时间胶囊 `Serif 24px copper "2027-04"` + `Mono 10px copper "一年后 →"` |
+
+响应式 &lt;1280px：三栏降级为纵向（未来 → 通道 → 记忆，保持"时间从下往上"的视觉逻辑）。
+
+#### Layout 2 · Scenario Rehearsal（推演对话流）
+
+`intervention_kind: "scenario-rehearsal"` · Chinese: **场景预演**
+
+Layout 结构：顶部场景锚条（固定）+ 左侧 copper 虚线推演轨 + 对话流 + 底部输入区。A2UI 字段 → 槽位映射：
+
+| 槽位 | A2UI 组件 | 视觉规格 |
+|---|---|---|
+| 场景锚条（顶部固定） | 首个 `TextComponent` | obsidian-05 底 · copper 2px 左边框 · Mono 10px copper 标签 `场景 · <日期>` · Serif 16px obsidian 内容 |
+| 推演轨 | CSS 装饰 | 左侧 2px copper 虚线（`repeating-linear-gradient` 4px 实 + 6px 空）贯穿 flow 区 |
+| 对话流 | `ProtocolPromptComponent`（inline copper 左边框）· 后续 `TextComponent` / `TextInputComponent` / `SelectComponent` | Coach 气泡无背景 · 用户气泡 obsidian-05 12px 圆角 · 多轮累积 |
+| IF/THEN chip | `TextComponent` 内容匹配 `"IF X → THEN Y?"` | CSS 专属样式：Mono 11px copper letter-spacing 1px。不匹配回退普通 text |
+| 底部输入 | 当前轮的 `TextInputComponent` | 独立 footer 分隔；`继续预演` 按钮 + `拒绝 · 跳过 · Cmd+Enter` hint |
+
+#### Layout 3 · Metaphor Collaboration（景深镜头）
+
+`intervention_kind: "metaphor-collaboration"` · Chinese: **隐喻协作**
+
+Layout 结构：全屏居中 canvas，前景 / 后景两层深度。A2UI 字段 → 槽位映射：
+
+| 槽位 | A2UI 字段 | 视觉规格 |
+|---|---|---|
+| 前景（verbatim） | `ProtocolPromptComponent.observation` | Serif italic 34px · copper 引号角（左右各 40px 引号）· obsidian 正色 |
+| 后景（问题） | `ProtocolPromptComponent.question` | q-meta 小字 `— 从那只气球看过去` Mono 10px copper opacity 0.7 · Serif italic 15px obsidian-60 |
+| 输入区 | `TextInputComponent` | 顶部 1px obsidian-10 分隔线（无边框 textarea）· Serif 16px · 斜体 placeholder |
+| 节奏 | — | 最慢：2000ms 总入场；前景先到位，后景延迟 500ms 再淡入，表达"隐喻需要驻留" |
+
+#### Layout 4 · Cognitive Reframing（上层左右对比 + 下层解读方式）
+
+`intervention_kind: "cognitive-reframing"` · Chinese: **认知重构**
+
+Layout 结构：上层左右三栏（verbatim | = | 隐含判决）+ 中央质询 + 下层候选 + 自写。A2UI 字段 → 槽位映射：
+
+| 槽位 | A2UI 字段 | 视觉规格 |
+|---|---|---|
+| 左上 verbatim | `ProtocolPromptComponent.observation` | obsidian-05 底 · obsidian-20 2px 左边框 · Serif italic `clamp(16px, 1.8vw, 22px)` · obsidian-40 引号 |
+| 中央 `=` | CSS 装饰 | Mono `clamp(32px, 3.5vw, 48px)` copper 500 weight · 下方小字 `你签下了` Mono 9px copper opacity 0.7 |
+| 右上 判决 | `TextComponent`（Coach 发第二个组件；缺失时占位灰色小字 `你把它签成 =`） | copper 微底（rgba 0.04）· copper 2px 左边框 · Serif italic `clamp(14px, 1.5vw, 18px)` |
+| 中央质询 | `ProtocolPromptComponent.question` | 居中 · Serif italic `clamp(14px, 1.4vw, 18px)` obsidian |
+| 下层候选 | `SelectComponent.options` | 独立卡片列表 · obsidian-10 边框 · hover copper 边 · selected 态 copper 底 rgba 0.06 · Serif `clamp(12px, 1.2vw, 16px)` |
+| 下层自写 | `TextInputComponent` | dashed 分隔 · textarea obsidian-10 边框 · focus copper 边 · Serif `clamp(12px, 1.2vw, 16px)` |
+
+**字号最小值总表**（Reframing 专项 · clamp 降级锚点）：
+
+| 元素 | 理想 | 最小硬锁 |
+|---|---|---|
+| 原话 verbatim | 22px Serif italic | **16px** |
+| 隐含判决 | 18px Serif italic | **14px** |
+| `=` 符号 | 48px Mono copper | **32px** |
+| 中央质询 | 18px Serif italic | **14px** |
+| 候选 / 自写 | 16px Serif | **12px** |
+
+长文本自动换行（`word-break: break-word`）。容器 &lt;880px 时上层三栏降为纵向堆叠，`=` 符号 `rotate(90deg)` 变竖向连接器。
+
 ### Web 特有组件
 
 | 组件 | 位置 | 关键规则 |
@@ -545,6 +630,11 @@ iOS 只有 tap/no-tap。Web 端需要完整的交互状态链：
 | DragHandle | 分隔线 | 2px obsidian-10 · hover copper · col-resize |
 | FeedbackButton | 右下浮动 | 固定定位 · obsidian-20 边框 · hover obsidian 背景 |
 | MessageFeedback | Coach 消息 | hover 显示 👍/👎 · 点击 copper · LangSmith API |
+| InterventionShell | A2UI | Intervention 通用外壳：呼吸线 + top-sig + footer · 按 kind 分派到 Layout |
+| FutureSelfLayout | A2UI | 三栏状态格式塔：记忆（褪色）/ 通道（Mono）/ 在场（copper 边框） |
+| ScenarioLayout | A2UI | 场景锚条 + 左侧 copper 虚线推演轨 + 对话流 + 底部输入 |
+| MetaphorLayout | A2UI | 前景 verbatim（34px 楷体 + copper 引号）· 后景 Clean Language 问题 |
+| ReframingLayout | A2UI | 上层左右对比 verbatim / = / 隐含判决 · 下层候选 + 自写 · clamp 响应字号 |
 
 ### 线框图索引
 
@@ -608,3 +698,7 @@ iOS 只有 tap/no-tap。Web 端需要完整的交互状态链：
 | 2026-04-12 | Web 交互状态表（hover/focus/active/disabled） | iOS 无 hover，Web 必须定义 |
 | 2026-04-16 | Onboarding 全程居中引导（替代居中+对话双阶段） | 用户测试反馈"对话模式"退化为普通聊天体验；全程居中保持"教练面对面"感知 |
 | 2026-04-16 | A2UI onboarding 模式：内联居中（替代底部抽屉） | 抽屉弹窗打断居中引导的沉浸感；onboarding 中 A2UI 组件渲染为页面内容的一部分 |
+| 2026-04-18 | 四种 intervention 统一 layout="full"，走独立全屏 overlay（非 Sheet） | 体验式干预需仪式感；backdrop 加深、内边距放大、入场节奏缓慢 1.8-2.8s |
+| 2026-04-18 | intervention metadata 由后端工具硬编码（非 Coach 写入） | Coach 只决策"用哪种干预"；`fan_out_<kind>` 专用工具自动注入 surface + intervention_kind + layout；Coach 签名不暴露 metadata 参数 |
+| 2026-04-18 | 前端 Intervention Layout 零内容解析 | Layout 仅按 component kind 做槽位分派；LLM 承担智能，组件保持弹性 |
+| 2026-04-18 | Reframing 上层左右对比 + 下层解读方式（非上下流程） | "你签下的等号"需要直接对比才显性；字号全 clamp + 最小值（22→16、18→14、48→32、16→12）|

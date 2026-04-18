@@ -1,17 +1,30 @@
-// ABOUTME: A2UI 底部抽屉，使用 shadcn Sheet 渲染 A2UI 交互面板
-// ABOUTME: 布局映射 half=50vh, three-quarter=75vh, full=100vh；surface 驱动视觉外壳差异化
+// ABOUTME: A2UI 底部抽屉，使用 shadcn Sheet 渲染非 intervention 形态
+// ABOUTME: surface="intervention" 走全屏 overlay 分支，按 intervention_kind 分派到四种 Layout
 
 "use client";
 
+import type { FC } from "react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { resolveSurface, type A2UIPayload, type Surface } from "@/lib/a2ui";
+import {
+  resolveSurface,
+  resolveInterventionKind,
+  type A2UIPayload,
+  type Surface,
+  type InterventionKind,
+} from "@/lib/a2ui";
 import { cn } from "@/lib/utils";
 import { A2UIRenderer } from "./A2UIRenderer";
+import { InterventionShell } from "./intervention/InterventionShell";
+import { FutureSelfLayout } from "./intervention/FutureSelfLayout";
+import { ScenarioLayout } from "./intervention/ScenarioLayout";
+import { MetaphorLayout } from "./intervention/MetaphorLayout";
+import { ReframingLayout } from "./intervention/ReframingLayout";
+import type { InterventionLayoutProps } from "./intervention/types";
 
 const LAYOUT_HEIGHT: Record<A2UIPayload["layout"], string> = {
   half: "50vh",
@@ -20,16 +33,20 @@ const LAYOUT_HEIGHT: Record<A2UIPayload["layout"], string> = {
 };
 
 /**
- * Surface 视觉外壳映射。
- * - intervention：体验式干预形态，最小标记用 copper 顶边 + 更多留白；
- *   完整视觉规格由后续设计阶段决定（docs/09 §5.2 / M7）。
- * - witness-card / onboarding / coaching：保持现有视觉。
+ * Surface 视觉外壳映射（仅 non-intervention 使用）。
+ * intervention 分支走全屏 overlay，不经过 Sheet。
  */
-const SURFACE_CLASS: Record<Surface, string> = {
+const SURFACE_CLASS: Record<Exclude<Surface, "intervention">, string> = {
   onboarding: "",
   coaching: "",
-  intervention: "border-t-2 border-t-[var(--copper)] py-8",
   "witness-card": "",
+};
+
+const LAYOUT_BY_KIND: Record<InterventionKind, FC<InterventionLayoutProps>> = {
+  "future-self-dialogue": FutureSelfLayout,
+  "scenario-rehearsal": ScenarioLayout,
+  "metaphor-collaboration": MetaphorLayout,
+  "cognitive-reframing": ReframingLayout,
 };
 
 interface A2UIDrawerProps {
@@ -52,8 +69,26 @@ export function A2UIDrawer({
   if (!payload) return null;
 
   const surface = resolveSurface(payload.metadata);
+  const kind = resolveInterventionKind(payload.metadata);
 
-  // data-surface 作为 CSS 主题钩子预留给未来干预视觉规格（M7）；当前仅 intervention 形态有样式
+  // Intervention 分支：全屏 overlay + 专用 Layout
+  if (surface === "intervention" && kind) {
+    const Layout = LAYOUT_BY_KIND[kind];
+    return (
+      <InterventionShell kind={kind} onRequestClose={onClose}>
+        <Layout
+          components={payload.components}
+          isSubmitting={isSubmitting}
+          onSubmit={onSubmit}
+          onReject={onReject}
+          onSkip={onSkip}
+        />
+      </InterventionShell>
+    );
+  }
+
+  // 其他 surface：保持现有 Sheet 视觉
+  const sheetSurface = surface === "intervention" ? "coaching" : surface;
   return (
     <Sheet open={!!payload} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
@@ -61,7 +96,7 @@ export function A2UIDrawer({
         data-surface={surface}
         className={cn(
           "mx-auto max-w-[480px] overflow-y-auto rounded-t-lg p-6",
-          SURFACE_CLASS[surface],
+          SURFACE_CLASS[sheetSurface],
         )}
         style={{ maxHeight: LAYOUT_HEIGHT[payload.layout] }}
       >
