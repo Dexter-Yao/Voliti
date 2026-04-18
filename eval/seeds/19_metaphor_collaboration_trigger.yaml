@@ -22,9 +22,8 @@ pre_state:
   profile: |
     # User Profile
 
-    ## Basics
+    ## Identity
     - name: 微夏
-    - depth_choice: full
     - identity_statement: 一个允许自己用自己语言表达的人
     - onboarding_complete: true
   briefing: |
@@ -71,14 +70,13 @@ expected_artifacts:
   minimum_dataset: "none"
 
 judge_dimensions:
-  - "intervention_kind_selection"
-  - "intervention_metadata_correctness"
   - "metaphor_verbatim_preservation"
   - "source_domain_integrity"
 
 scoring_focus:
   primary:
     - "intervention_kind_selection"
+    - "intervention_metadata_correctness"
     - "metaphor_verbatim_preservation"
   secondary:
     - "source_domain_integrity"

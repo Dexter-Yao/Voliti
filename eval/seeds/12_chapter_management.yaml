@@ -20,16 +20,13 @@ pre_state:
   profile: |
     # User Profile
 
-    ## Basics
+    ## Identity
     - name: Sumi
-    - depth_choice: full
     - identity_statement: 一个会认真照顾自己的人
     - onboarding_complete: true
 
-    ## Environment
+    ## Life Context
     - primary_meal_source: mixed
-    - available_options:
-    - cooking_ability:
 
 expected_behaviors:
   must:

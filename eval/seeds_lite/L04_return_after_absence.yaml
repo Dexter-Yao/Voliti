@@ -21,18 +21,15 @@ pre_state:
   profile: |
     # User Profile
 
-    ## Basics
+    ## Identity
     - name: 志远
-    - depth_choice: full
     - identity_statement: 一个在高压工作里也能做出清醒选择的人
     - onboarding_complete: true
 
-    ## Triggers
+    ## Risk Landscape
     - emotional_triggers: stress
     - physical_triggers: fatigue
-    - social_triggers:
     - post_lapse_pattern: sometimes
-    - known_recovery_strategy:
   coping_plans:
     - id: "ls_005"
       trigger:

@@ -21,33 +21,15 @@ pre_state:
   profile: |
     # User Profile
 
-    ## Basics
+    ## Identity
     - name: Tin
-    - depth_choice: quick
     - identity_statement: 一个在忙的时候也会顾住自己的人
     - onboarding_complete: true
 
-    ## Environment
+    ## Life Context
     - primary_meal_source: delivery
-    - available_options:
-    - cooking_ability:
 
-    ## Identity & Motivation
-    - motivation_type:
-    - motivation_intensity:
-    - privacy_attitude:
-
-    ## Habits
-    - dietary_restrictions:
-    - established_good_habits:
-    - exercise_type_freq:
-    - medical_boundaries:
-
-    ## Rhythm
-    - work_rhythm:
-    - social_rhythm:
-
-    ## Triggers
+    ## Risk Landscape
     - emotional_triggers: stress
     - physical_triggers:
     - social_triggers:

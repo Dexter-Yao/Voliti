@@ -1,38 +1,46 @@
 {#
 ABOUTME: User profile canonical template fragment
-ABOUTME: 供 onboarding prompt 直接引用，统一六维画像结构
+ABOUTME: 供 onboarding / coach prompt 引用，六维画像 MECE 结构
 #}
 # User Profile
+<!-- 写入规则：关键词或短语，≤20 字/项；多值逗号分隔 ≤5 项；未知留空 -->
+<!-- 演进规则：可在任意 section 下新增字段、可重命名字段以更准确反映语义、值允许为空 -->
 
-## Basics
+## Identity
 - name:
-- depth_choice: full | quick
 - identity_statement:
-- onboarding_complete: false
+- privacy_preference: private | open
+- onboarding_complete: false  <!-- 整个 onboarding 流程是否完成 -->
 
-## Environment
-- primary_meal_source:
-- available_options:
-- cooking_ability:
+## Medical Constraints
+<!-- Coach 不得建议违反此节任何条目 -->
+- food_allergies_or_intolerances:
+- conditions_affecting_exercise:
 
-## Identity & Motivation
-- motivation_type:
-- motivation_intensity:
-- privacy_attitude:
+## Motivation
+<!-- 减脂与健康管理的内在驱动 -->
+- core_drive:
+- drive_intensity: low | medium | high
 
-## Habits
-- dietary_restrictions:
-- established_good_habits:
-- exercise_type_freq:
-- medical_boundaries:
-
-## Rhythm
+## Life Context
 - work_rhythm:
-- social_rhythm:
+- living_situation:
+- primary_meal_source:
+- cooking_ability:
+- social_dining_frequency:
 
-## Triggers
+## Risk Landscape
+<!-- 可能导致用户脱离计划节奏、失去控制的因素 -->
 - emotional_triggers:
 - physical_triggers:
 - social_triggers:
+- schedule_disruption_triggers:
 - post_lapse_pattern:
 - known_recovery_strategy:
+
+## Existing Practice
+- dietary_preference:
+- established_good_habits:
+- exercise_enjoys:
+- exercise_avoids:
+- current_exercise_routine:

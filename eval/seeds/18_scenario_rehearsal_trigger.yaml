@@ -22,13 +22,12 @@ pre_state:
   profile: |
     # User Profile
 
-    ## Basics
+    ## Identity
     - name: 林迟
-    - depth_choice: full
     - identity_statement: 一个在家庭场合里依然清醒的人
     - onboarding_complete: true
 
-    ## Triggers
+    ## Risk Landscape
     - social_triggers: 父亲劝酒；过节聚餐
     - post_lapse_pattern: 事后自责一到两天
     - known_recovery_strategy: 预先告知
@@ -76,14 +75,12 @@ expected_artifacts:
   minimum_dataset: "none"
 
 judge_dimensions:
-  - "intervention_kind_selection"
-  - "intervention_metadata_correctness"
-  - "intervention_scene_anchor_present"
   - "if_then_quality"
 
 scoring_focus:
   primary:
     - "intervention_kind_selection"
+    - "intervention_metadata_correctness"
     - "intervention_scene_anchor_present"
   secondary:
     - "if_then_quality"

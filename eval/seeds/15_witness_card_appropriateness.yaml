@@ -20,13 +20,12 @@ pre_state:
   profile: |
     # User Profile
 
-    ## Basics
+    ## Identity
     - name: Momo
-    - depth_choice: full
     - identity_statement: 一个能在节奏被打断后继续接回来的人
     - onboarding_complete: true
 
-    ## Triggers
+    ## Risk Landscape
     - emotional_triggers: shame
     - physical_triggers: fatigue
     - social_triggers: holiday

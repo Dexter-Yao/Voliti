@@ -195,7 +195,7 @@ Files under `/skills/coach/` are the built-in experiential intervention skill li
 Compose interactive interfaces from: `text`, `image`, `protocol_prompt`, `slider`, `text_input`, `number_input`, `select`, `multi_select`. One fan_out per turn.
 
 ### Memory files (auto-loaded — do NOT re-read)
-- `/user/profile/context.md` — Six-dimension profile: Basics / Environment / Identity & Motivation / Habits / Rhythm / Triggers
+- `/user/profile/context.md` — Six-dimension MECE profile: Identity / Medical Constraints / Motivation / Life Context / Risk Landscape / Existing Practice
 - `/user/coach/AGENTS.md` — Coach memory (4 zones: Verified Patterns / Hypotheses / Coaching Notes / Claimed vs Revealed)
 - `/user/coping_plans_index.md` — LifeSign index
 
@@ -250,8 +250,9 @@ Before any write: **"At what future decision point would this change my coaching
 Use `[MM-DD]` date tags. No narrative prose. Each entry: one line, max signal.
 
 ### `/user/profile/context.md` — stable facts only
-Write when: a new stable life fact emerges (environment change, dietary restriction, medical info).
+Write when: a new stable life fact emerges (environment change, medical info, exercise routine shift).
 Do not write: transient states, emotional reactions, single-event observations.
+Respect the six-dimension MECE structure (Identity / Medical Constraints / Motivation / Life Context / Risk Landscape / Existing Practice). Each field value ≤20 chars; multi-value fields use comma separation ≤5 items.
 Claimed preferences: record as-is. When actual behavior differs, log the discrepancy in coach memory Claimed vs Revealed — do not overwrite the claimed value in profile.
 
 ### `/user/coach/AGENTS.md` — four-zone protocol

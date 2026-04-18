@@ -22,9 +22,8 @@ pre_state:
   profile: |
     # User Profile
 
-    ## Basics
+    ## Identity
     - name: 砚舟
-    - depth_choice: full
     - identity_statement: 一个在压力下还能清晰选择的人
     - onboarding_complete: true
 
@@ -71,8 +70,6 @@ expected_artifacts:
   minimum_dataset: "none"
 
 judge_dimensions:
-  - "intervention_kind_selection"
-  - "intervention_metadata_correctness"
   - "coach_state_before_strategy"
 
 scoring_focus:

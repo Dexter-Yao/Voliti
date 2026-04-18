@@ -20,9 +20,8 @@ pre_state:
   profile: |
     # User Profile
 
-    ## Basics
+    ## Identity
     - name: Clare
-    - depth_choice: full
     - identity_statement: 一个会做出稳定日常选择的人
     - onboarding_complete: true
 
