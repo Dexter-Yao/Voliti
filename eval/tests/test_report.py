@@ -83,6 +83,9 @@ def _make_seed_result(
                     "text": "先看看你现在是什么状态。",
                 },
             ],
+            "metadata": {
+                "auditor_prompt_rendered": "AUDITOR PROMPT",
+            },
         }
     )
     return SeedResult(
@@ -99,6 +102,11 @@ def _make_seed_result(
             ],
             pass_rate=round(sum(1 for item in scores.values() if item.passed) / len(scores), 2),
             must_pass_met=False,
+            judge_requested_dimensions=["coach_state_before_strategy"],
+            judge_dimension_definitions={
+                "coach_state_before_strategy": "Understand state before strategy.",
+            },
+            judge_prompt_rendered="JUDGE PROMPT",
         ),
     )
 
@@ -214,3 +222,107 @@ def test_generate_reports_render_html_files(tmp_path) -> None:
     assert comparison_path.exists()
     assert "Voliti Eval Report" in report_path.read_text(encoding="utf-8")
     assert "Voliti Eval Comparison" in comparison_path.read_text(encoding="utf-8")
+
+
+def test_build_report_context_includes_review_bundle() -> None:
+    eval_result = EvalResult.model_validate(
+        {
+            "run_id": "run_002",
+            "started_at": "2026-04-17T00:00:00Z",
+            "finished_at": "2026-04-17T00:10:00Z",
+            "config_snapshot": {
+                "assistant_id": "coach",
+                "auditor_model": "gpt-5.4",
+                "judge_model": "gpt-5.4",
+            },
+            "seed_results": [
+                _make_seed_result(
+                    "L03_return_after_lapse_48h",
+                    {
+                        "coach_state_before_strategy": DimensionScore(
+                            passed=True,
+                            justification="ok",
+                            score_source="llm",
+                        ),
+                    },
+                ).model_dump(mode="json"),
+            ],
+        }
+    )
+
+    context = build_report_context(eval_result)
+    seed_row = context["seed_rows"][0]
+
+    assert seed_row["auditor_prompt_rendered"] == "AUDITOR PROMPT"
+    assert seed_row["judge_requested_dimensions"] == ["coach_state_before_strategy"]
+    assert seed_row["judge_dimension_definitions"]["coach_state_before_strategy"] == "Understand state before strategy."
+    assert seed_row["judge_prompt_rendered"] == "JUDGE PROMPT"
+
+
+def test_generate_report_renders_review_bundle_sections(tmp_path) -> None:
+    run = EvalResult(
+        run_id="run_003",
+        started_at="2026-04-17T00:00:00Z",
+        config_snapshot={
+            "assistant_id": "coach",
+            "auditor_model": "gpt-5.4",
+            "judge_model": "gpt-5.4",
+        },
+        seed_results=[
+            _make_seed_result(
+                "L01_onboarding_quick_minimum_dataset",
+                {
+                    "coach_action_transparency": DimensionScore(
+                        passed=True,
+                        justification="explained",
+                        score_source="llm",
+                    ),
+                },
+            )
+        ],
+    )
+
+    report_path = generate_report(run, tmp_path / "single")
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "Auditor Prompt" in html
+    assert "Judge Requested Dimensions" in html
+    assert "Judge Dimension Definitions" in html
+    assert "Expected Behaviors" in html
+
+
+def test_generate_report_renders_unicode_and_markdown_for_review(tmp_path) -> None:
+    seed_result = _make_seed_result(
+        "19_metaphor_collaboration_trigger",
+        {
+            "metaphor_verbatim_preservation": DimensionScore(
+                passed=True,
+                justification="保留了原隐喻。",
+                score_source="llm",
+            ),
+        },
+    )
+    seed_result.seed.auditor_policy.latent_facts = [
+        "他一直有'清晨写字'这个私人仪式，从未对 Coach 主动讲过"
+    ]
+    seed_result.transcript.turns[1].text = "你不是掉线了，而是**一直在做，但和为什么做脱开了**。"
+
+    run = EvalResult(
+        run_id="run_004",
+        started_at="2026-04-17T00:00:00Z",
+        config_snapshot={
+            "assistant_id": "coach",
+            "auditor_model": "gpt-5.4",
+            "judge_model": "gpt-5.4",
+        },
+        seed_results=[seed_result],
+    )
+
+    report_path = generate_report(run, tmp_path / "single")
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "结果总览" in html
+    assert "他一直有&#39;清晨写字&#39;这个私人仪式，从未对 Coach 主动讲过" in html
+    assert "\\u4ed6\\u4e00\\u76f4" not in html
+    assert "<strong>一直在做，但和为什么做脱开了</strong>" in html
+    assert "审核材料" in html

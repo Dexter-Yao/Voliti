@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from voliti_eval.models import Seed
 
 
@@ -80,3 +82,38 @@ def test_seed_requires_new_eval_schema_fields() -> None:
         "coach_identity_language",
     ]
 
+
+def test_seed_rejects_unknown_dimensions_in_judge_and_scoring_focus() -> None:
+    with pytest.raises(ValueError, match="Unknown eval dimensions"):
+        Seed.model_validate(
+            {
+                "id": "17_future_self_dialogue_trigger",
+                "name": "Future self dialogue",
+                "description": "Ensure intervention dimensions are registered.",
+                "entry_mode": "coaching",
+                "persona": {
+                    "name": "砚舟",
+                    "background": "identity drift",
+                    "personality": "克制",
+                    "language": "zh",
+                },
+                "goal": "Trigger the intervention.",
+                "initial_message": "我不知道自己想成为什么样的人了。",
+                "auditor_policy": {
+                    "latent_facts": [],
+                    "reveal_rules": [],
+                    "a2ui_plan": [],
+                    "challenge_rules": [],
+                    "stop_rules": {
+                        "min_user_turns": 3,
+                        "complete_when": ["done"],
+                        "continue_until": ["done"],
+                    },
+                },
+                "judge_dimensions": ["not_registered_dimension"],
+                "scoring_focus": {
+                    "primary": ["another_unknown_dimension"],
+                    "secondary": [],
+                },
+            }
+        )

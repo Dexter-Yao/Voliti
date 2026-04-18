@@ -75,14 +75,25 @@ def assemble_score_card(
     deterministic_scores: dict[str, DimensionScore],
     llm_scores: dict[str, DimensionScore],
     overall_assessment: str = "",
+    judge_requested_dimensions: list[str] | None = None,
+    judge_dimension_definitions: dict[str, str] | None = None,
+    judge_prompt_rendered: str = "",
 ) -> ScoreCard:
     scores = {**deterministic_scores, **llm_scores}
     if not scores:
-        return ScoreCard(seed_id=seed_id, overall_assessment=overall_assessment)
+        return ScoreCard(
+            seed_id=seed_id,
+            overall_assessment=overall_assessment,
+            must_pass_met=not primary_dimensions,
+            judge_requested_dimensions=judge_requested_dimensions or [],
+            judge_dimension_definitions=judge_dimension_definitions or {},
+            judge_prompt_rendered=judge_prompt_rendered,
+        )
 
     pass_rate = round(sum(1 for score in scores.values() if score.passed) / len(scores), 2)
     primary_set = set(primary_dimensions)
-    must_pass_met = all(
+    missing_primary = sorted(primary_set - set(scores))
+    must_pass_met = not missing_primary and all(
         score.passed
         for dimension_id, score in scores.items()
         if dimension_id in primary_set
@@ -99,6 +110,9 @@ def assemble_score_card(
         critical_failures=critical_failures,
         pass_rate=pass_rate,
         must_pass_met=must_pass_met,
+        judge_requested_dimensions=judge_requested_dimensions or [],
+        judge_dimension_definitions=judge_dimension_definitions or {},
+        judge_prompt_rendered=judge_prompt_rendered,
     )
 
 
@@ -161,7 +175,10 @@ async def run_conversation(
         seed_name=seed.name,
         thread_id=thread_id,
         started_at=datetime.now(UTC),
-        metadata={"entry_mode": seed.entry_mode},
+        metadata={
+            "entry_mode": seed.entry_mode,
+            "auditor_prompt_rendered": auditor.render_system_prompt(seed),
+        },
     )
 
     turns: list[Turn] = []
@@ -351,6 +368,9 @@ async def _run_single_seed(
             deterministic_scores=deterministic_scores,
             llm_scores=llm_scores,
             overall_assessment=overall_assessment,
+            judge_requested_dimensions=llm_score_card.judge_requested_dimensions if judge_fn is not None else [],
+            judge_dimension_definitions=llm_score_card.judge_dimension_definitions if judge_fn is not None else {},
+            judge_prompt_rendered=llm_score_card.judge_prompt_rendered if judge_fn is not None else "",
         )
     except Exception:
         logger.exception("[%s] Failed", seed.id)

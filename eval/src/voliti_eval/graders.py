@@ -13,6 +13,19 @@ from voliti_eval.backend_contracts import (
     get_experiential_module,
     get_store_contract_module,
 )
+from voliti_eval.dimensions import (
+    CONTRACT_A2UI,
+    CONTRACT_GOAL_CHAPTER_ALIGNMENT,
+    CONTRACT_MEMORY_PROTOCOL,
+    CONTRACT_ONBOARDING_ARTIFACTS,
+    CONTRACT_STORE_SCHEMA,
+    CONTRACT_WITNESS_CARD,
+    DETERMINISTIC_DIMENSIONS,
+    INTERVENTION_KIND_SELECTION,
+    INTERVENTION_METADATA_CORRECTNESS,
+    INTERVENTION_SCENE_ANCHOR_PRESENT,
+    REFRAME_VERDICT_COMPONENT_PRESENT,
+)
 from voliti_eval.models import (
     DimensionScore,
     Seed,
@@ -23,21 +36,49 @@ from voliti_eval.models import (
     Transcript,
 )
 
-CONTRACT_A2UI = "contract_a2ui"
-CONTRACT_WITNESS_CARD = "contract_witness_card"
-CONTRACT_STORE_SCHEMA = "contract_store_schema"
-CONTRACT_ONBOARDING_ARTIFACTS = "contract_onboarding_artifacts"
-CONTRACT_GOAL_CHAPTER_ALIGNMENT = "contract_goal_chapter_alignment"
-CONTRACT_MEMORY_PROTOCOL = "contract_memory_protocol"
 
-DETERMINISTIC_DIMENSIONS = [
-    CONTRACT_A2UI,
-    CONTRACT_WITNESS_CARD,
-    CONTRACT_STORE_SCHEMA,
-    CONTRACT_ONBOARDING_ARTIFACTS,
-    CONTRACT_GOAL_CHAPTER_ALIGNMENT,
-    CONTRACT_MEMORY_PROTOCOL,
-]
+@dataclass(frozen=True, slots=True)
+class InterventionSpec:
+    tool_name: str
+    intervention_kind: str
+    requires_scene_anchor: bool = False
+    requires_reframe_verdict_text: bool = False
+
+
+_INTERVENTION_SPECS: dict[str, InterventionSpec] = {
+    "17_future_self_dialogue_trigger": InterventionSpec(
+        tool_name="fan_out_future_self_dialogue",
+        intervention_kind="future-self-dialogue",
+    ),
+    "18_scenario_rehearsal_trigger": InterventionSpec(
+        tool_name="fan_out_scenario_rehearsal",
+        intervention_kind="scenario-rehearsal",
+        requires_scene_anchor=True,
+    ),
+    "19_metaphor_collaboration_trigger": InterventionSpec(
+        tool_name="fan_out_metaphor_collaboration",
+        intervention_kind="metaphor-collaboration",
+    ),
+    "20_cognitive_reframing_trigger": InterventionSpec(
+        tool_name="fan_out_cognitive_reframing",
+        intervention_kind="cognitive-reframing",
+        requires_reframe_verdict_text=True,
+    ),
+}
+
+
+def _select_intervention_tool_call(
+    tool_calls: list[ToolCallRecord],
+    tool_name: str,
+) -> ToolCallRecord | None:
+    matching_calls = [call for call in tool_calls if call.name == tool_name]
+    if not matching_calls:
+        return None
+    for call in matching_calls:
+        components = (call.arguments or {}).get("components")
+        if isinstance(components, list) and components:
+            return call
+    return matching_calls[0]
 
 
 def _pass(justification: str, evidence_turns: list[int] | None = None) -> DimensionScore:
@@ -207,6 +248,146 @@ class WitnessCardContractGrader:
 
 
 @dataclass(slots=True)
+class InterventionContractGrader:
+    """评估四个 intervention 场景中可由代码确定的契约项。"""
+
+    def grade(
+        self,
+        seed: Seed,
+        transcript: Transcript,
+        tool_calls: list[ToolCallRecord],
+    ) -> dict[str, DimensionScore]:
+        spec = _INTERVENTION_SPECS.get(seed.id)
+        if spec is None:
+            return {}
+
+        scores: dict[str, DimensionScore] = {}
+        panel_turn = next(
+            (
+                turn
+                for turn in transcript.turns
+                if turn.role == "coach"
+                and turn.a2ui_payload
+                and turn.a2ui_payload.get("metadata", {}).get("surface") == "intervention"
+            ),
+            None,
+        )
+        matching_tool_call = _select_intervention_tool_call(tool_calls, spec.tool_name)
+
+        if matching_tool_call is None:
+            scores[INTERVENTION_KIND_SELECTION] = _fail(
+                f"场景应调用 {spec.tool_name}，但未捕获到对应工具调用。",
+            )
+        else:
+            scores[INTERVENTION_KIND_SELECTION] = _pass(
+                f"已调用正确的 intervention 工具：{spec.tool_name}。",
+                evidence_turns=[matching_tool_call.turn_index],
+            )
+
+        payload: dict[str, Any] | None = None
+        evidence_turns: list[int] = []
+        inferred_from_tool_contract = False
+        if panel_turn is not None:
+            payload = panel_turn.a2ui_payload or {}
+            evidence_turns = [panel_turn.index]
+        elif matching_tool_call is not None:
+            components = (matching_tool_call.arguments or {}).get("components")
+            if isinstance(components, list):
+                payload = {
+                    "type": "a2ui",
+                    "layout": "full",
+                    "metadata": {
+                        "surface": "intervention",
+                        "intervention_kind": spec.intervention_kind,
+                    },
+                    "components": components,
+                }
+                evidence_turns = [matching_tool_call.turn_index]
+                inferred_from_tool_contract = True
+
+        if payload is None:
+            scores[INTERVENTION_METADATA_CORRECTNESS] = _fail(
+                "未捕获到 intervention A2UI 面板，无法验证 metadata 与组件契约。",
+            )
+            if spec.requires_scene_anchor:
+                scores[INTERVENTION_SCENE_ANCHOR_PRESENT] = _fail(
+                    "未捕获到 scenario-rehearsal 面板，无法验证场景锚条。",
+                )
+            if spec.requires_reframe_verdict_text:
+                scores[REFRAME_VERDICT_COMPONENT_PRESENT] = _fail(
+                    "未捕获到 cognitive-reframing 面板，无法验证 verdict 文本组件。",
+                )
+            return scores
+
+        metadata = payload.get("metadata", {})
+        layout = payload.get("layout")
+        components = payload.get("components", [])
+
+        metadata_errors: list[str] = []
+        if metadata.get("surface") != "intervention":
+            metadata_errors.append("surface 不是 intervention")
+        if metadata.get("intervention_kind") != spec.intervention_kind:
+            metadata_errors.append(
+                f"intervention_kind 应为 {spec.intervention_kind}，实际为 {metadata.get('intervention_kind')}"
+            )
+        if layout != "full":
+            metadata_errors.append(f"layout 应为 full，实际为 {layout}")
+
+        if metadata_errors:
+            scores[INTERVENTION_METADATA_CORRECTNESS] = _fail(
+                "；".join(metadata_errors),
+                evidence_turns=evidence_turns,
+            )
+        else:
+            justification = "intervention metadata 与 layout 均符合工具契约。"
+            if inferred_from_tool_contract:
+                justification = (
+                    f"未捕获 runtime panel；但 {spec.tool_name} 在 backend skill tool 中硬编码了 "
+                    "surface=intervention、intervention_kind 与 layout=full，按工具契约判定通过。"
+                )
+            scores[INTERVENTION_METADATA_CORRECTNESS] = _pass(
+                justification,
+                evidence_turns=evidence_turns,
+            )
+
+        if spec.requires_scene_anchor:
+            first_kind = components[0].get("kind") if components else None
+            if first_kind != "text":
+                scores[INTERVENTION_SCENE_ANCHOR_PRESENT] = _fail(
+                    "scenario-rehearsal 的首个组件必须是 TextComponent 场景锚条。",
+                    evidence_turns=evidence_turns,
+                )
+            else:
+                scores[INTERVENTION_SCENE_ANCHOR_PRESENT] = _pass(
+                    "scenario-rehearsal 面板以 TextComponent 场景锚条开头。",
+                    evidence_turns=evidence_turns,
+                )
+
+        if spec.requires_reframe_verdict_text:
+            protocol_index = next(
+                (index for index, component in enumerate(components) if component.get("kind") == "protocol_prompt"),
+                None,
+            )
+            next_kind = (
+                components[protocol_index + 1].get("kind")
+                if protocol_index is not None and protocol_index + 1 < len(components)
+                else None
+            )
+            if next_kind != "text":
+                scores[REFRAME_VERDICT_COMPONENT_PRESENT] = _fail(
+                    "cognitive-reframing 必须在 ProtocolPromptComponent 后紧随一个 TextComponent。",
+                    evidence_turns=evidence_turns,
+                )
+            else:
+                scores[REFRAME_VERDICT_COMPONENT_PRESENT] = _pass(
+                    "cognitive-reframing 已提供紧随 ProtocolPrompt 的 verdict 文本组件。",
+                    evidence_turns=evidence_turns,
+                )
+
+        return scores
+
+
+@dataclass(slots=True)
 class StoreSchemaGrader:
     dimension_id: str = CONTRACT_STORE_SCHEMA
 
@@ -357,6 +538,7 @@ def grade_deterministic(
 
     scores[CONTRACT_STORE_SCHEMA] = StoreSchemaGrader().grade(seed, store_after, store_diff)
     scores[CONTRACT_MEMORY_PROTOCOL] = MemoryProtocolGrader().grade(seed, store_after)
+    scores.update(InterventionContractGrader().grade(seed, transcript, tool_calls))
 
     if seed.entry_mode in {"new", "resume", "re_entry"}:
         scores[CONTRACT_ONBOARDING_ARTIFACTS] = OnboardingArtifactsGrader().grade(

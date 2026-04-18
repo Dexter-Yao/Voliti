@@ -6,7 +6,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from voliti_eval.dimensions import KNOWN_DIMENSIONS
 
 
 class Persona(BaseModel):
@@ -193,6 +195,16 @@ class Seed(BaseModel):
     expected_artifacts: ExpectedArtifacts = Field(default_factory=ExpectedArtifacts)
     judge_dimensions: list[str] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def validate_known_dimensions(self) -> "Seed":
+        declared = set(self.judge_dimensions)
+        declared.update(self.scoring_focus.primary)
+        declared.update(self.scoring_focus.secondary)
+        unknown = sorted(declared - KNOWN_DIMENSIONS)
+        if unknown:
+            raise ValueError("Unknown eval dimensions: " + ", ".join(unknown))
+        return self
+
 
 class ImageRecord(BaseModel):
     """A2UI 中的图片记录。"""
@@ -298,6 +310,9 @@ class ScoreCard(BaseModel):
     critical_failures: list[str] = Field(default_factory=list)
     pass_rate: float = 0.0
     must_pass_met: bool = True
+    judge_requested_dimensions: list[str] = Field(default_factory=list)
+    judge_dimension_definitions: dict[str, str] = Field(default_factory=dict)
+    judge_prompt_rendered: str = ""
 
 
 class SeedResult(BaseModel):

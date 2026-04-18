@@ -3,13 +3,16 @@
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 from pathlib import Path
+import re
 from statistics import mean
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
+from markupsafe import Markup
 
 from voliti_eval.auditor import AUDITOR_SYSTEM_PROMPT
 from voliti_eval.graders import DETERMINISTIC_DIMENSIONS
@@ -19,6 +22,111 @@ from voliti_eval.models import DimensionScore, EvalResult, SeedResult
 logger = logging.getLogger(__name__)
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent / "templates"
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
+_UNORDERED_LIST_RE = re.compile(r"^[-*]\s+(.*)$")
+_ORDERED_LIST_RE = re.compile(r"^\d+\.\s+(.*)$")
+_BLOCKQUOTE_RE = re.compile(r"^>\s?(.*)$")
+
+
+def _pretty_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, indent=2)
+
+
+def _render_inline_markdown(text: str) -> str:
+    escaped = html.escape(text)
+    escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+    escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
+    return escaped
+
+
+def _render_markdown_html(text: str) -> Markup:
+    if not text:
+        return Markup("")
+
+    lines = text.replace("\r\n", "\n").split("\n")
+    blocks: list[str] = []
+    paragraph: list[str] = []
+    unordered_list: list[str] = []
+    ordered_list: list[str] = []
+    quote_lines: list[str] = []
+
+    def flush_paragraph() -> None:
+        if paragraph:
+            blocks.append("<p>" + "<br>".join(_render_inline_markdown(line) for line in paragraph) + "</p>")
+            paragraph.clear()
+
+    def flush_unordered_list() -> None:
+        if unordered_list:
+            items = "".join(f"<li>{_render_inline_markdown(item)}</li>" for item in unordered_list)
+            blocks.append(f"<ul>{items}</ul>")
+            unordered_list.clear()
+
+    def flush_ordered_list() -> None:
+        if ordered_list:
+            items = "".join(f"<li>{_render_inline_markdown(item)}</li>" for item in ordered_list)
+            blocks.append(f"<ol>{items}</ol>")
+            ordered_list.clear()
+
+    def flush_quote() -> None:
+        if quote_lines:
+            items = "".join(f"<p>{_render_inline_markdown(item)}</p>" for item in quote_lines)
+            blocks.append(f"<blockquote>{items}</blockquote>")
+            quote_lines.clear()
+
+    for raw_line in lines:
+        line = raw_line.rstrip()
+        stripped = line.strip()
+        if not stripped:
+            flush_paragraph()
+            flush_unordered_list()
+            flush_ordered_list()
+            flush_quote()
+            continue
+
+        heading_match = _HEADING_RE.match(stripped)
+        if heading_match:
+            flush_paragraph()
+            flush_unordered_list()
+            flush_ordered_list()
+            flush_quote()
+            level = len(heading_match.group(1))
+            content = _render_inline_markdown(heading_match.group(2))
+            blocks.append(f"<h{level}>{content}</h{level}>")
+            continue
+
+        quote_match = _BLOCKQUOTE_RE.match(stripped)
+        if quote_match:
+            flush_paragraph()
+            flush_unordered_list()
+            flush_ordered_list()
+            quote_lines.append(quote_match.group(1))
+            continue
+        flush_quote()
+
+        unordered_match = _UNORDERED_LIST_RE.match(stripped)
+        if unordered_match:
+            flush_paragraph()
+            flush_ordered_list()
+            unordered_list.append(unordered_match.group(1))
+            continue
+        flush_unordered_list()
+
+        ordered_match = _ORDERED_LIST_RE.match(stripped)
+        if ordered_match:
+            flush_paragraph()
+            flush_unordered_list()
+            ordered_list.append(ordered_match.group(1))
+            continue
+        flush_ordered_list()
+
+        paragraph.append(stripped)
+
+    flush_paragraph()
+    flush_unordered_list()
+    flush_ordered_list()
+    flush_quote()
+
+    return Markup("".join(blocks))
 
 
 def _is_contract_dimension(dimension_id: str) -> bool:
@@ -63,7 +171,13 @@ def _build_relevant_final_files(seed_result: SeedResult) -> list[dict[str, str]]
         artifact = seed_result.store_after.files.get(key)
         if artifact is None:
             continue
-        files.append({"key": key, "content": artifact.content})
+        files.append(
+            {
+                "key": key,
+                "content": artifact.content,
+                "is_markdown": key.endswith(".md") or key.endswith(".markdown"),
+            }
+        )
     return files
 
 
@@ -74,7 +188,7 @@ def _build_tool_call_rows(seed_result: SeedResult) -> list[dict[str, Any]]:
             {
                 "turn_index": call.turn_index,
                 "name": call.name,
-                "arguments": json.dumps(call.arguments or {}, ensure_ascii=False, indent=2),
+                "arguments": _pretty_json(call.arguments or {}),
             }
         )
     return rows
@@ -116,6 +230,7 @@ def _build_seed_row(seed_result: SeedResult) -> dict[str, Any]:
         for row in sorted_scores
         if row["category"] == "behavior"
     ]
+    failed_dimension_ids = [row["dimension_id"] for row in sorted_scores if not row["passed"]]
     return {
         "seed_result": seed_result,
         "seed_id": seed_result.seed.id,
@@ -129,12 +244,21 @@ def _build_seed_row(seed_result: SeedResult) -> dict[str, Any]:
         "must_pass_met": seed_result.score_card.must_pass_met,
         "overall_assessment": seed_result.score_card.overall_assessment,
         "critical_failures": seed_result.score_card.critical_failures,
+        "failed_dimension_ids": failed_dimension_ids,
         "scores": sorted_scores,
         "contract_failures": contract_failures,
         "behavior_failures": behavior_failures,
         "tool_calls": _build_tool_call_rows(seed_result),
         "store_diff_entries": _build_store_diff_rows(seed_result),
         "relevant_final_files": _build_relevant_final_files(seed_result),
+        "auditor_prompt_rendered": seed_result.transcript.metadata.get("auditor_prompt_rendered", ""),
+        "auditor_policy": seed_result.seed.auditor_policy.model_dump(mode="json"),
+        "expected_behaviors": seed_result.seed.expected_behaviors.model_dump(mode="json"),
+        "expected_artifacts": seed_result.seed.expected_artifacts.model_dump(mode="json"),
+        "judge_requested_dimensions": seed_result.score_card.judge_requested_dimensions,
+        "judge_dimension_definitions": seed_result.score_card.judge_dimension_definitions,
+        "judge_prompt_rendered": seed_result.score_card.judge_prompt_rendered,
+        "scoring_focus": seed_result.seed.scoring_focus.model_dump(mode="json"),
     }
 
 
@@ -344,6 +468,8 @@ def generate_report(
         loader=FileSystemLoader(str(_TEMPLATE_DIR)),
         autoescape=True,
     )
+    env.filters["pretty_json"] = _pretty_json
+    env.filters["markdown_html"] = _render_markdown_html
     template = env.get_template("report.html.j2")
 
     html = template.render(**build_report_context(eval_result))

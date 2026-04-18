@@ -108,6 +108,9 @@ class Auditor:
     async def generate_initial_message(self, seed: Seed) -> str:
         return seed.initial_message
 
+    def render_system_prompt(self, seed: Seed) -> str:
+        return self._build_system_prompt(seed)
+
     async def respond_to_text(
         self,
         seed: Seed,

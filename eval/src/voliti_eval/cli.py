@@ -44,7 +44,7 @@ def load_profile_seeds(
 ) -> list[SeedLike]:
     """按 profile 加载 seed。
 
-    `full` 语义更新为 lite 10 个基础场景 + 6 个扩展场景。
+    `full` 语义为 lite 10 个基础场景 + 全部扩展场景。
     """
     if profile == "lite":
         return list(seed_loader(config.seed_directory_lite))
@@ -91,7 +91,7 @@ def filter_seeds(all_seeds: list[SeedLike], selector: str) -> list[SeedLike]:
     "--profile",
     default="lite",
     type=click.Choice(["full", "lite"]),
-    help="评估 Profile：lite（10 seed，默认）或 full（lite 10 + 扩展 6）",
+    help="评估 Profile：lite（10 seed，默认）或 full（lite 10 + 全部扩展）",
 )
 def main(
     seeds: str,
@@ -125,7 +125,11 @@ def main(
         output_dir=output_path,
     )
 
-    all_seeds = load_profile_seeds(config, profile)
+    try:
+        all_seeds = load_profile_seeds(config, profile)
+    except ValueError as exc:
+        click.echo(f"错误：{exc}", err=True)
+        sys.exit(1)
     if not all_seeds:
         click.echo(f"错误：未找到任何 seed YAML 文件（profile={profile}）", err=True)
         sys.exit(1)

@@ -80,7 +80,7 @@ Judge 明确禁止依据以下旧概念评分：
 
 ## 统一维度库
 
-当前评估只有一套主维度库，共 15 个维度。`lite` 与 `full` 的差异只体现在 seed 覆盖面，而不是使用不同 rubric。
+当前评估只有一套主维度库。`lite` 与 `full` 的差异只体现在 seed 覆盖面，而不是使用不同 rubric。
 
 ### 硬契约 / 治理维度
 
@@ -141,9 +141,9 @@ Behavior Judge 负责：
 9. `L09_boundary_mixed_case`
 10. `L10_grounded_daily_guidance`
 
-### Full（16 个）
+### Full（20 个）
 
-`full` 语义为：**lite 10 个基础场景 + 6 个扩展场景**。
+`full` 语义为：**lite 10 个基础场景 + 10 个扩展场景**。
 
 扩展场景如下：
 
@@ -153,6 +153,18 @@ Behavior Judge 负责：
 14. `14_chapter_transition_and_identity_review`
 15. `15_holiday_restart_fatigue`
 16. `16_a2ui_reject_skip_resilience`
+17. `17_future_self_dialogue_trigger`
+18. `18_scenario_rehearsal_trigger`
+19. `19_metaphor_collaboration_trigger`
+20. `20_cognitive_reframing_trigger`
+
+### Intervention 自动评估边界
+
+四个 intervention 场景继续保留在 `full` gate 中，但自动评估边界收窄为：
+
+- **Deterministic**：专用工具选择、`surface/intervention_kind/layout` metadata、组件顺序等可由代码确定的契约项
+- **Judge**：仅评主模型生成的文本内容，例如 `ProtocolPromptComponent.observation/question`、`TextComponent.text`、`SelectComponent.options.label`、`TextInputComponent.label/placeholder`
+- **人工审核**：UI 布局、右栏呈现、组件视觉层级与其他非文本内容
 
 ## 运行方式
 
@@ -168,7 +180,7 @@ uv run python -m voliti_eval
 uv run python -m voliti_eval --seeds L01
 uv run python -m voliti_eval --seeds L01,14
 
-# full = lite 10 + 扩展 6
+# full = lite 10 + 扩展 10
 uv run python -m voliti_eval --profile full
 
 # 多模型对比
@@ -193,6 +205,10 @@ uv run python -m voliti_eval --dry-run --profile full
 
 单模型报告首页按“契约失败 / 行为失败”分区展示，并在 seed 详情中提供：
 
+- 渲染后的 Auditor prompt
+- seed 原始策略快照（`auditor_policy`、`expected_behaviors`、`expected_artifacts`、`scoring_focus`）
+- Judge 请求评分的维度与维度定义
+- Judge 渲染后的系统提示词
 - 每个维度的 `score_source`
 - `tool_calls`
 - `store_diff`
@@ -232,7 +248,7 @@ eval/
 ├── config/
 │   ├── defaults.yaml
 │   └── models.toml
-├── seeds/                # full 扩展 6 个场景
+├── seeds/                # full 扩展 10 个场景
 ├── seeds_lite/           # lite 10 个场景
 ├── src/voliti_eval/
 │   ├── auditor.py
@@ -266,4 +282,5 @@ eval/
 
 | 日期 | 变更内容 |
 |------|----------|
-| 2026-04-17 | 评分架构重建为 deterministic + behavior judge + artifacts 三层；统一 15 维主维度库；重写 lite/full 场景矩阵；报告改为契约失败 / 行为失败双视角；`full` 语义更新为 lite 10 + 扩展 6 |
+| 2026-04-17 | 评分架构重建为 deterministic + behavior judge + artifacts 三层；统一主维度库；重写 lite/full 场景矩阵；报告改为契约失败 / 行为失败双视角 |
+| 2026-04-18 | intervention 自动评估边界收窄为“工具/metadata 契约 + 主模型文本”；`full` 语义收口为 lite 10 + 扩展 10；报告新增 Auditor / Judge 审核信息 |

@@ -6,17 +6,18 @@
 <title>Voliti Eval Report — {{ run_id }}</title>
 <style>
   :root {
-    --bg: #f7f4ee;
+    --bg: #f6f1e8;
     --panel: #fffdf8;
-    --ink: #1e1c19;
-    --muted: #6f665c;
+    --panel-soft: #fbf7ef;
+    --ink: #1f1b16;
+    --muted: #6c6359;
     --line: #ddd4c8;
-    --pass: #2b6b4a;
-    --fail: #a33a2b;
-    --warn: #b26a1f;
-    --blue: #d9ebfb;
-    --sand: #f5ead7;
-    --mint: #e5f1e8;
+    --pass: #2f6f4e;
+    --fail: #9f3c2e;
+    --warn: #b1702b;
+    --user: #dbe8f6;
+    --coach: #f2ece3;
+    --code: #f3eee6;
   }
   * { box-sizing: border-box; }
   body {
@@ -27,29 +28,38 @@
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
     line-height: 1.6;
   }
-  .page { max-width: 1280px; margin: 0 auto; }
-  h1, h2, h3 { margin: 0 0 12px; }
+  .page { max-width: 1360px; margin: 0 auto; }
+  h1, h2, h3, h4 { margin: 0 0 12px; }
   h1 { font-size: 28px; }
   h2 { font-size: 20px; margin-top: 28px; }
   h3 { font-size: 16px; margin-top: 20px; }
+  h4 { font-size: 14px; margin-top: 16px; color: var(--muted); }
   p { margin: 0 0 12px; }
-  .meta { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .meta {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
   .grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 20px;
   }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
   .card, details {
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 16px;
-    box-shadow: 0 6px 24px rgba(30, 28, 25, 0.04);
+    box-shadow: 0 6px 24px rgba(31, 27, 22, 0.04);
   }
   .card { padding: 16px; }
   .metric-value { font-size: 24px; font-weight: 700; }
   .metric-label { color: var(--muted); font-size: 13px; }
-  .panel-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .badge {
     display: inline-flex;
     align-items: center;
@@ -57,11 +67,16 @@
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
+    gap: 4px;
   }
-  .badge-pass { background: var(--mint); color: var(--pass); }
+  .badge-pass { background: #e5f1e8; color: var(--pass); }
   .badge-fail { background: #f8dfdb; color: var(--fail); }
   .badge-warn { background: #f8ead6; color: var(--warn); }
   .badge-source { background: #ece7df; color: var(--muted); }
+  .mono, pre {
+    font-family: "SFMono-Regular", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -77,17 +92,39 @@
     vertical-align: top;
     font-size: 14px;
   }
-  th { background: #f1eadf; font-size: 13px; color: var(--muted); }
+  th {
+    background: #f1eadf;
+    font-size: 13px;
+    color: var(--muted);
+  }
   tr:last-child td { border-bottom: none; }
-  details { margin-top: 16px; overflow: hidden; }
+  details {
+    margin-top: 16px;
+    overflow: hidden;
+  }
   summary {
     cursor: pointer;
     padding: 16px 18px;
-    font-weight: 700;
     list-style: none;
   }
   summary::-webkit-details-marker { display: none; }
   .detail-body { padding: 0 18px 18px; }
+  .seed-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .seed-summary-title {
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .seed-summary-subtitle {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 13px;
+  }
   .seed-meta {
     display: flex;
     flex-wrap: wrap;
@@ -96,10 +133,11 @@
     color: var(--muted);
     font-size: 13px;
   }
-  .two-col {
+  .overview-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
   }
   .list {
     display: flex;
@@ -110,7 +148,7 @@
     padding: 12px;
     border: 1px solid var(--line);
     border-radius: 12px;
-    background: #fffaf2;
+    background: var(--panel-soft);
   }
   .score-head {
     display: flex;
@@ -119,33 +157,111 @@
     align-items: center;
     margin-bottom: 6px;
   }
-  .mono, pre {
-    font-family: "SFMono-Regular", "JetBrains Mono", ui-monospace, monospace;
-    font-size: 12px;
+  .section-details {
+    margin-top: 14px;
+    border-radius: 14px;
+    background: var(--panel-soft);
   }
+  .section-details > summary {
+    font-weight: 700;
+    padding: 14px 16px;
+  }
+  .section-body { padding: 0 16px 16px; }
   pre {
     margin: 0;
     padding: 12px;
-    background: #f6f1e8;
+    background: var(--code);
     border-radius: 12px;
     border: 1px solid var(--line);
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-word;
   }
-  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .raw-toggle {
+    margin-top: 10px;
+    border-radius: 12px;
+    box-shadow: none;
+  }
+  .raw-toggle > summary {
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .markdown {
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel-soft);
+  }
+  .markdown h1,
+  .markdown h2,
+  .markdown h3,
+  .markdown h4,
+  .markdown h5,
+  .markdown h6 {
+    margin: 0 0 10px;
+    font-size: 15px;
+  }
+  .markdown p:last-child,
+  .markdown blockquote:last-child,
+  .markdown ul:last-child,
+  .markdown ol:last-child { margin-bottom: 0; }
+  .markdown blockquote {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-left: 3px solid #c78c4d;
+    background: #f7efe1;
+    color: var(--muted);
+  }
+  .markdown ul,
+  .markdown ol {
+    margin: 0 0 12px 20px;
+    padding: 0;
+  }
+  .markdown code {
+    padding: 1px 5px;
+    border-radius: 6px;
+    background: #eee7dc;
+    font-family: "SFMono-Regular", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .chat {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
   .turn {
     padding: 12px;
     border-radius: 12px;
     border: 1px solid var(--line);
-    background: #fffaf2;
   }
-  .turn.user { background: var(--blue); }
-  .turn.coach { background: #f3eee6; }
-  .turn-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-  @media (max-width: 960px) {
-    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .turn.user { background: var(--user); }
+  .turn.coach { background: var(--coach); }
+  .turn-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .turn-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .compact-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  @media (max-width: 1080px) {
+    .grid,
+    .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .two-col { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 720px) {
+    .grid,
+    .overview-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -175,6 +291,48 @@
       <div class="metric-label">Must-Pass 收口</div>
     </div>
   </section>
+
+  <h2>结果总览</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Seed</th>
+        <th>结果</th>
+        <th>Must-Pass</th>
+        <th>通过率</th>
+        <th>关键失败维度</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in seed_rows %}
+      <tr>
+        <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
+        <td>
+          {% if row.failed_dimension_ids %}
+          <span class="badge badge-fail">需要复核</span>
+          {% else %}
+          <span class="badge badge-pass">通过</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.must_pass_met %}
+          <span class="badge badge-pass">OK</span>
+          {% else %}
+          <span class="badge badge-fail">Fail</span>
+          {% endif %}
+        </td>
+        <td>{{ row.pass_rate_pct }}%</td>
+        <td>
+          {% if row.failed_dimension_ids %}
+          {{ row.failed_dimension_ids | join(", ") }}
+          {% else %}
+          无
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <h2>契约失败</h2>
   {% if contract_failure_rows %}
@@ -243,27 +401,62 @@
   <h2>Seed 详情</h2>
   {% for row in seed_rows %}
   <details>
-    <summary>{{ row.seed_id }} — {{ row.seed_name }}</summary>
+    <summary>
+      <div class="seed-summary-row">
+        <div>
+          <div class="seed-summary-title">{{ row.seed_id }} — {{ row.seed_name }}</div>
+          <div class="seed-summary-subtitle">
+            entry_mode={{ row.entry_mode }} · turns={{ row.turn_count }} · end={{ row.end_reason }}
+          </div>
+        </div>
+        <div class="compact-list">
+          <span class="badge {% if row.must_pass_met %}badge-pass{% else %}badge-fail{% endif %}">
+            Must-Pass {{ "OK" if row.must_pass_met else "Fail" }}
+          </span>
+          <span class="badge badge-source">pass {{ row.pass_rate_pct }}%</span>
+          {% if row.failed_dimension_ids %}
+          <span class="badge badge-fail">{{ row.failed_dimension_ids | length }} 个失败维度</span>
+          {% else %}
+          <span class="badge badge-pass">全部通过</span>
+          {% endif %}
+        </div>
+      </div>
+    </summary>
     <div class="detail-body">
       <div class="seed-meta">
-        <span>entry_mode={{ row.entry_mode }}</span>
-        <span>turns={{ row.turn_count }}</span>
-        <span>end={{ row.end_reason }}</span>
-        <span>pass={{ row.pass_rate_pct }}%</span>
-        {% if row.must_pass_met %}
-        <span class="badge badge-pass">Must-Pass OK</span>
+        {% if row.failed_dimension_ids %}
+        <span>关键失败：{{ row.failed_dimension_ids | join(", ") }}</span>
         {% else %}
-        <span class="badge badge-fail">Must-Pass Fail</span>
+        <span>关键失败：无</span>
         {% endif %}
       </div>
 
       {% if row.overall_assessment %}
-      <div class="card">{{ row.overall_assessment }}</div>
+      <div class="markdown">{{ row.overall_assessment | markdown_html }}</div>
       {% endif %}
 
-      <div class="two-col">
-        <div>
-          <h3>评分明细</h3>
+      <div class="overview-grid">
+        <div class="card">
+          <div class="metric-value">{{ row.pass_rate_pct }}%</div>
+          <div class="metric-label">Seed 总通过率</div>
+        </div>
+        <div class="card">
+          <div class="metric-value">{{ (row.contract_pass_rate * 100) | round | int }}%</div>
+          <div class="metric-label">契约维度</div>
+        </div>
+        <div class="card">
+          <div class="metric-value">{{ (row.behavior_pass_rate * 100) | round | int }}%</div>
+          <div class="metric-label">行为维度</div>
+        </div>
+        <div class="card">
+          <div class="metric-value">{{ row.failed_dimension_ids | length }}</div>
+          <div class="metric-label">失败维度数</div>
+        </div>
+      </div>
+
+      <details class="section-details" open>
+        <summary>评分详情</summary>
+        <div class="section-body">
           <div class="list">
             {% for score in row.scores %}
             <div class="list-item">
@@ -278,7 +471,7 @@
                 {% endif %}
                 <span class="badge badge-source">{{ score.score_source }}</span>
               </div>
-              <div>{{ score.justification }}</div>
+              <div class="markdown">{{ score.justification | markdown_html }}</div>
               {% if score.evidence_turns %}
               <div class="turn-meta">evidence_turns={{ score.evidence_turns | join(", ") }}</div>
               {% endif %}
@@ -286,90 +479,156 @@
             {% endfor %}
           </div>
         </div>
+      </details>
 
-        <div>
-          <h3>Store Diff</h3>
-          {% if row.store_diff_entries %}
-          <div class="list">
-            {% for diff in row.store_diff_entries %}
-            <div class="list-item">
-              <div class="score-head">
-                <strong class="mono">{{ diff.key }}</strong>
-                <span class="badge badge-source">{{ diff.change_type }}</span>
+      <details class="section-details">
+        <summary>会话记录</summary>
+        <div class="section-body">
+          <div class="two-col">
+            <div>
+              <h3>Tool Calls</h3>
+              {% if row.tool_calls %}
+              <div class="list">
+                {% for call in row.tool_calls %}
+                <div class="list-item">
+                  <div class="score-head">
+                    <strong>{{ call.name }}</strong>
+                    <span class="badge badge-source">Turn {{ call.turn_index }}</span>
+                  </div>
+                  <pre>{{ call.arguments }}</pre>
+                </div>
+                {% endfor %}
               </div>
-              {% if diff.before_content %}
-              <div class="turn-meta">Before</div>
-              <pre>{{ diff.before_content }}</pre>
-              {% endif %}
-              {% if diff.after_content %}
-              <div class="turn-meta" style="margin-top: 8px;">After</div>
-              <pre>{{ diff.after_content }}</pre>
+              {% else %}
+              <div class="card">未捕获到工具调用。</div>
               {% endif %}
             </div>
-            {% endfor %}
-          </div>
-          {% else %}
-          <div class="card">未捕获到 store diff。</div>
-          {% endif %}
-        </div>
-      </div>
 
-      <div class="two-col">
-        <div>
-          <h3>Tool Calls</h3>
-          {% if row.tool_calls %}
-          <div class="list">
-            {% for call in row.tool_calls %}
-            <div class="list-item">
-              <div class="score-head">
-                <strong>{{ call.name }}</strong>
-                <span class="badge badge-source">Turn {{ call.turn_index }}</span>
+            <div>
+              <h3>Store Diff</h3>
+              {% if row.store_diff_entries %}
+              <div class="list">
+                {% for diff in row.store_diff_entries %}
+                <div class="list-item">
+                  <div class="score-head">
+                    <strong class="mono">{{ diff.key }}</strong>
+                    <span class="badge badge-source">{{ diff.change_type }}</span>
+                  </div>
+                  {% if diff.before_content %}
+                  <div class="turn-meta">Before</div>
+                  <pre>{{ diff.before_content }}</pre>
+                  {% endif %}
+                  {% if diff.after_content %}
+                  <div class="turn-meta" style="margin-top: 8px;">After</div>
+                  <pre>{{ diff.after_content }}</pre>
+                  {% endif %}
+                </div>
+                {% endfor %}
               </div>
-              <pre>{{ call.arguments }}</pre>
+              {% else %}
+              <div class="card">未捕获到 store diff。</div>
+              {% endif %}
             </div>
-            {% endfor %}
           </div>
-          {% else %}
-          <div class="card">未捕获到工具调用。</div>
-          {% endif %}
-        </div>
 
-        <div>
           <h3>Relevant Final Files</h3>
           {% if row.relevant_final_files %}
           <div class="list">
             {% for file in row.relevant_final_files %}
             <div class="list-item">
               <div class="turn-meta mono">{{ file.key }}</div>
+              {% if file.is_markdown %}
+              <div class="markdown">{{ file.content | markdown_html }}</div>
+              <details class="raw-toggle">
+                <summary>查看原文</summary>
+                <div class="section-body"><pre>{{ file.content }}</pre></div>
+              </details>
+              {% else %}
               <pre>{{ file.content }}</pre>
+              {% endif %}
             </div>
             {% endfor %}
           </div>
           {% else %}
           <div class="card">未找到 relevant final files。</div>
           {% endif %}
-        </div>
-      </div>
 
-      <h3>Transcript</h3>
-      <div class="chat">
-        {% for turn in row.seed_result.transcript.turns %}
-        <div class="turn {{ turn.role }}">
-          <div class="turn-meta">Turn {{ turn.index }} | {{ turn.role }}</div>
-          {% if turn.text %}
-          <div>{{ turn.text }}</div>
-          {% endif %}
-          {% if turn.a2ui_payload %}
-          <div class="turn-meta" style="margin-top: 8px;">A2UI Payload</div>
-          <pre>{{ turn.a2ui_payload | tojson(indent=2) }}</pre>
-          {% endif %}
-          {% if turn.a2ui_response %}
-          <div class="turn-meta" style="margin-top: 8px;">A2UI Response</div>
-          <pre>{{ turn.a2ui_response | tojson(indent=2) }}</pre>
+          <h3>Transcript</h3>
+          <div class="chat">
+            {% for turn in row.seed_result.transcript.turns %}
+            <div class="turn {{ turn.role }}">
+              <div class="turn-meta">Turn {{ turn.index }} | {{ turn.role }}</div>
+              {% if turn.text %}
+              <div class="markdown">{{ turn.text | markdown_html }}</div>
+              {% endif %}
+              {% if turn.a2ui_payload %}
+              <details class="raw-toggle">
+                <summary>A2UI Payload</summary>
+                <div class="section-body"><pre>{{ turn.a2ui_payload | pretty_json }}</pre></div>
+              </details>
+              {% endif %}
+              {% if turn.a2ui_response %}
+              <details class="raw-toggle">
+                <summary>A2UI Response</summary>
+                <div class="section-body"><pre>{{ turn.a2ui_response | pretty_json }}</pre></div>
+              </details>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </details>
+
+      <details class="section-details">
+        <summary>审核材料</summary>
+        <div class="section-body">
+          <div class="two-col">
+            <div>
+              <h3>Auditor Prompt</h3>
+              {% if row.auditor_prompt_rendered %}
+              <div class="markdown">{{ row.auditor_prompt_rendered | markdown_html }}</div>
+              {% else %}
+              <div class="card">未记录渲染后的 Auditor prompt。</div>
+              {% endif %}
+
+              <h3>Expected Behaviors</h3>
+              <pre>{{ row.expected_behaviors | pretty_json }}</pre>
+
+              <h3>Auditor Policy</h3>
+              <pre>{{ row.auditor_policy | pretty_json }}</pre>
+            </div>
+
+            <div>
+              <h3>Judge Requested Dimensions</h3>
+              {% if row.judge_requested_dimensions %}
+              <pre>{{ row.judge_requested_dimensions | pretty_json }}</pre>
+              {% else %}
+              <div class="card">该场景未请求 Judge 行为评分。</div>
+              {% endif %}
+
+              <h3>Judge Dimension Definitions</h3>
+              {% if row.judge_dimension_definitions %}
+              <pre>{{ row.judge_dimension_definitions | pretty_json }}</pre>
+              {% else %}
+              <div class="card">未记录 Judge 维度定义。</div>
+              {% endif %}
+
+              <h3>Expected Artifacts</h3>
+              <pre>{{ row.expected_artifacts | pretty_json }}</pre>
+
+              <h3>Scoring Focus</h3>
+              <pre>{{ row.scoring_focus | pretty_json }}</pre>
+            </div>
+          </div>
+
+          <h3>Judge Prompt</h3>
+          {% if row.judge_prompt_rendered %}
+          <div class="markdown">{{ row.judge_prompt_rendered | markdown_html }}</div>
+          {% else %}
+          <div class="card">该场景未记录 Judge prompt。</div>
           {% endif %}
         </div>
-        {% endfor %}
-      </div>
+      </details>
     </div>
   </details>
   {% endfor %}

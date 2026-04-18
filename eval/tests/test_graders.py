@@ -6,6 +6,7 @@ from __future__ import annotations
 from voliti_eval.graders import (
     A2UIContractGrader,
     GoalChapterAlignmentGrader,
+    InterventionContractGrader,
     MemoryProtocolGrader,
     StoreSchemaGrader,
     build_store_diff,
@@ -19,6 +20,7 @@ from voliti_eval.models import (
     StoreDiffEntry,
     StoreFileArtifact,
     StoreSnapshot,
+    ToolCallRecord,
     Transcript,
 )
 
@@ -204,13 +206,12 @@ def test_memory_protocol_grader_blocks_claimed_vs_revealed_in_profile() -> None:
             "/profile/context.md": """
 # User Profile
 
-## Basics
+## Identity
 - name: 志远
-- depth_choice: full
 - identity_statement: 一个在复杂环境中仍能做出清醒选择的人
 - onboarding_complete: true
 
-## Triggers
+## Risk Landscape
 - emotional_triggers:
 - Claimed: 喜欢自己做饭 | Revealed: 主要依赖外卖 | Implication: 晚上疲劳时执行成本高
 """.strip()
@@ -275,3 +276,266 @@ def test_a2ui_contract_grader_validates_payload_and_response() -> None:
     assert score.passed is True
     assert score.score_source == "deterministic"
 
+
+def test_intervention_contract_grader_checks_tool_and_metadata() -> None:
+    grader = InterventionContractGrader()
+    seed = Seed.model_validate(
+        {
+            "id": "17_future_self_dialogue_trigger",
+            "name": "Future self dialogue",
+            "description": "Check intervention contract.",
+            "entry_mode": "coaching",
+            "persona": {
+                "name": "砚舟",
+                "background": "identity drift",
+                "personality": "克制",
+                "language": "zh",
+            },
+            "goal": "Trigger future-self-dialogue.",
+            "initial_message": "我不知道我想成为什么样的人了。",
+            "auditor_policy": {
+                "latent_facts": [],
+                "reveal_rules": [],
+                "a2ui_plan": [],
+                "challenge_rules": [],
+                "stop_rules": {
+                    "min_user_turns": 3,
+                    "complete_when": ["done"],
+                    "continue_until": ["done"],
+                },
+            },
+            "expected_artifacts": {},
+            "judge_dimensions": ["coach_state_before_strategy"],
+            "scoring_focus": {
+                "primary": [
+                    "intervention_kind_selection",
+                    "intervention_metadata_correctness",
+                ],
+                "secondary": [],
+            },
+        }
+    )
+    transcript = Transcript.model_validate(
+        {
+            "seed_id": seed.id,
+            "seed_name": seed.name,
+            "thread_id": "thread",
+            "started_at": "2026-04-18T00:00:00Z",
+            "finished_at": "2026-04-18T00:01:00Z",
+            "turn_count": 1,
+            "end_reason": "auditor_ended",
+            "turns": [
+                {
+                    "index": 0,
+                    "role": "coach",
+                    "timestamp": "2026-04-18T00:00:00Z",
+                    "a2ui_payload": {
+                        "type": "a2ui",
+                        "layout": "full",
+                        "metadata": {
+                            "surface": "intervention",
+                            "intervention_kind": "future-self-dialogue",
+                        },
+                        "components": [
+                            {"kind": "text", "text": "你以前说过自己想保持清醒。"},
+                            {
+                                "kind": "protocol_prompt",
+                                "observation": "你说你不知道自己想成为什么样的人。",
+                                "question": "如果一年后的你来问现在的你，会问什么？",
+                            },
+                            {
+                                "kind": "text_input",
+                                "key": "future_reply",
+                                "label": "你会怎么回答？",
+                            },
+                        ],
+                    },
+                }
+            ],
+        }
+    )
+    tool_calls = [
+        ToolCallRecord(
+            turn_index=0,
+            name="fan_out_future_self_dialogue",
+            arguments={"components": []},
+        )
+    ]
+
+    scores = grader.grade(seed, transcript, tool_calls)
+
+    assert scores["intervention_kind_selection"].passed is True
+    assert scores["intervention_metadata_correctness"].passed is True
+
+
+def test_intervention_contract_grader_infers_metadata_from_dedicated_tool_when_payload_missing() -> None:
+    grader = InterventionContractGrader()
+    seed = Seed.model_validate(
+        {
+            "id": "18_scenario_rehearsal_trigger",
+            "name": "Scenario rehearsal",
+            "description": "Infer contract from the dedicated tool call.",
+            "entry_mode": "coaching",
+            "persona": {
+                "name": "林迟",
+                "background": "家庭聚餐前预演",
+                "personality": "容易僵住",
+                "language": "zh",
+            },
+            "goal": "Trigger scenario rehearsal.",
+            "initial_message": "下周五家庭聚餐我想提前准备。",
+            "auditor_policy": {
+                "latent_facts": [],
+                "reveal_rules": [],
+                "a2ui_plan": [],
+                "challenge_rules": [],
+                "stop_rules": {
+                    "min_user_turns": 3,
+                    "complete_when": ["done"],
+                    "continue_until": ["done"],
+                },
+            },
+            "expected_artifacts": {},
+            "judge_dimensions": ["if_then_quality"],
+            "scoring_focus": {
+                "primary": [
+                    "intervention_kind_selection",
+                    "intervention_metadata_correctness",
+                    "intervention_scene_anchor_present",
+                ],
+                "secondary": [],
+            },
+        }
+    )
+    transcript = Transcript.model_validate(
+        {
+            "seed_id": seed.id,
+            "seed_name": seed.name,
+            "thread_id": "thread",
+            "started_at": "2026-04-18T00:00:00Z",
+            "finished_at": "2026-04-18T00:01:00Z",
+            "turn_count": 1,
+            "end_reason": "auditor_ended",
+            "turns": [
+                {
+                    "index": 0,
+                    "role": "coach",
+                    "timestamp": "2026-04-18T00:00:00Z",
+                    "text": "我们先做一次场景预演。",
+                }
+            ],
+        }
+    )
+    tool_calls = [
+        ToolCallRecord(
+            turn_index=0,
+            name="fan_out_scenario_rehearsal",
+            arguments={
+                "components": [
+                    {"kind": "text", "text": "下周五家里聚餐，父亲会劝酒。"},
+                    {
+                        "kind": "protocol_prompt",
+                        "observation": "前两次类似场合你都没顶住。",
+                        "question": "我们先排演一下最危险的那一刻，好吗？",
+                    },
+                    {
+                        "kind": "text_input",
+                        "label": "最危险的瞬间是？",
+                    },
+                ]
+            },
+        )
+    ]
+
+    scores = grader.grade(seed, transcript, tool_calls)
+
+    assert scores["intervention_kind_selection"].passed is True
+    assert scores["intervention_metadata_correctness"].passed is True
+    assert scores["intervention_scene_anchor_present"].passed is True
+
+
+def test_intervention_contract_grader_rejects_missing_reframe_text_component() -> None:
+    grader = InterventionContractGrader()
+    seed = Seed.model_validate(
+        {
+            "id": "20_cognitive_reframing_trigger",
+            "name": "Cognitive reframing",
+            "description": "Check verdict component.",
+            "entry_mode": "coaching",
+            "persona": {
+                "name": "予安",
+                "background": "catastrophizing",
+                "personality": "黑白分明",
+                "language": "zh",
+            },
+            "goal": "Trigger cognitive reframing.",
+            "initial_message": "完了，我这周都废了。",
+            "auditor_policy": {
+                "latent_facts": [],
+                "reveal_rules": [],
+                "a2ui_plan": [],
+                "challenge_rules": [],
+                "stop_rules": {
+                    "min_user_turns": 3,
+                    "complete_when": ["done"],
+                    "continue_until": ["done"],
+                },
+            },
+            "expected_artifacts": {},
+            "judge_dimensions": ["coach_state_before_strategy"],
+            "scoring_focus": {
+                "primary": ["reframe_verdict_component_present"],
+                "secondary": [],
+            },
+        }
+    )
+    transcript = Transcript.model_validate(
+        {
+            "seed_id": seed.id,
+            "seed_name": seed.name,
+            "thread_id": "thread",
+            "started_at": "2026-04-18T00:00:00Z",
+            "finished_at": "2026-04-18T00:01:00Z",
+            "turn_count": 1,
+            "end_reason": "auditor_ended",
+            "turns": [
+                {
+                    "index": 0,
+                    "role": "coach",
+                    "timestamp": "2026-04-18T00:00:00Z",
+                    "a2ui_payload": {
+                        "type": "a2ui",
+                        "layout": "full",
+                        "metadata": {
+                            "surface": "intervention",
+                            "intervention_kind": "cognitive-reframing",
+                        },
+                        "components": [
+                            {
+                                "kind": "protocol_prompt",
+                                "observation": "今晚一吃，我这整周就废了。",
+                                "question": "这句话把今晚和整周画成了什么等号？",
+                            },
+                            {
+                                "kind": "select",
+                                "key": "reading",
+                                "label": "换一种读法",
+                                "options": [{"label": "今晚失手不等于整周归零", "value": "a"}],
+                            },
+                        ],
+                    },
+                }
+            ],
+        }
+    )
+    tool_calls = [
+        ToolCallRecord(
+            turn_index=0,
+            name="fan_out_cognitive_reframing",
+            arguments={"components": []},
+        )
+    ]
+
+    scores = grader.grade(seed, transcript, tool_calls)
+
+    assert scores["reframe_verdict_component_present"].passed is False

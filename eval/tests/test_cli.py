@@ -1,12 +1,14 @@
 # ABOUTME: CLI profile 装载测试
-# ABOUTME: 固定 full profile 必须包含 lite 10 个场景与扩展 6 个场景
+# ABOUTME: 固定 full profile 必须包含 lite 10 个场景与全部扩展场景
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from click.testing import CliRunner
+
 from voliti_eval.cli import filter_seeds, load_profile_seeds
-from voliti_eval.config import EvalConfig
+from voliti_eval.config import EvalConfig, load_seeds
 
 
 def test_load_profile_seeds_full_includes_lite_and_extensions() -> None:
@@ -51,3 +53,98 @@ def test_filter_seeds_supports_full_ids_and_prefixes() -> None:
         "L01_onboarding_quick_minimum_dataset",
         "14_chapter_transition_and_identity_review",
     ]
+
+
+def test_load_seeds_rejects_unknown_dimensions(tmp_path: Path) -> None:
+    seed_path = tmp_path / "17_future_self_dialogue_trigger.yaml"
+    seed_path.write_text(
+        """
+id: "17_future_self_dialogue_trigger"
+name: "Future Self Dialogue Trigger"
+description: "Invalid dimension seed"
+entry_mode: "coaching"
+persona:
+  name: "砚舟"
+  background: "identity drift"
+  personality: "克制"
+  language: "zh"
+goal: "Trigger intervention"
+initial_message: "我不知道想成为什么样的人了。"
+auditor_policy:
+  latent_facts: []
+  reveal_rules: []
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when: ["done"]
+    continue_until: ["done"]
+judge_dimensions:
+  - "unknown_dimension"
+scoring_focus:
+  primary:
+    - "contract_store_schema"
+  secondary: []
+""".strip(),
+        encoding="utf-8",
+    )
+
+    try:
+        load_seeds(tmp_path)
+    except ValueError as exc:
+        assert "Unknown eval dimensions" in str(exc)
+    else:
+        raise AssertionError("load_seeds should reject unknown dimensions")
+
+
+def test_cli_dry_run_surfaces_seed_validation_failure(monkeypatch, tmp_path: Path) -> None:
+    runner = CliRunner()
+    seed_dir = tmp_path / "seeds"
+    seed_dir.mkdir()
+    (seed_dir / "bad.yaml").write_text(
+        """
+id: "18_scenario_rehearsal_trigger"
+name: "Scenario Rehearsal Trigger"
+description: "Invalid dimension seed"
+entry_mode: "coaching"
+persona:
+  name: "林迟"
+  background: "家庭聚餐"
+  personality: "愿意配合"
+  language: "zh"
+goal: "Trigger intervention"
+initial_message: "想提前准备一下。"
+auditor_policy:
+  latent_facts: []
+  reveal_rules: []
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when: ["done"]
+    continue_until: ["done"]
+judge_dimensions:
+  - "unknown_dimension"
+scoring_focus:
+  primary: []
+  secondary: []
+""".strip(),
+        encoding="utf-8",
+    )
+
+    def _fake_load_config(*args, **kwargs):
+        return EvalConfig(
+            seed_directory=seed_dir,
+            seed_directory_lite=seed_dir,
+            output_directory=tmp_path / "output",
+        )
+
+    monkeypatch.setattr("voliti_eval.cli.load_config", _fake_load_config)
+
+    result = runner.invoke(
+        __import__("voliti_eval.cli", fromlist=["main"]).main,
+        ["--dry-run", "--profile", "full"],
+    )
+
+    assert result.exit_code != 0
+    assert "Unknown eval dimensions" in result.output
