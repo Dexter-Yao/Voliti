@@ -34,6 +34,13 @@ def _make_seed(seed_id: str) -> Seed:
             },
             "goal": "Check behavior",
             "initial_message": "你好。",
+            "user_outcome": "用户得到当前场景真正需要的支持，而不是被路径细节卡住。",
+            "allowed_good_variants": [
+                "允许 Coach 用不同措辞接住用户，只要结果对用户有帮助。",
+            ],
+            "manual_review_checks": [
+                "人工检查界面呈现是否自然。",
+            ],
             "auditor_policy": {
                 "latent_facts": [],
                 "reveal_rules": [],
@@ -48,8 +55,8 @@ def _make_seed(seed_id: str) -> Seed:
             "expected_artifacts": {},
             "judge_dimensions": ["coach_state_before_strategy"],
             "scoring_focus": {
-                "primary": ["contract_store_schema"],
-                "secondary": ["coach_state_before_strategy"],
+                "primary": ["coach_state_before_strategy"],
+                "secondary": ["contract_store_schema"],
             },
         }
     )
@@ -88,6 +95,11 @@ def _make_seed_result(
             },
         }
     )
+    user_gate_ids = {"coach_state_before_strategy", "coach_action_transparency", "metaphor_collaboration_fit"}
+    runtime_gate_ids = {"contract_onboarding_artifacts", "intervention_kind_selection", "intervention_metadata_correctness", "intervention_scene_anchor_present", "reframe_verdict_component_present", "contract_a2ui"}
+    user_gate_scores = [score for dim_id, score in scores.items() if dim_id in user_gate_ids]
+    runtime_gate_scores = [score for dim_id, score in scores.items() if dim_id in runtime_gate_ids]
+    diagnostic_scores = [score for dim_id, score in scores.items() if dim_id not in user_gate_ids | runtime_gate_ids]
     return SeedResult(
         seed=seed,
         transcript=transcript,
@@ -101,7 +113,12 @@ def _make_seed_result(
                 if not dim_score.passed and dim_score.failure_severity == "critical"
             ],
             pass_rate=round(sum(1 for item in scores.values() if item.passed) / len(scores), 2),
-            must_pass_met=False,
+            must_pass_met=all(score.passed for score in user_gate_scores + runtime_gate_scores),
+            user_gate_met=all(score.passed for score in user_gate_scores) if user_gate_scores else True,
+            runtime_gate_met=all(score.passed for score in runtime_gate_scores) if runtime_gate_scores else True,
+            user_gate_pass_rate=round(sum(1 for item in user_gate_scores if item.passed) / len(user_gate_scores), 2) if user_gate_scores else 0.0,
+            runtime_gate_pass_rate=round(sum(1 for item in runtime_gate_scores if item.passed) / len(runtime_gate_scores), 2) if runtime_gate_scores else 0.0,
+            diagnostic_pass_rate=round(sum(1 for item in diagnostic_scores if item.passed) / len(diagnostic_scores), 2) if diagnostic_scores else 0.0,
             judge_requested_dimensions=["coach_state_before_strategy"],
             judge_dimension_definitions={
                 "coach_state_before_strategy": "Understand state before strategy.",
@@ -111,7 +128,7 @@ def _make_seed_result(
     )
 
 
-def test_build_report_context_splits_contract_and_behavior_failures() -> None:
+def test_build_report_context_splits_user_runtime_and_diagnostic_failures() -> None:
     eval_result = EvalResult.model_validate(
         {
             "run_id": "run_001",
@@ -146,10 +163,11 @@ def test_build_report_context_splits_contract_and_behavior_failures() -> None:
 
     context = build_report_context(eval_result)
 
-    assert context["summary"]["contract_failure_count"] == 1
-    assert context["summary"]["behavior_failure_count"] == 1
-    assert context["seed_rows"][0]["contract_failures"][0]["dimension_id"] == "contract_store_schema"
-    assert context["seed_rows"][0]["behavior_failures"][0]["dimension_id"] == "coach_state_before_strategy"
+    assert context["summary"]["user_gate_failure_count"] == 1
+    assert context["summary"]["runtime_gate_failure_count"] == 0
+    assert context["summary"]["diagnostic_failure_count"] == 1
+    assert context["seed_rows"][0]["user_gate_failures"][0]["dimension_id"] == "coach_state_before_strategy"
+    assert context["seed_rows"][0]["diagnostic_failures"][0]["dimension_id"] == "contract_store_schema"
 
 
 def test_build_comparison_summary_reports_dual_pass_axes() -> None:
@@ -179,8 +197,9 @@ def test_build_comparison_summary_reports_dual_pass_axes() -> None:
     summary = build_comparison_summary({"coach": [run]}, {"coach": "GPT-5.4"})
 
     coach_summary = summary["model_summaries"][0]
-    assert coach_summary["contract_pass_rate"] == 1.0
-    assert coach_summary["behavior_pass_rate"] == 0.0
+    assert coach_summary["runtime_gate_pass_rate"] == 1.0
+    assert coach_summary["user_gate_pass_rate"] == 0.0
+    assert coach_summary["diagnostic_pass_rate"] == 0.0
 
 
 def test_generate_reports_render_html_files(tmp_path) -> None:
@@ -289,6 +308,7 @@ def test_generate_report_renders_review_bundle_sections(tmp_path) -> None:
     assert "Judge Requested Dimensions" in html
     assert "Judge Dimension Definitions" in html
     assert "Expected Behaviors" in html
+    assert "Manual Review Appendix" in html
 
 
 def test_generate_report_renders_unicode_and_markdown_for_review(tmp_path) -> None:
@@ -321,8 +341,78 @@ def test_generate_report_renders_unicode_and_markdown_for_review(tmp_path) -> No
     report_path = generate_report(run, tmp_path / "single")
     html = report_path.read_text(encoding="utf-8")
 
-    assert "结果总览" in html
+    assert "User Gate Summary" in html
     assert "他一直有&#39;清晨写字&#39;这个私人仪式，从未对 Coach 主动讲过" in html
     assert "\\u4ed6\\u4e00\\u76f4" not in html
     assert "<strong>一直在做，但和为什么做脱开了</strong>" in html
     assert "审核材料" in html
+
+
+def test_generate_report_orders_user_runtime_diagnostic_sections_first(tmp_path) -> None:
+    run = EvalResult(
+        run_id="run_005",
+        started_at="2026-04-17T00:00:00Z",
+        config_snapshot={
+            "assistant_id": "coach",
+            "auditor_model": "gpt-5.4",
+            "judge_model": "gpt-5.4",
+        },
+        seed_results=[
+            _make_seed_result(
+                "L01_onboarding_quick_minimum_dataset",
+                {
+                    "coach_state_before_strategy": DimensionScore(
+                        passed=True,
+                        justification="explained",
+                        score_source="llm",
+                    ),
+                    "contract_store_schema": DimensionScore(
+                        passed=False,
+                        justification="legacy field found",
+                        failure_severity="critical",
+                        score_source="deterministic",
+                    ),
+                },
+            )
+        ],
+    )
+
+    report_path = generate_report(run, tmp_path / "single")
+    html = report_path.read_text(encoding="utf-8")
+
+    assert html.index("User Gate Summary") < html.index("Runtime Contract Summary")
+    assert html.index("Runtime Contract Summary") < html.index("Diagnostics Summary")
+    assert html.index("Diagnostics Summary") < html.index("Seed Detail")
+    assert html.index("Seed Detail") < html.index("Manual Review Appendix")
+
+
+def test_build_report_context_includes_manual_review_appendix() -> None:
+    eval_result = EvalResult.model_validate(
+        {
+            "run_id": "run_006",
+            "started_at": "2026-04-17T00:00:00Z",
+            "finished_at": "2026-04-17T00:10:00Z",
+            "config_snapshot": {
+                "assistant_id": "coach",
+                "auditor_model": "gpt-5.4",
+                "judge_model": "gpt-5.4",
+            },
+            "seed_results": [
+                _make_seed_result(
+                    "19_metaphor_collaboration_trigger",
+                    {
+                        "metaphor_collaboration_fit": DimensionScore(
+                            passed=True,
+                            justification="Stayed in the same source domain and moved the user forward.",
+                            score_source="llm",
+                        ),
+                    },
+                ).model_dump(mode="json"),
+            ],
+        }
+    )
+
+    context = build_report_context(eval_result)
+    seed_row = context["seed_rows"][0]
+
+    assert seed_row["manual_review_checks"] == ["人工检查界面呈现是否自然。"]

@@ -16,6 +16,14 @@ goal: >
   观察 Coach 是否主动用已有 marker 和 LifeSign 做预防性讨论。
 
 initial_message: "明晚有个聚餐，我已经开始担心会乱掉。"
+user_outcome: >
+  用户在失控前就获得一次具体、可执行的预防性准备，
+  感到 Coach 正在帮自己提前守住局面。
+allowed_good_variants:
+  - "Coach 可以先具体化 forward marker，再连接对应 LifeSign。"
+  - "Coach 可以直接把事件拆成几个高风险瞬间，但必须落到可执行准备。"
+manual_review_checks:
+  - "人工检查预防性建议是否有现场感，而不是泛泛提醒。"
 max_turns: 16
 pre_state:
   profile: |
@@ -90,5 +98,5 @@ judge_dimensions:
 scoring_focus:
   primary:
     - "coach_forward_marker_prevention"
-  secondary:
     - "coach_lifesign_management"
+  secondary: []

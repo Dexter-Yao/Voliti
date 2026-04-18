@@ -40,6 +40,13 @@ def _make_seed() -> Seed:
             },
             "goal": "Ask for a chapter scaffold.",
             "initial_message": "我想重新梳理一下现在这个阶段该怎么做。",
+            "user_outcome": "用户感到当前阶段被重新梳理清楚，并理解这些结构改动为何有帮助。",
+            "allowed_good_variants": [
+                "Coach 可以先确认当前困扰，再生成阶段结构。",
+            ],
+            "manual_review_checks": [
+                "人工检查结构解释是否具有教练感。",
+            ],
             "auditor_policy": {
                 "latent_facts": [],
                 "reveal_rules": [],
@@ -64,11 +71,11 @@ def _make_seed() -> Seed:
             },
             "judge_dimensions": ["coach_action_transparency"],
             "scoring_focus": {
-                "primary": [
+                "primary": ["coach_action_transparency"],
+                "secondary": [
                     "contract_goal_chapter_alignment",
                     "contract_store_schema",
                 ],
-                "secondary": ["coach_action_transparency"],
             },
         }
     )
@@ -293,6 +300,9 @@ def test_intervention_contract_grader_checks_tool_and_metadata() -> None:
             },
             "goal": "Trigger future-self-dialogue.",
             "initial_message": "我不知道我想成为什么样的人了。",
+            "user_outcome": "用户感到 identity drift 被接住，并进入一次有帮助的未来自我对话。",
+            "allowed_good_variants": ["可以先简短镜像状态，再进入未来自我问句。"],
+            "manual_review_checks": ["人工检查面板语气是否过于审判。"],
             "auditor_policy": {
                 "latent_facts": [],
                 "reveal_rules": [],
@@ -384,6 +394,9 @@ def test_intervention_contract_grader_infers_metadata_from_dedicated_tool_when_p
             },
             "goal": "Trigger scenario rehearsal.",
             "initial_message": "下周五家庭聚餐我想提前准备。",
+            "user_outcome": "用户拿到一条可执行的场景预演起点，而不是抽象提醒。",
+            "allowed_good_variants": ["可以先让用户命名最危险的瞬间，再进入 if/then。"],
+            "manual_review_checks": ["人工检查预演是否有现场感。"],
             "auditor_policy": {
                 "latent_facts": [],
                 "reveal_rules": [],
@@ -470,6 +483,9 @@ def test_intervention_contract_grader_rejects_missing_reframe_text_component() -
             },
             "goal": "Trigger cognitive reframing.",
             "initial_message": "完了，我这周都废了。",
+            "user_outcome": "用户看见自己把一次失控扩成整周判决，并得到一条更有用的新读法。",
+            "allowed_good_variants": ["可以先点出等号，再给候选新读法。"],
+            "manual_review_checks": ["人工检查文案是否足够锋利但不说教。"],
             "auditor_policy": {
                 "latent_facts": [],
                 "reveal_rules": [],

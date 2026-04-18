@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from voliti_eval.judge import build_judge_payload
+from voliti_eval.judge import JUDGE_SYSTEM_PROMPT, build_judge_payload
 from voliti_eval.models import (
     Seed,
     StoreDiff,
@@ -30,6 +30,9 @@ def test_build_judge_payload_includes_new_sections() -> None:
             },
             "goal": "Wait for the coach to discover progress.",
             "initial_message": "早上好。",
+            "user_outcome": "用户感到自己的连续努力被看见，而不是被模板化鼓励覆盖。",
+            "allowed_good_variants": ["Coach 可以直接命名进展，也可以先轻问一句再命名。"],
+            "manual_review_checks": ["人工检查整体语气是否自然。"],
             "auditor_policy": {
                 "latent_facts": [],
                 "reveal_rules": [],
@@ -137,6 +140,9 @@ def test_build_judge_payload_extracts_text_summary_from_a2ui_components() -> Non
             },
             "goal": "Trigger metaphor collaboration.",
             "initial_message": "我像一只漏气的气球。",
+            "user_outcome": "用户感到自己的隐喻被接住，并被邀请继续在隐喻内部探索。",
+            "allowed_good_variants": ["只要 stay in the same source domain，就允许不同但合理的追问。"],
+            "manual_review_checks": ["人工检查文案是否显得过度戏剧化。"],
             "auditor_policy": {
                 "latent_facts": [],
                 "reveal_rules": [],
@@ -149,7 +155,7 @@ def test_build_judge_payload_extracts_text_summary_from_a2ui_components() -> Non
                 },
             },
             "expected_artifacts": {},
-            "judge_dimensions": ["metaphor_verbatim_preservation"],
+            "judge_dimensions": ["metaphor_collaboration_fit", "metaphor_verbatim_preservation"],
         }
     )
     transcript = Transcript.model_validate(
@@ -221,6 +227,9 @@ def test_build_judge_payload_falls_back_to_intervention_tool_components() -> Non
             },
             "goal": "Trigger cognitive reframing.",
             "initial_message": "我这周都废了。",
+            "user_outcome": "用户看见自己把一次失控扩成整周判决，并能选一条更有用的新读法。",
+            "allowed_good_variants": ["可以直接点出等号，也可以先简短镜像再点出等号。"],
+            "manual_review_checks": ["人工检查文案是否显得空泛。"],
             "auditor_policy": {
                 "latent_facts": [],
                 "reveal_rules": [],
@@ -233,7 +242,7 @@ def test_build_judge_payload_falls_back_to_intervention_tool_components() -> Non
                 },
             },
             "expected_artifacts": {},
-            "judge_dimensions": ["reframe_verbatim_quote"],
+            "judge_dimensions": ["reframe_text_fit", "reframe_verbatim_quote"],
         }
     )
     transcript = Transcript.model_validate(
@@ -287,3 +296,11 @@ def test_build_judge_payload_falls_back_to_intervention_tool_components() -> Non
     assert "surface=intervention kind=cognitive-reframing layout=full" in payload
     assert "observation=“既然今晚已经失控了，这周基本就没意义了。”" in payload
     assert "text=这句话真正重的部分，是一次失控被扩成了整周判决。" in payload
+
+
+def test_judge_system_prompt_explicitly_forbids_path_punishment() -> None:
+    assert "multiple reasonable good paths" in JUDGE_SYSTEM_PROMPT
+    assert "Do not penalize the coach for not using a preferred intermediate step" in JUDGE_SYSTEM_PROMPT
+    assert "Do not penalize wording just because it differs from a reviewer-preferred phrase" in JUDGE_SYSTEM_PROMPT
+    assert "helps the user move forward" in JUDGE_SYSTEM_PROMPT
+    assert "exact wording" in JUDGE_SYSTEM_PROMPT

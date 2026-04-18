@@ -70,6 +70,11 @@ persona:
   language: "zh"
 goal: "Trigger intervention"
 initial_message: "我不知道想成为什么样的人了。"
+user_outcome: "用户感到困惑被接住，并被引入一次合适的未来自我对话。"
+allowed_good_variants:
+  - "可以先简短确认状态，再进入未来自我问句。"
+manual_review_checks:
+  - "人工检查干预是否显得过于模板化。"
 auditor_policy:
   latent_facts: []
   reveal_rules: []
@@ -114,6 +119,11 @@ persona:
   language: "zh"
 goal: "Trigger intervention"
 initial_message: "想提前准备一下。"
+user_outcome: "用户感到自己正在被帮助着为一个具体场景做准备。"
+allowed_good_variants:
+  - "可以先确认具体风险点，再进入预演。"
+manual_review_checks:
+  - "人工检查文案是否显得太模板化。"
 auditor_policy:
   latent_facts: []
   reveal_rules: []
@@ -148,3 +158,68 @@ scoring_focus:
 
     assert result.exit_code != 0
     assert "Unknown eval dimensions" in result.output
+
+
+def test_cli_forwards_runs_to_single_model_mode(monkeypatch, tmp_path: Path) -> None:
+    runner = CliRunner()
+    captured: dict[str, int] = {}
+    seed_dir = tmp_path / "seeds"
+    seed_dir.mkdir()
+    (seed_dir / "ok.yaml").write_text(
+        """
+id: "17_future_self_dialogue_trigger"
+name: "Future self"
+description: "Valid seed"
+entry_mode: "coaching"
+persona:
+  name: "砚舟"
+  background: "identity drift"
+  personality: "克制"
+  language: "zh"
+goal: "Trigger intervention"
+initial_message: "我不知道想成为什么样的人了。"
+user_outcome: "用户感到困惑被接住，并被引入一次合适的未来自我对话。"
+allowed_good_variants:
+  - "可以先简短确认状态，再进入未来自我问句。"
+manual_review_checks:
+  - "人工检查干预是否显得过于模板化。"
+auditor_policy:
+  latent_facts: []
+  reveal_rules: []
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when: ["done"]
+    continue_until: ["done"]
+judge_dimensions:
+  - "coach_state_before_strategy"
+scoring_focus:
+  primary:
+    - "intervention_kind_selection"
+    - "coach_state_before_strategy"
+  secondary: []
+""".strip(),
+        encoding="utf-8",
+    )
+
+    def _fake_load_config(*args, **kwargs):
+        return EvalConfig(
+            seed_directory=seed_dir,
+            seed_directory_lite=seed_dir,
+            output_directory=tmp_path / "output",
+        )
+
+    async def _fake_run(seeds, config, *, profile, runs):
+        captured["runs"] = runs
+
+    monkeypatch.setattr("voliti_eval.cli.load_config", _fake_load_config)
+    monkeypatch.setattr("voliti_eval.cli._run", _fake_run)
+
+    result = runner.invoke(
+        __import__("voliti_eval.cli", fromlist=["main"]).main,
+        ["--profile", "full", "--runs", "3"],
+    )
+
+    assert result.exit_code == 0
+    assert captured["runs"] == 3

@@ -17,6 +17,14 @@ goal: >
   观察 Coach 是否识别为可预演场景并邀请用户进入场景预演。
 
 initial_message: "下周五家里有顿聚餐，父亲那边肯定会劝酒。前两次我都没顶住。想和你提前准备一下。"
+user_outcome: >
+  用户感到自己正在为一个真实场景做预演，并拿到现场可执行的 if/then 候选，
+  而不是被留在抽象的『到时候坚持一下』层面。
+allowed_good_variants:
+  - "Coach 可以先让用户命名最危险的瞬间，再给 if/then 候选。"
+  - "Coach 可以先锚定场景，再邀请用户自己补全那个关键一刻。"
+manual_review_checks:
+  - "人工检查预演文本是否有现场感，而不是像填写模板。"
 max_turns: 12
 pre_state:
   profile: |
@@ -82,5 +90,5 @@ scoring_focus:
     - "intervention_kind_selection"
     - "intervention_metadata_correctness"
     - "intervention_scene_anchor_present"
-  secondary:
     - "if_then_quality"
+  secondary: []

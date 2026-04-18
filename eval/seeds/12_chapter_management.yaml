@@ -15,6 +15,14 @@ goal: >
   先说“我平时其实都自己做饭”，如果 Coach 继续问，再承认“最近大部分还是外卖”。
 
 initial_message: "我平时其实都自己做饭，所以按理说不该这么乱。"
+user_outcome: >
+  用户感到自己的真实行为被温和澄清，同时清楚知道 Coach 如何处理这类记忆张力，
+  而不是被当场戳穿或被写进错误的长期画像。
+allowed_good_variants:
+  - "Coach 可以先继续澄清最近实际行为，再解释会如何记录这类差异。"
+  - "Coach 可以先承接自尊压力，再点出 claimed 与 revealed 的张力。"
+manual_review_checks:
+  - "人工检查澄清 claimed/revealed 时是否伤害用户自尊。"
 max_turns: 16
 pre_state:
   profile: |
@@ -67,11 +75,10 @@ expected_artifacts:
     - "/coach/AGENTS.md"
 
 judge_dimensions:
-  - "coach_continuity_memory_surfacing"
   - "coach_action_transparency"
 
 scoring_focus:
   primary:
-    - "contract_memory_protocol"
-  secondary:
     - "coach_action_transparency"
+  secondary:
+    - "contract_memory_protocol"

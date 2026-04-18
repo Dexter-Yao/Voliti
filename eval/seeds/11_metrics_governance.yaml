@@ -16,6 +16,14 @@ goal: >
   如果 Coach 还把自己当新用户，就不会主动兜底。
 
 initial_message: "我想补一下之前没说完的那些信息。"
+user_outcome: >
+  用户感到自己是在补齐既有画像的缺口，而不是被重新当作新用户 onboarding；
+  对话应当明显围绕缺口而非重来。
+allowed_good_variants:
+  - "Coach 可以先确认这是补采模式，再只追问缺失部分。"
+  - "Coach 可以先说明补采完成后会怎样帮助后续 coaching。"
+manual_review_checks:
+  - "人工检查补采语气是否节制，不像重新开案。"
 max_turns: 18
 pre_state:
   profile: |
@@ -84,7 +92,8 @@ judge_dimensions:
 
 scoring_focus:
   primary:
+    - "coach_continuity_memory_surfacing"
+  secondary:
     - "contract_memory_protocol"
     - "contract_store_schema"
-  secondary:
-    - "coach_continuity_memory_surfacing"
+    - "coach_intervention_dosage"

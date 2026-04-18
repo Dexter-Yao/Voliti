@@ -17,6 +17,14 @@ goal: >
   观察 Coach 是否识别推理跃迁并邀请用户在并置框架里挑选或自写新读法。
 
 initial_message: "完了。今晚一吃，我这整周就废了。今晚的、明天的、后天的全都白费了。"
+user_outcome: >
+  用户感到那条把一次失控扩成整周判决的『等号』被准确点出来，
+  并获得一条不空泛、更可用的新读法。
+allowed_good_variants:
+  - "Coach 可以先镜像原句，再点出等号。"
+  - "Coach 可以先点出等号，再给 2-3 个候选新读法，只要不变成鸡汤安慰。"
+manual_review_checks:
+  - "人工检查 reframing 面板是否足够锋利但不显得说教。"
 max_turns: 12
 pre_state:
   profile: |
@@ -75,6 +83,7 @@ expected_artifacts:
   minimum_dataset: "none"
 
 judge_dimensions:
+  - "reframe_text_fit"
   - "reframe_verbatim_quote"
   - "coach_state_before_strategy"
 
@@ -83,6 +92,7 @@ scoring_focus:
     - "intervention_kind_selection"
     - "intervention_metadata_correctness"
     - "reframe_verdict_component_present"
+    - "coach_state_before_strategy"
+    - "reframe_text_fit"
   secondary:
     - "reframe_verbatim_quote"
-    - "coach_state_before_strategy"

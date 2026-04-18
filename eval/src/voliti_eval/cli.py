@@ -153,7 +153,7 @@ def main(
         model_ids = [model.strip() for model in (models or "coach,coach_qwen").split(",") if model.strip()]
         asyncio.run(_run_compare(selected, config, model_ids, runs, profile=profile))
     else:
-        asyncio.run(_run(selected, config, profile=profile))
+        asyncio.run(_run(selected, config, profile=profile, runs=runs))
 
 
 def _print_dry_run(
@@ -176,33 +176,38 @@ def _print_dry_run(
         click.echo(f"\n对比模式: {model_ids} × {runs} runs")
 
 
-async def _run(seeds: list[Seed], config: EvalConfig, *, profile: str) -> None:
+async def _run(seeds: list[Seed], config: EvalConfig, *, profile: str, runs: int) -> None:
     """异步执行单模型评估流程。"""
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     output_dir = config.output_directory / f"{timestamp}_{profile}"
-    transcripts_dir = output_dir / "transcripts"
-    scores_dir = output_dir / "scores"
-
     judge = Judge(config.judge_model, timeout=config.turn_timeout_seconds)
 
     click.echo(f"\n开始评估 → {output_dir}")
     click.echo(f"Server: {config.server_url}")
     click.echo(f"Assistant: {config.assistant_id}")
+    click.echo(f"Runs: {runs}")
     click.echo()
 
-    result = await run_evaluation(
-        seeds,
-        config,
-        judge_fn=judge.score,
-        output_dir=str(output_dir),
-    )
+    results: list[EvalResult] = []
+    for run_idx in range(1, runs + 1):
+        run_dir = output_dir / f"run_{run_idx}" if runs > 1 else output_dir
+        transcripts_dir = run_dir / "transcripts"
+        scores_dir = run_dir / "scores"
+        if runs > 1:
+            click.echo(f"--- Run {run_idx}/{runs} ---")
+        result = await run_evaluation(
+            seeds,
+            config,
+            judge_fn=judge.score,
+            output_dir=str(run_dir),
+        )
+        _save_results(result, transcripts_dir, scores_dir)
+        results.append(result)
 
-    _save_results(result, transcripts_dir, scores_dir)
-
-    report_path = generate_report(result, output_dir)
+    report_path = generate_report(results[-1], output_dir, run_history=results)
     click.echo(f"\n报告已生成: {report_path}")
 
-    _print_summary([result])
+    _print_summary(results)
 
 
 async def _run_compare(

@@ -16,6 +16,14 @@ goal: >
   只有被问到时才补充更深的背景，不主动兜底。
 
 initial_message: "你好，我想认真做一轮 onboarding。"
+user_outcome: >
+  用户完成一轮完整、被理解的 onboarding，拿到属于自己的初始系统雏形，
+  而不是只得到一套泛化模板。
+allowed_good_variants:
+  - "Coach 可以按不同顺序采集六维画像，只要最后收口成完整系统。"
+  - "Witness Card 可以在 onboarding 尾声或完成确认后出现，只要语气是见证而不是奖励。"
+manual_review_checks:
+  - "人工检查 onboarding 收尾是否具有仪式感而不显得表演化。"
 pre_state: null
 max_turns: 30
 
@@ -99,8 +107,9 @@ judge_dimensions:
 scoring_focus:
   primary:
     - "contract_onboarding_artifacts"
+    - "coach_action_transparency"
+  secondary:
     - "contract_witness_card"
     - "contract_goal_chapter_alignment"
-  secondary:
     - "coach_identity_language"
-    - "coach_action_transparency"
+    - "coach_intervention_dosage"

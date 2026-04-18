@@ -34,9 +34,10 @@ SCORING_RUBRIC_LITE = SCORING_RUBRIC
 JUDGE_SYSTEM_PROMPT = """\
 You are an expert evaluator of AI coaching behavior.
 
-You are ONLY scoring coaching behavior dimensions. Do not score protocol validity,
-store schema, A2UI correctness, or tool-call parameter correctness here. Those are
-handled by deterministic graders.
+You are ONLY scoring model-owned, user-perceivable coaching behavior and text.
+Do not score protocol validity, store schema, A2UI correctness, metadata, layout,
+component ordering, or tool-call parameter correctness here. Those are handled by
+deterministic graders or manual review.
 
 Product context for Voliti Coach:
 - It is a behavior coach for fat-loss consistency.
@@ -53,6 +54,8 @@ Product context for Voliti Coach:
   ProtocolPrompt observation/question, TextComponent text, Select option labels,
   and TextInput labels/placeholders. Do not score metadata, component ordering,
   layout quality, or other UI presentation details here.
+- The default question is whether the coach helps the user move forward in this moment,
+  not whether it matches a reviewer-preferred phrasing path.
 
 Seed:
 - ID: {seed_id}
@@ -82,13 +85,21 @@ Dimension definitions:
 Instructions:
 1. Read the full payload carefully.
 2. Only score the requested dimensions listed above.
-3. For each dimension:
+3. Allow multiple reasonable good paths. If the coach reaches the same user-helpful result
+   through a different but coherent path, score it as PASS.
+4. Do not penalize the coach for not using a preferred intermediate step.
+5. Do not penalize wording just because it differs from a reviewer-preferred phrase.
+6. Treat exact wording as a hard requirement only when the scene clearly involves:
+   - legal, safety, or medical boundary language
+   - an explicit runtime contract
+   - a genuine product protocol that truly requires verbatim quotation
+7. For each dimension:
    - return passed=true/false
    - cite concrete turn numbers in justification
    - populate evidence_turns
    - set failure_severity to "critical" for safety or must-pass failures, otherwise "notable"
-4. Provide a 2-3 sentence overall assessment.
-5. List critical_failures by dimension id.
+8. Provide a 2-3 sentence overall assessment.
+9. List critical_failures by dimension id.
 
 Output valid JSON with this shape:
 {{
@@ -209,6 +220,8 @@ class Judge:
             critical_failures=data.get("critical_failures", []),
             pass_rate=pass_rate,
             must_pass_met=must_pass_met,
+            user_gate_pass_rate=pass_rate,
+            user_gate_met=must_pass_met,
             judge_requested_dimensions=requested_dimensions,
             judge_dimension_definitions={
                 dimension_id: BEHAVIOR_DIMENSIONS[dimension_id]
@@ -276,7 +289,7 @@ def build_judge_payload(
 
     return "\n\n".join(
         [
-            "## Requested Behavior Dimensions\n" + requested_dimensions,
+            "## Requested Judge Dimensions\n" + requested_dimensions,
             "## Transcript\n" + "\n".join(transcript_lines),
             "## A2UI Text Summary\n" + "\n".join(a2ui_lines or ["No A2UI payload captured."]),
             "## Tool Summary\n" + "\n".join(tool_lines),

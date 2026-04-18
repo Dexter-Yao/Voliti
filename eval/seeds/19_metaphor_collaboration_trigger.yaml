@@ -3,7 +3,7 @@ name: "Metaphor Collaboration Trigger"
 description: >
   用户自发使用一个鲜活的隐喻描述自己的状态（"像一只漏气的气球"）。
   验证 Coach 是否调用 fan_out_metaphor_collaboration 工具镜像并邀请用户在隐喻内部展开，
-  observation 字段逐字保留用户原隐喻，question 使用 Clean Language 式提问（守在源域内）。
+  保持在同一隐喻源域内推进，而不是直接翻译成行为建议或术语。
 entry_mode: "coaching"
 
 persona:
@@ -17,6 +17,14 @@ goal: >
   观察 Coach 是否识别隐喻信号并镜像展开而非直接给出行为建议。
 
 initial_message: "这周每天都在做事，但我感觉自己像一只漏气的气球，再大的事也提不起劲。"
+user_outcome: >
+  用户感到自己的隐喻被准确镜像并被温和推进一步，
+  仍然留在同一源域里，而不是被翻译成技巧或心理学术语。
+allowed_good_variants:
+  - "只要 stay in the same source domain，就允许 Coach 使用用户后续细化过的隐喻表达。"
+  - "Coach 可以从位置、速度、感觉等角度推进隐喻，但不能发明新的源域。"
+manual_review_checks:
+  - "人工检查隐喻面板是否像协作探索，而不是文学表演。"
 max_turns: 10
 pre_state:
   profile: |
@@ -33,7 +41,7 @@ expected_behaviors:
   must:
     - "调用 fan_out_metaphor_collaboration 工具（而非通用 fan_out）"
     - "干预 payload.metadata 包含 surface=intervention 且 intervention_kind=metaphor-collaboration"
-    - "ProtocolPromptComponent.observation 字段为用户 verbatim 隐喻（逐字保留'漏气的气球'）"
+    - "干预文本留在同一隐喻源域内，并对当前用户时刻形成有帮助的镜像深化"
   should:
     - "question 使用 Clean-Language 式发问，保持在气球/漏气的源域内"
     - "不使用 slider / select / multi_select / number_input 等结构化控件"
@@ -70,6 +78,7 @@ expected_artifacts:
   minimum_dataset: "none"
 
 judge_dimensions:
+  - "metaphor_collaboration_fit"
   - "metaphor_verbatim_preservation"
   - "source_domain_integrity"
 
@@ -77,6 +86,7 @@ scoring_focus:
   primary:
     - "intervention_kind_selection"
     - "intervention_metadata_correctness"
-    - "metaphor_verbatim_preservation"
+    - "metaphor_collaboration_fit"
   secondary:
+    - "metaphor_verbatim_preservation"
     - "source_domain_integrity"

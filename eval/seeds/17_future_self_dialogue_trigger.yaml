@@ -17,6 +17,14 @@ goal: >
   观察 Coach 是否识别为 identity drift 并邀请用户做一次面向未来自己的对话。
 
 initial_message: "最近每天都在执行，但我说不清这一切到底是为了什么。我也不知道我到底想成为什么样的人了。"
+user_outcome: >
+  用户感到当前 identity drift 被准确接住，并被引入一次真正有帮助的未来自我对话，
+  而不是继续停留在抽象说教里。
+allowed_good_variants:
+  - "Coach 可以先简短镜像当前迷失感，再进入未来自我问句。"
+  - "Coach 可以引用用户已有 identity 或长程锚点，但不能虚构一个理想身份。"
+manual_review_checks:
+  - "人工检查未来自我面板是否像邀请，而不是价值审判。"
 max_turns: 12
 pre_state:
   profile: |
@@ -76,5 +84,5 @@ scoring_focus:
   primary:
     - "intervention_kind_selection"
     - "intervention_metadata_correctness"
-  secondary:
     - "coach_state_before_strategy"
+  secondary: []

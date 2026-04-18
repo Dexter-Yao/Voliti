@@ -15,7 +15,13 @@ from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
 from voliti_eval.auditor import AUDITOR_SYSTEM_PROMPT
-from voliti_eval.graders import DETERMINISTIC_DIMENSIONS
+from voliti_eval.dimensions import (
+    DETERMINISTIC_DIMENSIONS,
+    get_dimension_lane,
+    is_diagnostic_dimension,
+    is_runtime_gate_dimension,
+    is_user_gate_dimension,
+)
 from voliti_eval.judge import BEHAVIOR_DIMENSIONS, SCORING_RUBRIC
 from voliti_eval.models import DimensionScore, EvalResult, SeedResult
 
@@ -129,17 +135,14 @@ def _render_markdown_html(text: str) -> Markup:
     return Markup("".join(blocks))
 
 
-def _is_contract_dimension(dimension_id: str) -> bool:
-    return dimension_id in DETERMINISTIC_DIMENSIONS or dimension_id.startswith("contract_")
-
-
 def _dimension_category(dimension_id: str) -> str:
-    return "contract" if _is_contract_dimension(dimension_id) else "behavior"
+    return get_dimension_lane(dimension_id)
 
 
 def _score_sort_key(item: tuple[str, DimensionScore]) -> tuple[int, str]:
     dimension_id, _ = item
-    return (0 if _is_contract_dimension(dimension_id) else 1, dimension_id)
+    order = {"user_gate": 0, "runtime_gate": 1, "diagnostic": 2}
+    return (order[_dimension_category(dimension_id)], dimension_id)
 
 
 def _score_payload(dimension_id: str, score: DimensionScore) -> dict[str, Any]:
@@ -214,23 +217,24 @@ def _build_seed_row(seed_result: SeedResult) -> dict[str, Any]:
             key=_score_sort_key,
         )
     ]
-    contract_failures = [
-        row for row in sorted_scores if row["category"] == "contract" and not row["passed"]
+    user_gate_failures = [
+        row for row in sorted_scores if row["category"] == "user_gate" and not row["passed"]
     ]
-    behavior_failures = [
-        row for row in sorted_scores if row["category"] == "behavior" and not row["passed"]
+    runtime_gate_failures = [
+        row for row in sorted_scores if row["category"] == "runtime_gate" and not row["passed"]
     ]
-    contract_scores = [
-        seed_result.score_card.scores[row["dimension_id"]]
-        for row in sorted_scores
-        if row["category"] == "contract"
-    ]
-    behavior_scores = [
-        seed_result.score_card.scores[row["dimension_id"]]
-        for row in sorted_scores
-        if row["category"] == "behavior"
+    diagnostic_failures = [
+        row for row in sorted_scores if row["category"] == "diagnostic" and not row["passed"]
     ]
     failed_dimension_ids = [row["dimension_id"] for row in sorted_scores if not row["passed"]]
+    core_evidence_turns = sorted(
+        {
+            turn_index
+            for row in sorted_scores
+            if row["category"] in {"user_gate", "runtime_gate"} and not row["passed"]
+            for turn_index in row["evidence_turns"]
+        }
+    )
     return {
         "seed_result": seed_result,
         "seed_id": seed_result.seed.id,
@@ -239,15 +243,20 @@ def _build_seed_row(seed_result: SeedResult) -> dict[str, Any]:
         "turn_count": seed_result.transcript.turn_count,
         "end_reason": seed_result.transcript.end_reason,
         "pass_rate_pct": round(seed_result.score_card.pass_rate * 100),
-        "contract_pass_rate": _pass_rate(contract_scores),
-        "behavior_pass_rate": _pass_rate(behavior_scores),
+        "user_gate_pass_rate": seed_result.score_card.user_gate_pass_rate,
+        "runtime_gate_pass_rate": seed_result.score_card.runtime_gate_pass_rate,
+        "diagnostic_pass_rate": seed_result.score_card.diagnostic_pass_rate,
         "must_pass_met": seed_result.score_card.must_pass_met,
+        "user_gate_met": seed_result.score_card.user_gate_met,
+        "runtime_gate_met": seed_result.score_card.runtime_gate_met,
         "overall_assessment": seed_result.score_card.overall_assessment,
         "critical_failures": seed_result.score_card.critical_failures,
         "failed_dimension_ids": failed_dimension_ids,
+        "core_evidence_turns": core_evidence_turns,
         "scores": sorted_scores,
-        "contract_failures": contract_failures,
-        "behavior_failures": behavior_failures,
+        "user_gate_failures": user_gate_failures,
+        "runtime_gate_failures": runtime_gate_failures,
+        "diagnostic_failures": diagnostic_failures,
         "tool_calls": _build_tool_call_rows(seed_result),
         "store_diff_entries": _build_store_diff_rows(seed_result),
         "relevant_final_files": _build_relevant_final_files(seed_result),
@@ -255,6 +264,9 @@ def _build_seed_row(seed_result: SeedResult) -> dict[str, Any]:
         "auditor_policy": seed_result.seed.auditor_policy.model_dump(mode="json"),
         "expected_behaviors": seed_result.seed.expected_behaviors.model_dump(mode="json"),
         "expected_artifacts": seed_result.seed.expected_artifacts.model_dump(mode="json"),
+        "user_outcome": seed_result.seed.user_outcome,
+        "allowed_good_variants": seed_result.seed.allowed_good_variants,
+        "manual_review_checks": seed_result.seed.manual_review_checks,
         "judge_requested_dimensions": seed_result.score_card.judge_requested_dimensions,
         "judge_dimension_definitions": seed_result.score_card.judge_dimension_definitions,
         "judge_prompt_rendered": seed_result.score_card.judge_prompt_rendered,
@@ -262,18 +274,93 @@ def _build_seed_row(seed_result: SeedResult) -> dict[str, Any]:
     }
 
 
-def build_report_context(eval_result: EvalResult) -> dict[str, Any]:
+def _build_stability_context(run_history: list[EvalResult]) -> dict[str, Any] | None:
+    if len(run_history) <= 1:
+        return None
+
+    per_seed_runs: dict[str, list[tuple[str, SeedResult]]] = {}
+    for run in run_history:
+        for seed_result in run.seed_results:
+            per_seed_runs.setdefault(seed_result.seed.id, []).append((run.run_id, seed_result))
+
+    def _pass_k(values: list[bool]) -> bool:
+        return any(values)
+
+    def _all_pass(values: list[bool]) -> bool:
+        return all(values)
+
+    user_gate_pass_k = [
+        _pass_k([item.score_card.user_gate_met for _, item in seed_runs])
+        for seed_runs in per_seed_runs.values()
+    ]
+    runtime_gate_pass_k = [
+        _pass_k([item.score_card.runtime_gate_met for _, item in seed_runs])
+        for seed_runs in per_seed_runs.values()
+    ]
+    overall_gate_pass_k = [
+        _pass_k([item.score_card.must_pass_met for _, item in seed_runs])
+        for seed_runs in per_seed_runs.values()
+    ]
+    stable_gate_pass = [
+        _all_pass([item.score_card.must_pass_met for _, item in seed_runs])
+        for seed_runs in per_seed_runs.values()
+    ]
+    flake_count = sum(
+        1
+        for seed_runs in per_seed_runs.values()
+        if len({item.score_card.must_pass_met for _, item in seed_runs}) > 1
+    )
+    return {
+        "run_count": len(run_history),
+        "user_gate_pass_k": round(sum(user_gate_pass_k) / len(user_gate_pass_k), 2) if user_gate_pass_k else 0.0,
+        "runtime_gate_pass_k": round(sum(runtime_gate_pass_k) / len(runtime_gate_pass_k), 2) if runtime_gate_pass_k else 0.0,
+        "overall_gate_pass_k": round(sum(overall_gate_pass_k) / len(overall_gate_pass_k), 2) if overall_gate_pass_k else 0.0,
+        "stable_gate_pass_rate": round(sum(stable_gate_pass) / len(stable_gate_pass), 2) if stable_gate_pass else 0.0,
+        "flake_count": flake_count,
+        "per_seed_runs": {
+            seed_id: [
+                {
+                    "run_id": run_id,
+                    "pass_rate": seed_result.score_card.pass_rate,
+                    "user_gate_met": seed_result.score_card.user_gate_met,
+                    "runtime_gate_met": seed_result.score_card.runtime_gate_met,
+                    "must_pass_met": seed_result.score_card.must_pass_met,
+                    "end_reason": seed_result.transcript.end_reason,
+                }
+                for run_id, seed_result in seed_runs
+            ]
+            for seed_id, seed_runs in per_seed_runs.items()
+        },
+    }
+
+
+def build_report_context(eval_result: EvalResult, *, run_history: list[EvalResult] | None = None) -> dict[str, Any]:
     """构建单模型报告的模板上下文。"""
     seed_rows = [_build_seed_row(seed_result) for seed_result in eval_result.seed_results]
+    stability = _build_stability_context(run_history or [eval_result])
+    if stability is not None:
+        for row in seed_rows:
+            history_rows = stability["per_seed_runs"].get(row["seed_id"], [])
+            row["run_history"] = history_rows
+            row["gate_flaky"] = len({item["must_pass_met"] for item in history_rows}) > 1
+            row["gate_pass_k"] = any(item["must_pass_met"] for item in history_rows)
+    else:
+        for row in seed_rows:
+            row["run_history"] = []
+            row["gate_flaky"] = False
+            row["gate_pass_k"] = row["must_pass_met"]
+
     all_scores = [
         score
         for seed_result in eval_result.seed_results
         for score in seed_result.score_card.scores.values()
     ]
-    contract_scores = [score for score_id, score in _iter_scores(eval_result) if _is_contract_dimension(score_id)]
-    behavior_scores = [score for score_id, score in _iter_scores(eval_result) if not _is_contract_dimension(score_id)]
-    contract_failures = [row for row in seed_rows if row["contract_failures"]]
-    behavior_failures = [row for row in seed_rows if row["behavior_failures"]]
+    user_gate_scores = [score for score_id, score in _iter_scores(eval_result) if is_user_gate_dimension(score_id)]
+    runtime_gate_scores = [score for score_id, score in _iter_scores(eval_result) if is_runtime_gate_dimension(score_id)]
+    diagnostic_scores = [score for score_id, score in _iter_scores(eval_result) if is_diagnostic_dimension(score_id)]
+    user_gate_failures = [row for row in seed_rows if row["user_gate_failures"]]
+    runtime_gate_failures = [row for row in seed_rows if row["runtime_gate_failures"]]
+    diagnostic_failures = [row for row in seed_rows if row["diagnostic_failures"]]
 
     return {
         "run_id": eval_result.run_id,
@@ -286,15 +373,19 @@ def build_report_context(eval_result: EvalResult) -> dict[str, Any]:
         "config": eval_result.config_snapshot,
         "summary": {
             "overall_pass_rate": _pass_rate(all_scores),
-            "contract_pass_rate": _pass_rate(contract_scores),
-            "behavior_pass_rate": _pass_rate(behavior_scores),
-            "contract_failure_count": sum(len(row["contract_failures"]) for row in seed_rows),
-            "behavior_failure_count": sum(len(row["behavior_failures"]) for row in seed_rows),
+            "user_gate_pass_rate": _pass_rate(user_gate_scores),
+            "runtime_gate_pass_rate": _pass_rate(runtime_gate_scores),
+            "diagnostic_pass_rate": _pass_rate(diagnostic_scores),
+            "user_gate_failure_count": sum(len(row["user_gate_failures"]) for row in seed_rows),
+            "runtime_gate_failure_count": sum(len(row["runtime_gate_failures"]) for row in seed_rows),
+            "diagnostic_failure_count": sum(len(row["diagnostic_failures"]) for row in seed_rows),
             "must_pass_success_count": sum(1 for row in seed_rows if row["must_pass_met"]),
         },
         "seed_rows": seed_rows,
-        "contract_failure_rows": contract_failures,
-        "behavior_failure_rows": behavior_failures,
+        "user_gate_failure_rows": user_gate_failures,
+        "runtime_gate_failure_rows": runtime_gate_failures,
+        "diagnostic_failure_rows": diagnostic_failures,
+        "stability": stability,
         "auditor_prompt_template": AUDITOR_SYSTEM_PROMPT,
         "judge_rubric": SCORING_RUBRIC,
     }
@@ -330,17 +421,23 @@ def build_comparison_summary(
             for seed_result in seed_results
             for score in seed_result.score_card.scores.values()
         ]
-        contract_scores = [
+        user_gate_scores = [
             score
             for seed_result in seed_results
             for dimension_id, score in seed_result.score_card.scores.items()
-            if _is_contract_dimension(dimension_id)
+            if is_user_gate_dimension(dimension_id)
         ]
-        behavior_scores = [
+        runtime_gate_scores = [
             score
             for seed_result in seed_results
             for dimension_id, score in seed_result.score_card.scores.items()
-            if not _is_contract_dimension(dimension_id)
+            if is_runtime_gate_dimension(dimension_id)
+        ]
+        diagnostic_scores = [
+            score
+            for seed_result in seed_results
+            for dimension_id, score in seed_result.score_card.scores.items()
+            if is_diagnostic_dimension(dimension_id)
         ]
         model_summaries.append(
             {
@@ -348,8 +445,11 @@ def build_comparison_summary(
                 "label": model_labels.get(model_id, model_id),
                 "run_count": len(results[model_id]),
                 "overall_pass_rate": _pass_rate(all_scores),
-                "contract_pass_rate": _pass_rate(contract_scores),
-                "behavior_pass_rate": _pass_rate(behavior_scores),
+                "user_gate_pass_rate": _pass_rate(user_gate_scores),
+                "runtime_gate_pass_rate": _pass_rate(runtime_gate_scores),
+                "diagnostic_pass_rate": _pass_rate(diagnostic_scores),
+                "contract_pass_rate": _pass_rate(runtime_gate_scores),
+                "behavior_pass_rate": _pass_rate(user_gate_scores),
                 "must_pass_rate": round(
                     sum(1 for seed_result in seed_results if seed_result.score_card.must_pass_met)
                     / len(seed_results),
@@ -376,17 +476,23 @@ def build_comparison_summary(
                 for seed_result in run.seed_results
                 if seed_result.seed.id == seed_id
             ]
-            contract_scores = [
+            user_gate_scores = [
                 score
                 for _, seed_result in matching
                 for dimension_id, score in seed_result.score_card.scores.items()
-                if _is_contract_dimension(dimension_id)
+                if is_user_gate_dimension(dimension_id)
             ]
-            behavior_scores = [
+            runtime_gate_scores = [
                 score
                 for _, seed_result in matching
                 for dimension_id, score in seed_result.score_card.scores.items()
-                if not _is_contract_dimension(dimension_id)
+                if is_runtime_gate_dimension(dimension_id)
+            ]
+            diagnostic_scores = [
+                score
+                for _, seed_result in matching
+                for dimension_id, score in seed_result.score_card.scores.items()
+                if is_diagnostic_dimension(dimension_id)
             ]
             per_model_rows.append(
                 {
@@ -398,12 +504,17 @@ def build_comparison_summary(
                     )
                     if matching
                     else 0.0,
-                    "contract_pass_rate": _pass_rate(contract_scores),
-                    "behavior_pass_rate": _pass_rate(behavior_scores),
+                    "user_gate_pass_rate": _pass_rate(user_gate_scores),
+                    "runtime_gate_pass_rate": _pass_rate(runtime_gate_scores),
+                    "diagnostic_pass_rate": _pass_rate(diagnostic_scores),
+                    "contract_pass_rate": _pass_rate(runtime_gate_scores),
+                    "behavior_pass_rate": _pass_rate(user_gate_scores),
                     "runs": [
                         {
                             "run_id": run_id,
                             "pass_rate": seed_result.score_card.pass_rate,
+                            "user_gate_met": seed_result.score_card.user_gate_met,
+                            "runtime_gate_met": seed_result.score_card.runtime_gate_met,
                             "must_pass_met": seed_result.score_card.must_pass_met,
                             "end_reason": seed_result.transcript.end_reason,
                         }
@@ -420,7 +531,10 @@ def build_comparison_summary(
         )
 
     dimension_rows: list[dict[str, Any]] = []
-    for dimension_id in sorted(dimension_ids, key=lambda item: (0 if _is_contract_dimension(item) else 1, item)):
+    for dimension_id in sorted(
+        dimension_ids,
+        key=lambda item: (0 if is_user_gate_dimension(item) else 1 if is_runtime_gate_dimension(item) else 2, item),
+    ):
         per_model_rows = []
         for model_id in model_ids:
             scores = [
@@ -443,7 +557,7 @@ def build_comparison_summary(
             {
                 "dimension_id": dimension_id,
                 "category": _dimension_category(dimension_id),
-                "score_source": "deterministic" if _is_contract_dimension(dimension_id) else "llm",
+                "score_source": "deterministic" if dimension_id in DETERMINISTIC_DIMENSIONS else "llm",
                 "models": per_model_rows,
             }
         )
@@ -460,6 +574,8 @@ def build_comparison_summary(
 def generate_report(
     eval_result: EvalResult,
     output_dir: Path,
+    *,
+    run_history: list[EvalResult] | None = None,
 ) -> Path:
     """渲染单模型 HTML 评估报告。"""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -472,7 +588,7 @@ def generate_report(
     env.filters["markdown_html"] = _render_markdown_html
     template = env.get_template("report.html.j2")
 
-    html = template.render(**build_report_context(eval_result))
+    html = template.render(**build_report_context(eval_result, run_history=run_history))
 
     report_path = output_dir / "report.html"
     report_path.write_text(html, encoding="utf-8")

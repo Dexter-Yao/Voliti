@@ -61,6 +61,11 @@ def test_assemble_score_card_merges_deterministic_and_llm_scores() -> None:
     assert score_card.pass_rate == 0.5
     assert score_card.must_pass_met is False
     assert score_card.critical_failures == ["coach_state_before_strategy"]
+    assert score_card.user_gate_met is False
+    assert score_card.runtime_gate_met is True
+    assert score_card.user_gate_pass_rate == 0.0
+    assert score_card.runtime_gate_pass_rate == 0.0
+    assert score_card.diagnostic_pass_rate == 1.0
 
 
 def test_assemble_score_card_fails_when_primary_dimension_is_missing() -> None:
@@ -84,6 +89,7 @@ def test_assemble_score_card_fails_when_primary_dimension_is_missing() -> None:
     )
 
     assert score_card.must_pass_met is False
+    assert score_card.runtime_gate_met is False
 
 
 def test_assemble_score_card_preserves_judge_metadata() -> None:
@@ -107,8 +113,55 @@ def test_assemble_score_card_preserves_judge_metadata() -> None:
     )
 
     assert score_card.must_pass_met is True
+    assert score_card.user_gate_met is True
+    assert score_card.runtime_gate_met is True
     assert score_card.judge_requested_dimensions == ["if_then_quality"]
     assert score_card.judge_dimension_definitions == {
         "if_then_quality": "只评模型生成的 if-then 文本质量。"
     }
     assert score_card.judge_prompt_rendered == "Judge prompt body"
+
+
+def test_assemble_score_card_separates_gate_and_diagnostic_outcomes() -> None:
+    deterministic = {
+        "intervention_kind_selection": DimensionScore(
+            passed=True,
+            justification="Used the dedicated tool.",
+            score_source="deterministic",
+        ),
+        "contract_memory_protocol": DimensionScore(
+            passed=False,
+            justification="Coach memory heading drifted.",
+            failure_severity="critical",
+            score_source="deterministic",
+        ),
+    }
+    llm = {
+        "metaphor_collaboration_fit": DimensionScore(
+            passed=True,
+            justification="Stayed in the user's metaphor and moved it forward.",
+            score_source="llm",
+        ),
+        "source_domain_integrity": DimensionScore(
+            passed=False,
+            justification="One follow-up line drifted into a battery metaphor.",
+            failure_severity="notable",
+            score_source="llm",
+        ),
+    }
+
+    score_card = assemble_score_card(
+        seed_id="19_metaphor_collaboration_trigger",
+        primary_dimensions=[
+            "intervention_kind_selection",
+            "metaphor_collaboration_fit",
+        ],
+        deterministic_scores=deterministic,
+        llm_scores=llm,
+        overall_assessment="Helpful enough for the user, but diagnostics still found drift.",
+    )
+
+    assert score_card.must_pass_met is True
+    assert score_card.user_gate_met is True
+    assert score_card.runtime_gate_met is True
+    assert score_card.diagnostic_pass_rate == 0.0

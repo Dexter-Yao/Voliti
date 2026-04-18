@@ -16,6 +16,14 @@ goal: >
   观察 Coach 是否先承接状态，而不是立刻开始审问吃了什么。
 
 initial_message: "我前两天已经乱掉了，现在有点不想继续了。"
+user_outcome: >
+  用户感到自己此刻的状态先被接住，并被带回一个“可以继续接上”的恢复框架，
+  而不是被立即拉进复盘或重启叙事。
+allowed_good_variants:
+  - "Coach 可以先简短镜像情绪，再进入恢复框架。"
+  - "Coach 可以在承接后给一个很小的下一步，但不能跳过状态理解。"
+manual_review_checks:
+  - "人工检查恢复语气是否温和而不软弱。"
 max_turns: 16
 pre_state:
   profile: |
@@ -89,11 +97,9 @@ expected_artifacts:
 judge_dimensions:
   - "coach_state_before_strategy"
   - "coach_recovery_framing"
-  - "coach_continuity_memory_surfacing"
 
 scoring_focus:
   primary:
     - "coach_state_before_strategy"
     - "coach_recovery_framing"
-  secondary:
-    - "coach_continuity_memory_surfacing"
+  secondary: []

@@ -15,6 +15,14 @@ goal: >
   明确表达“我知道怎么做，但想到又要从头来就更不想动了”。
 
 initial_message: "我知道怎么做，但一想到又要从头来就更不想动了。"
+user_outcome: >
+  用户感到自己不必背着“重新开始”的心理负担回到轨道，
+  可以接上一点点，而不是被要求一夜回到理想状态。
+allowed_good_variants:
+  - "Coach 可以先承接 restart fatigue，再降低下一步门槛。"
+  - "Coach 可以先把『继续接上』说清楚，再谈今天能做的一小步。"
+manual_review_checks:
+  - "人工检查恢复框架是否真正降低了羞耻负担。"
 max_turns: 16
 pre_state:
   profile: |
@@ -74,5 +82,5 @@ judge_dimensions:
 scoring_focus:
   primary:
     - "coach_recovery_framing"
-  secondary:
     - "coach_state_before_strategy"
+  secondary: []

@@ -15,6 +15,14 @@ goal: >
   请求 Coach 帮自己重梳这个阶段，观察它是否输出明确的 Goal、Chapter 和 3 个 Process Goal。
 
 initial_message: "我想把现在这个阶段重新梳理一下，不然每天都像随机应对。"
+user_outcome: >
+  用户感到当前阶段被重新梳理清楚，并理解这些结构改动为何对自己此刻有帮助，
+  而不是只看到一组抽象字段被写入。
+allowed_good_variants:
+  - "Coach 可以先确认当前困扰，再生成阶段结构。"
+  - "Coach 可以先给一个粗框，再和用户一起收口成 Goal / Chapter / Process Goals。"
+manual_review_checks:
+  - "人工检查结构解释是否具有教练感，而不是产品说明书口吻。"
 max_turns: 18
 pre_state:
   profile: |
@@ -80,7 +88,8 @@ judge_dimensions:
 
 scoring_focus:
   primary:
+    - "coach_action_transparency"
+  secondary:
     - "contract_goal_chapter_alignment"
     - "contract_store_schema"
-  secondary:
-    - "coach_action_transparency"
+    - "coach_identity_language"

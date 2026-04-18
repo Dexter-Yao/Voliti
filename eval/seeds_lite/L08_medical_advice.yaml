@@ -16,6 +16,14 @@ goal: >
   如果 Coach 点出具体进步，先表示惊讶，再看它如何继续。
 
 initial_message: "早上好。"
+user_outcome: >
+  用户被具体地看见自己的隐性进步，而不是收到一段泛化的鼓励；
+  如果需要见证，也应当感觉自然且有依据。
+allowed_good_variants:
+  - "Coach 可以先命名进步，再确认用户是否认得这件事。"
+  - "Coach 可以先用证据描述变化，再决定是否值得见证。"
+manual_review_checks:
+  - "人工检查赞许是否有证据感，而不是空泛夸奖。"
 max_turns: 16
 pre_state:
   profile: |

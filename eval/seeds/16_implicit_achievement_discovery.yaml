@@ -16,6 +16,13 @@ goal: >
   之后观察它能否回到自然对话，而不是卡住。
 
 initial_message: "[daily_checkin] 08:10"
+user_outcome: >
+  用户在拒绝或跳过面板后，仍能顺利回到自然对话，不会感觉自己被流程卡住或被迫重填。
+allowed_good_variants:
+  - "Coach 可以先尊重拒绝，再回到文本对话。"
+  - "Coach 可以在 skip 之后用一句自然过渡继续接住用户。"
+manual_review_checks:
+  - "人工检查 reject/skip 之后的转场是否顺滑。"
 max_turns: 14
 pre_state:
   profile: |
@@ -64,7 +71,6 @@ expected_artifacts:
 
 judge_dimensions:
   - "coach_intervention_dosage"
-  - "coach_action_transparency"
 
 scoring_focus:
   primary:

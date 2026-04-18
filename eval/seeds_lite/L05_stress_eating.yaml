@@ -16,6 +16,14 @@ goal: >
   观察 Coach 是否自然拿起既有上下文，而不是当作全新用户重新问基础信息。
 
 initial_message: "我好久没来了，有点不好意思。"
+user_outcome: >
+  用户感到自己被当作一个连续的人接住，能够顺利回到对话里，
+  而不是被当作一个陌生人重新 onboarding。
+allowed_good_variants:
+  - "Coach 可以先欢迎回归，再自然接起相关记忆。"
+  - "Coach 可以先轻问一句近况，再引用最相关的 continuity context。"
+manual_review_checks:
+  - "人工检查 continuity 的引用是否自然，而不是像检索结果朗读。"
 max_turns: 16
 pre_state:
   profile: |
@@ -97,5 +105,5 @@ judge_dimensions:
 scoring_focus:
   primary:
     - "coach_continuity_memory_surfacing"
-  secondary:
     - "coach_recovery_framing"
+  secondary: []

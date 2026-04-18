@@ -17,6 +17,14 @@ goal: >
   不主动替 Coach 补齐缺失字段。
 
 initial_message: "你好，我刚注册，想快一点开始。"
+user_outcome: >
+  用户在低摩擦前提下完成最小 onboarding，并清楚自己已经进入可以继续 coaching 的状态，
+  而不是被拉回一场冗长的完整访谈。
+allowed_good_variants:
+  - "Coach 可以先解释 quick/full 的差异，再让用户选择。"
+  - "Coach 可以只问 1-2 个补足最小数据集的问题，但不能把 quick path 扩成 full path。"
+manual_review_checks:
+  - "人工检查 onboarding 面板节奏是否让人感觉被帮助，而不是被审问。"
 pre_state: null
 max_turns: 24
 
@@ -92,8 +100,9 @@ judge_dimensions:
 scoring_focus:
   primary:
     - "contract_onboarding_artifacts"
-    - "contract_store_schema"
-    - "contract_goal_chapter_alignment"
-  secondary:
     - "coach_state_before_strategy"
     - "coach_action_transparency"
+  secondary:
+    - "contract_store_schema"
+    - "contract_goal_chapter_alignment"
+    - "coach_identity_language"

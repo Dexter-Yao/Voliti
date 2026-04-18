@@ -16,6 +16,14 @@ goal: >
   如果 Coach 引用了已有预案，回应“对，就是那个场景”。
 
 initial_message: "今天会后特别想喝奶茶，感觉脑子已经下线了。"
+user_outcome: >
+  用户感到当前高风险场景被理解，并被带回已有且相关的 LifeSign，
+  而不是再次收到一套重复的新建议。
+allowed_good_variants:
+  - "Coach 可以先确认此刻压力状态，再匹配已有预案。"
+  - "Coach 可以在引用旧预案后微调一个细节，但不能重新发明整套计划。"
+manual_review_checks:
+  - "人工检查引用旧预案时是否显得机械。"
 max_turns: 14
 pre_state:
   profile: |
@@ -92,6 +100,6 @@ judge_dimensions:
 
 scoring_focus:
   primary:
-    - "coach_lifesign_management"
-  secondary:
     - "coach_state_before_strategy"
+    - "coach_lifesign_management"
+  secondary: []

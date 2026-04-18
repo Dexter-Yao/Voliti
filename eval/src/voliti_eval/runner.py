@@ -15,6 +15,11 @@ from typing import Any
 from voliti_eval.auditor import Auditor
 from voliti_eval.client import A2UIInterruptEvent, CoachClient, TextEvent, ToolCallEvent
 from voliti_eval.config import EvalConfig
+from voliti_eval.dimensions import (
+    is_diagnostic_dimension,
+    is_runtime_gate_dimension,
+    is_user_gate_dimension,
+)
 from voliti_eval.graders import build_store_diff, grade_deterministic
 from voliti_eval.models import (
     DimensionScore,
@@ -79,25 +84,38 @@ def assemble_score_card(
     judge_dimension_definitions: dict[str, str] | None = None,
     judge_prompt_rendered: str = "",
 ) -> ScoreCard:
+    def _lane_pass_rate(predicate: Any) -> float:
+        lane_scores = [score for dimension_id, score in scores.items() if predicate(dimension_id)]
+        if not lane_scores:
+            return 0.0
+        return round(sum(1 for score in lane_scores if score.passed) / len(lane_scores), 2)
+
+    def _lane_met(predicate: Any) -> bool:
+        lane_primary = [dimension_id for dimension_id in primary_dimensions if predicate(dimension_id)]
+        if not lane_primary:
+            return True
+        missing = [dimension_id for dimension_id in lane_primary if dimension_id not in scores]
+        if missing:
+            return False
+        return all(scores[dimension_id].passed for dimension_id in lane_primary)
+
     scores = {**deterministic_scores, **llm_scores}
+    user_gate_met = _lane_met(is_user_gate_dimension)
+    runtime_gate_met = _lane_met(is_runtime_gate_dimension)
     if not scores:
         return ScoreCard(
             seed_id=seed_id,
             overall_assessment=overall_assessment,
-            must_pass_met=not primary_dimensions,
+            must_pass_met=user_gate_met and runtime_gate_met,
+            user_gate_met=user_gate_met,
+            runtime_gate_met=runtime_gate_met,
             judge_requested_dimensions=judge_requested_dimensions or [],
             judge_dimension_definitions=judge_dimension_definitions or {},
             judge_prompt_rendered=judge_prompt_rendered,
         )
 
     pass_rate = round(sum(1 for score in scores.values() if score.passed) / len(scores), 2)
-    primary_set = set(primary_dimensions)
-    missing_primary = sorted(primary_set - set(scores))
-    must_pass_met = not missing_primary and all(
-        score.passed
-        for dimension_id, score in scores.items()
-        if dimension_id in primary_set
-    )
+    must_pass_met = user_gate_met and runtime_gate_met
     critical_failures = [
         dimension_id
         for dimension_id, score in scores.items()
@@ -110,6 +128,11 @@ def assemble_score_card(
         critical_failures=critical_failures,
         pass_rate=pass_rate,
         must_pass_met=must_pass_met,
+        user_gate_pass_rate=_lane_pass_rate(is_user_gate_dimension),
+        runtime_gate_pass_rate=_lane_pass_rate(is_runtime_gate_dimension),
+        diagnostic_pass_rate=_lane_pass_rate(is_diagnostic_dimension),
+        user_gate_met=user_gate_met,
+        runtime_gate_met=runtime_gate_met,
         judge_requested_dimensions=judge_requested_dimensions or [],
         judge_dimension_definitions=judge_dimension_definitions or {},
         judge_prompt_rendered=judge_prompt_rendered,

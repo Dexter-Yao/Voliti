@@ -279,28 +279,49 @@
       <div class="metric-label">总体维度通过率</div>
     </div>
     <div class="card">
-      <div class="metric-value">{{ (summary.contract_pass_rate * 100) | round | int }}%</div>
-      <div class="metric-label">硬契约通过率</div>
+      <div class="metric-value">{{ (summary.user_gate_pass_rate * 100) | round | int }}%</div>
+      <div class="metric-label">User Gate</div>
     </div>
     <div class="card">
-      <div class="metric-value">{{ (summary.behavior_pass_rate * 100) | round | int }}%</div>
-      <div class="metric-label">行为维度通过率</div>
+      <div class="metric-value">{{ (summary.runtime_gate_pass_rate * 100) | round | int }}%</div>
+      <div class="metric-label">Runtime Contract Gate</div>
     </div>
     <div class="card">
-      <div class="metric-value">{{ summary.must_pass_success_count }}/{{ seed_count }}</div>
-      <div class="metric-label">Must-Pass 收口</div>
+      <div class="metric-value">{{ (summary.diagnostic_pass_rate * 100) | round | int }}%</div>
+      <div class="metric-label">Diagnostics</div>
     </div>
   </section>
 
-  <h2>结果总览</h2>
+  {% if stability %}
+  <section class="grid">
+    <div class="card">
+      <div class="metric-value">{{ stability.run_count }}</div>
+      <div class="metric-label">重复运行次数</div>
+    </div>
+    <div class="card">
+      <div class="metric-value">{{ (stability.overall_gate_pass_k * 100) | round | int }}%</div>
+      <div class="metric-label">Gate pass^k</div>
+    </div>
+    <div class="card">
+      <div class="metric-value">{{ (stability.stable_gate_pass_rate * 100) | round | int }}%</div>
+      <div class="metric-label">全部运行均通过</div>
+    </div>
+    <div class="card">
+      <div class="metric-value">{{ stability.flake_count }}</div>
+      <div class="metric-label">Flaky Seeds</div>
+    </div>
+  </section>
+  {% endif %}
+
+  <h2>User Gate Summary</h2>
   <table>
     <thead>
       <tr>
         <th>Seed</th>
-        <th>结果</th>
-        <th>Must-Pass</th>
-        <th>通过率</th>
-        <th>关键失败维度</th>
+        <th>User Gate</th>
+        <th>整体 Gate</th>
+        <th>核心证据 Turn</th>
+        <th>为什么过 / 为什么没过</th>
       </tr>
     </thead>
     <tbody>
@@ -308,34 +329,47 @@
       <tr>
         <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
         <td>
-          {% if row.failed_dimension_ids %}
-          <span class="badge badge-fail">需要复核</span>
+          {% if row.user_gate_met %}
+          <span class="badge badge-pass">PASS</span>
           {% else %}
-          <span class="badge badge-pass">通过</span>
+          <span class="badge badge-fail">FAIL</span>
           {% endif %}
         </td>
         <td>
           {% if row.must_pass_met %}
-          <span class="badge badge-pass">OK</span>
+          <span class="badge badge-pass">PASS</span>
           {% else %}
-          <span class="badge badge-fail">Fail</span>
+          <span class="badge badge-fail">FAIL</span>
+          {% endif %}
+          {% if row.gate_flaky %}
+          <span class="badge badge-warn">Flaky</span>
           {% endif %}
         </td>
-        <td>{{ row.pass_rate_pct }}%</td>
         <td>
-          {% if row.failed_dimension_ids %}
-          {{ row.failed_dimension_ids | join(", ") }}
+          {% if row.core_evidence_turns %}
+          {{ row.core_evidence_turns | join(", ") }}
           {% else %}
           无
           {% endif %}
         </td>
+        <td>
+          {% if row.user_gate_failures %}
+            {% for score in row.user_gate_failures %}
+            <div><strong>{{ score.dimension_id }}</strong>：{{ score.justification }}</div>
+            {% endfor %}
+          {% elif row.overall_assessment %}
+            {{ row.overall_assessment }}
+          {% else %}
+            通过。
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <h2>契约失败</h2>
-  {% if contract_failure_rows %}
+  <h2>Runtime Contract Summary</h2>
+  {% if runtime_gate_failure_rows %}
   <table>
     <thead>
       <tr>
@@ -345,16 +379,16 @@
       </tr>
     </thead>
     <tbody>
-      {% for row in contract_failure_rows %}
+      {% for row in runtime_gate_failure_rows %}
       <tr>
         <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
         <td>
-          {% for score in row.contract_failures %}
+          {% for score in row.runtime_gate_failures %}
           <div>{{ score.dimension_id }}</div>
           {% endfor %}
         </td>
         <td>
-          {% for score in row.contract_failures %}
+          {% for score in row.runtime_gate_failures %}
           <div><span class="badge badge-source">{{ score.score_source }}</span> {{ score.justification }}</div>
           {% endfor %}
         </td>
@@ -363,30 +397,30 @@
     </tbody>
   </table>
   {% else %}
-  <div class="card">本次运行未出现硬契约失败。</div>
+  <div class="card">本次运行未出现 Runtime Contract Gate 失败。</div>
   {% endif %}
 
-  <h2>行为失败</h2>
-  {% if behavior_failure_rows %}
+  <h2>Diagnostics Summary</h2>
+  {% if diagnostic_failure_rows %}
   <table>
     <thead>
       <tr>
         <th>Seed</th>
-        <th>失败维度</th>
+        <th>诊断项</th>
         <th>证据</th>
       </tr>
     </thead>
     <tbody>
-      {% for row in behavior_failure_rows %}
+      {% for row in diagnostic_failure_rows %}
       <tr>
         <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
         <td>
-          {% for score in row.behavior_failures %}
+          {% for score in row.diagnostic_failures %}
           <div>{{ score.dimension_id }}</div>
           {% endfor %}
         </td>
         <td>
-          {% for score in row.behavior_failures %}
+          {% for score in row.diagnostic_failures %}
           <div><span class="badge badge-source">{{ score.score_source }}</span> {{ score.justification }}</div>
           {% endfor %}
         </td>
@@ -395,10 +429,10 @@
     </tbody>
   </table>
   {% else %}
-  <div class="card">本次运行未出现行为维度失败。</div>
+  <div class="card">本次运行未出现 Diagnostics 失败。</div>
   {% endif %}
 
-  <h2>Seed 详情</h2>
+  <h2>Seed Detail</h2>
   {% for row in seed_rows %}
   <details>
     <summary>
@@ -410,25 +444,25 @@
           </div>
         </div>
         <div class="compact-list">
+          <span class="badge {% if row.user_gate_met %}badge-pass{% else %}badge-fail{% endif %}">
+            User Gate {{ "OK" if row.user_gate_met else "Fail" }}
+          </span>
+          <span class="badge {% if row.runtime_gate_met %}badge-pass{% else %}badge-fail{% endif %}">
+            Runtime {{ "OK" if row.runtime_gate_met else "Fail" }}
+          </span>
           <span class="badge {% if row.must_pass_met %}badge-pass{% else %}badge-fail{% endif %}">
-            Must-Pass {{ "OK" if row.must_pass_met else "Fail" }}
+            Gate {{ "OK" if row.must_pass_met else "Fail" }}
           </span>
           <span class="badge badge-source">pass {{ row.pass_rate_pct }}%</span>
-          {% if row.failed_dimension_ids %}
-          <span class="badge badge-fail">{{ row.failed_dimension_ids | length }} 个失败维度</span>
-          {% else %}
-          <span class="badge badge-pass">全部通过</span>
+          {% if row.gate_flaky %}
+          <span class="badge badge-warn">Flaky</span>
           {% endif %}
         </div>
       </div>
     </summary>
     <div class="detail-body">
       <div class="seed-meta">
-        {% if row.failed_dimension_ids %}
-        <span>关键失败：{{ row.failed_dimension_ids | join(", ") }}</span>
-        {% else %}
-        <span>关键失败：无</span>
-        {% endif %}
+        <span>用户结果：{{ row.user_outcome }}</span>
       </div>
 
       {% if row.overall_assessment %}
@@ -441,18 +475,108 @@
           <div class="metric-label">Seed 总通过率</div>
         </div>
         <div class="card">
-          <div class="metric-value">{{ (row.contract_pass_rate * 100) | round | int }}%</div>
-          <div class="metric-label">契约维度</div>
+          <div class="metric-value">{{ (row.user_gate_pass_rate * 100) | round | int }}%</div>
+          <div class="metric-label">User Gate</div>
         </div>
         <div class="card">
-          <div class="metric-value">{{ (row.behavior_pass_rate * 100) | round | int }}%</div>
-          <div class="metric-label">行为维度</div>
+          <div class="metric-value">{{ (row.runtime_gate_pass_rate * 100) | round | int }}%</div>
+          <div class="metric-label">Runtime Contract</div>
         </div>
         <div class="card">
-          <div class="metric-value">{{ row.failed_dimension_ids | length }}</div>
-          <div class="metric-label">失败维度数</div>
+          <div class="metric-value">{{ (row.diagnostic_pass_rate * 100) | round | int }}%</div>
+          <div class="metric-label">Diagnostics</div>
         </div>
       </div>
+
+      <details class="section-details" open>
+        <summary>结果摘要</summary>
+        <div class="section-body">
+          {% if row.user_gate_failures or row.runtime_gate_failures %}
+          <div class="list">
+            {% for score in row.user_gate_failures + row.runtime_gate_failures %}
+            <div class="list-item">
+              <div class="score-head">
+                <strong>{{ score.dimension_id }}</strong>
+                <span class="badge {% if score.failure_severity == 'critical' %}badge-fail{% else %}badge-warn{% endif %}">FAIL</span>
+                <span class="badge badge-source">{{ score.score_source }}</span>
+              </div>
+              <div class="markdown">{{ score.justification | markdown_html }}</div>
+              {% if score.evidence_turns %}
+              <div class="turn-meta">evidence_turns={{ score.evidence_turns | join(", ") }}</div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="card">该 seed 的正式 gate 已通过。</div>
+          {% endif %}
+        </div>
+      </details>
+
+      <details class="section-details">
+        <summary>Diagnostic findings</summary>
+        <div class="section-body">
+          {% if row.diagnostic_failures %}
+          <div class="list">
+            {% for score in row.diagnostic_failures %}
+            <div class="list-item">
+              <div class="score-head">
+                <strong>{{ score.dimension_id }}</strong>
+                <span class="badge badge-warn">Diagnostic</span>
+                <span class="badge badge-source">{{ score.score_source }}</span>
+              </div>
+              <div class="markdown">{{ score.justification | markdown_html }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="card">该 seed 本次未出现 diagnostic failure。</div>
+          {% endif %}
+        </div>
+      </details>
+
+      <details class="section-details">
+        <summary>Manual Review Appendix</summary>
+        <div class="section-body">
+          <div class="list">
+            {% for item in row.manual_review_checks %}
+            <div class="list-item">{{ item }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      </details>
+
+      {% if row.run_history %}
+      <details class="section-details">
+        <summary>Run Stability</summary>
+        <div class="section-body">
+          <table>
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>User Gate</th>
+                <th>Runtime Gate</th>
+                <th>Overall Gate</th>
+                <th>Pass Rate</th>
+                <th>End Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in row.run_history %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{% if item.user_gate_met %}PASS{% else %}FAIL{% endif %}</td>
+                <td>{% if item.runtime_gate_met %}PASS{% else %}FAIL{% endif %}</td>
+                <td>{% if item.must_pass_met %}PASS{% else %}FAIL{% endif %}</td>
+                <td>{{ (item.pass_rate * 100) | round | int }}%</td>
+                <td>{{ item.end_reason }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      {% endif %}
 
       <details class="section-details" open>
         <summary>评分详情</summary>
@@ -470,6 +594,7 @@
                 <span class="badge badge-warn">FAIL</span>
                 {% endif %}
                 <span class="badge badge-source">{{ score.score_source }}</span>
+                <span class="badge badge-source">{{ score.category }}</span>
               </div>
               <div class="markdown">{{ score.justification | markdown_html }}</div>
               {% if score.evidence_turns %}
@@ -519,58 +644,36 @@
                   <pre>{{ diff.before_content }}</pre>
                   {% endif %}
                   {% if diff.after_content %}
-                  <div class="turn-meta" style="margin-top: 8px;">After</div>
+                  <div class="turn-meta">After</div>
                   <pre>{{ diff.after_content }}</pre>
                   {% endif %}
                 </div>
                 {% endfor %}
               </div>
               {% else %}
-              <div class="card">未捕获到 store diff。</div>
+              <div class="card">未捕获到 Store 变化。</div>
               {% endif %}
             </div>
           </div>
-
-          <h3>Relevant Final Files</h3>
-          {% if row.relevant_final_files %}
-          <div class="list">
-            {% for file in row.relevant_final_files %}
-            <div class="list-item">
-              <div class="turn-meta mono">{{ file.key }}</div>
-              {% if file.is_markdown %}
-              <div class="markdown">{{ file.content | markdown_html }}</div>
-              <details class="raw-toggle">
-                <summary>查看原文</summary>
-                <div class="section-body"><pre>{{ file.content }}</pre></div>
-              </details>
-              {% else %}
-              <pre>{{ file.content }}</pre>
-              {% endif %}
-            </div>
-            {% endfor %}
-          </div>
-          {% else %}
-          <div class="card">未找到 relevant final files。</div>
-          {% endif %}
 
           <h3>Transcript</h3>
           <div class="chat">
             {% for turn in row.seed_result.transcript.turns %}
             <div class="turn {{ turn.role }}">
-              <div class="turn-meta">Turn {{ turn.index }} | {{ turn.role }}</div>
+              <div class="turn-meta">Turn {{ turn.index }} · {{ turn.role }}</div>
               {% if turn.text %}
               <div class="markdown">{{ turn.text | markdown_html }}</div>
               {% endif %}
               {% if turn.a2ui_payload %}
               <details class="raw-toggle">
                 <summary>A2UI Payload</summary>
-                <div class="section-body"><pre>{{ turn.a2ui_payload | pretty_json }}</pre></div>
+                <pre>{{ turn.a2ui_payload | pretty_json }}</pre>
               </details>
               {% endif %}
               {% if turn.a2ui_response %}
               <details class="raw-toggle">
                 <summary>A2UI Response</summary>
-                <div class="section-body"><pre>{{ turn.a2ui_response | pretty_json }}</pre></div>
+                <pre>{{ turn.a2ui_response | pretty_json }}</pre>
               </details>
               {% endif %}
             </div>
@@ -582,56 +685,103 @@
       <details class="section-details">
         <summary>审核材料</summary>
         <div class="section-body">
-          <div class="two-col">
-            <div>
-              <h3>Auditor Prompt</h3>
-              {% if row.auditor_prompt_rendered %}
-              <div class="markdown">{{ row.auditor_prompt_rendered | markdown_html }}</div>
-              {% else %}
-              <div class="card">未记录渲染后的 Auditor prompt。</div>
-              {% endif %}
-
-              <h3>Expected Behaviors</h3>
-              <pre>{{ row.expected_behaviors | pretty_json }}</pre>
-
-              <h3>Auditor Policy</h3>
-              <pre>{{ row.auditor_policy | pretty_json }}</pre>
-            </div>
-
-            <div>
-              <h3>Judge Requested Dimensions</h3>
-              {% if row.judge_requested_dimensions %}
-              <pre>{{ row.judge_requested_dimensions | pretty_json }}</pre>
-              {% else %}
-              <div class="card">该场景未请求 Judge 行为评分。</div>
-              {% endif %}
-
-              <h3>Judge Dimension Definitions</h3>
-              {% if row.judge_dimension_definitions %}
-              <pre>{{ row.judge_dimension_definitions | pretty_json }}</pre>
-              {% else %}
-              <div class="card">未记录 Judge 维度定义。</div>
-              {% endif %}
-
-              <h3>Expected Artifacts</h3>
-              <pre>{{ row.expected_artifacts | pretty_json }}</pre>
-
-              <h3>Scoring Focus</h3>
-              <pre>{{ row.scoring_focus | pretty_json }}</pre>
-            </div>
+          <h3>Allowed Good Variants</h3>
+          <div class="list">
+            {% for item in row.allowed_good_variants %}
+            <div class="list-item">{{ item }}</div>
+            {% endfor %}
           </div>
 
-          <h3>Judge Prompt</h3>
-          {% if row.judge_prompt_rendered %}
-          <div class="markdown">{{ row.judge_prompt_rendered | markdown_html }}</div>
+          <h3>Relevant Final Files</h3>
+          {% if row.relevant_final_files %}
+          <div class="list">
+            {% for file in row.relevant_final_files %}
+            <div class="list-item">
+              <div class="score-head">
+                <strong class="mono">{{ file.key }}</strong>
+              </div>
+              {% if file.is_markdown %}
+              <div class="markdown">{{ file.content | markdown_html }}</div>
+              {% else %}
+              <pre>{{ file.content }}</pre>
+              {% endif %}
+              <details class="raw-toggle">
+                <summary>查看原文</summary>
+                <pre>{{ file.content }}</pre>
+              </details>
+            </div>
+            {% endfor %}
+          </div>
           {% else %}
-          <div class="card">该场景未记录 Judge prompt。</div>
+          <div class="card">没有捕获到 relevant final files。</div>
           {% endif %}
+
+          <details class="raw-toggle">
+            <summary>Auditor Prompt</summary>
+            <div class="markdown">{{ row.auditor_prompt_rendered | markdown_html }}</div>
+          </details>
+
+          <details class="raw-toggle">
+            <summary>Judge Prompt</summary>
+            <div class="markdown">{{ row.judge_prompt_rendered | markdown_html }}</div>
+          </details>
+
+          <details class="raw-toggle">
+            <summary>Seed Policy</summary>
+            <h4>Expected Behaviors</h4>
+            <pre>{{ row.expected_behaviors | pretty_json }}</pre>
+            <h4>Expected Artifacts</h4>
+            <pre>{{ row.expected_artifacts | pretty_json }}</pre>
+            <h4>Scoring Focus</h4>
+            <pre>{{ row.scoring_focus | pretty_json }}</pre>
+            <h4>Auditor Policy</h4>
+            <pre>{{ row.auditor_policy | pretty_json }}</pre>
+          </details>
+
+          <details class="raw-toggle">
+            <summary>Judge Requested Dimensions</summary>
+            <pre>{{ row.judge_requested_dimensions | pretty_json }}</pre>
+          </details>
+
+          <details class="raw-toggle">
+            <summary>Judge Dimension Definitions</summary>
+            <pre>{{ row.judge_dimension_definitions | pretty_json }}</pre>
+          </details>
         </div>
       </details>
     </div>
   </details>
   {% endfor %}
+
+  <h2>Manual Review Appendix</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Seed</th>
+        <th>人工复核项</th>
+        <th>Gate 结果</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in seed_rows %}
+      <tr>
+        <td>{{ row.seed_id }}<br>{{ row.seed_name }}</td>
+        <td>
+          {% for item in row.manual_review_checks %}
+          <div>{{ item }}</div>
+          {% endfor %}
+        </td>
+        <td>
+          {% if row.must_pass_met %}
+          <span class="badge badge-pass">Gate Passed</span>
+          {% else %}
+          <span class="badge badge-fail">Gate Failed</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 </body>
 </html>

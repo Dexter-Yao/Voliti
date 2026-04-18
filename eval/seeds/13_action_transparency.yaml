@@ -16,6 +16,14 @@ goal: >
   观察 Coach 是否基于失败机制迭代，而不是重复原动作。
 
 initial_message: "那个泡茶再决定的预案最近连续三次都没用。"
+user_outcome: >
+  用户感到旧预案的失败机制被真正理解，并得到一次有针对性的修订，
+  而不是被要求继续机械重复旧动作。
+allowed_good_variants:
+  - "Coach 可以先拆失败机制，再一起改写 LifeSign。"
+  - "Coach 可以先确认最近三次卡住的具体时刻，再提出修订方向。"
+manual_review_checks:
+  - "人工检查预案修订是否具体，而不是换个说法重复旧建议。"
 max_turns: 16
 pre_state:
   profile: |
@@ -82,5 +90,5 @@ judge_dimensions:
 scoring_focus:
   primary:
     - "coach_lifesign_management"
-  secondary:
     - "coach_action_transparency"
+  secondary: []

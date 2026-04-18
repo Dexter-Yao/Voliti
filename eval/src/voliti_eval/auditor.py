@@ -34,6 +34,12 @@ Persona:
 Scenario goal:
 {goal}
 
+User outcome:
+{user_outcome}
+
+Allowed good variants:
+{allowed_good_variants}
+
 Latent facts you know but do not proactively reveal unless the conversation rule allows it:
 {latent_facts}
 
@@ -48,11 +54,14 @@ Conversation rules:
 - Do not volunteer missing data just because the coach skipped an important step.
 - If the coach asks for something that should only be revealed when asked, answer it naturally.
 - If a challenge rule is triggered, ask the specified challenge question once.
+- Do not introduce a new frame, source domain, or success path that is not already allowed by the seed.
+- Natural elaboration is allowed only when it stays inside the allowed good variants.
 - Speak in {persona_language_name}.
 - Ignore any ```json:coach_thinking``` and ```json:suggested_replies``` metadata blocks.
 
 Stop rules:
 - Do not end before {min_turns} user turns.
+- Do not end just because a tool fired. End when the user outcome is actually reached.
 - End only when at least one of these completion conditions is satisfied: {complete_when}.
 - Continue pressing until these conditions are met when relevant: {continue_until}.
 
@@ -176,6 +185,8 @@ class Auditor:
             persona_language=seed.persona.language,
             persona_language_name=_LANGUAGE_NAMES.get(seed.persona.language, seed.persona.language),
             goal=seed.goal,
+            user_outcome=seed.user_outcome,
+            allowed_good_variants="\n".join(f"- {item}" for item in seed.allowed_good_variants),
             latent_facts="\n".join(f"- {fact}" for fact in policy.latent_facts) or "- None",
             reveal_rules="\n".join(
                 f"- {rule.topic}: when_asked={rule.when_asked}; respond=\"{rule.response}\""

@@ -8,7 +8,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from voliti_eval.dimensions import KNOWN_DIMENSIONS
+from voliti_eval.dimensions import (
+    KNOWN_DIMENSIONS,
+    is_diagnostic_dimension,
+    is_gate_dimension,
+    is_llm_dimension,
+)
 
 
 class Persona(BaseModel):
@@ -187,6 +192,9 @@ class Seed(BaseModel):
     persona: Persona
     goal: str
     initial_message: str
+    user_outcome: str = Field(min_length=1)
+    allowed_good_variants: list[str] = Field(min_length=1)
+    manual_review_checks: list[str] = Field(min_length=1)
     pre_state: PreState | None = None
     max_turns: int = 20
     expected_behaviors: ExpectedBehaviors = Field(default_factory=ExpectedBehaviors)
@@ -203,6 +211,36 @@ class Seed(BaseModel):
         unknown = sorted(declared - KNOWN_DIMENSIONS)
         if unknown:
             raise ValueError("Unknown eval dimensions: " + ", ".join(unknown))
+        non_llm_judge_dimensions = sorted(
+            dimension_id
+            for dimension_id in self.judge_dimensions
+            if not is_llm_dimension(dimension_id)
+        )
+        if non_llm_judge_dimensions:
+            raise ValueError(
+                "Judge dimensions must be LLM-scored dimensions: "
+                + ", ".join(non_llm_judge_dimensions)
+            )
+        non_gate_primary = sorted(
+            dimension_id
+            for dimension_id in self.scoring_focus.primary
+            if not is_gate_dimension(dimension_id)
+        )
+        if non_gate_primary:
+            raise ValueError(
+                "Primary scoring_focus dimensions must be gate dimensions: "
+                + ", ".join(non_gate_primary)
+            )
+        non_diagnostic_secondary = sorted(
+            dimension_id
+            for dimension_id in self.scoring_focus.secondary
+            if not is_diagnostic_dimension(dimension_id)
+        )
+        if non_diagnostic_secondary:
+            raise ValueError(
+                "Secondary scoring_focus dimensions must be diagnostic dimensions: "
+                + ", ".join(non_diagnostic_secondary)
+            )
         return self
 
 
@@ -310,6 +348,11 @@ class ScoreCard(BaseModel):
     critical_failures: list[str] = Field(default_factory=list)
     pass_rate: float = 0.0
     must_pass_met: bool = True
+    user_gate_pass_rate: float = 0.0
+    runtime_gate_pass_rate: float = 0.0
+    diagnostic_pass_rate: float = 0.0
+    user_gate_met: bool = True
+    runtime_gate_met: bool = True
     judge_requested_dimensions: list[str] = Field(default_factory=list)
     judge_dimension_definitions: dict[str, str] = Field(default_factory=dict)
     judge_prompt_rendered: str = ""

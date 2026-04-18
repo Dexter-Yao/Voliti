@@ -16,6 +16,14 @@ goal: >
   观察 Coach 是否识别为 Chapter transition，而不是继续按旧阶段说话。
 
 initial_message: "工作日这套已经快变成本能了，我现在更想处理周末。"
+user_outcome: >
+  用户感到当前阶段已经被看见并被正式过渡到新的 Chapter，
+  且明白这些结构变化为什么与自己下一阶段的问题相关。
+allowed_good_variants:
+  - "Coach 可以先命名 transition，再更新 Chapter。"
+  - "Coach 可以先一起确认新阶段重心，再写入新的结构骨架。"
+manual_review_checks:
+  - "人工检查 Chapter transition 的解释是否有阶段感，而不是字段堆砌。"
 max_turns: 18
 pre_state:
   profile: |
@@ -142,7 +150,8 @@ judge_dimensions:
 
 scoring_focus:
   primary:
-    - "contract_goal_chapter_alignment"
     - "coach_action_transparency"
   secondary:
+    - "contract_goal_chapter_alignment"
     - "coach_identity_language"
+    - "coach_intervention_dosage"
