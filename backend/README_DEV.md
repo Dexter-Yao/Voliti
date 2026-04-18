@@ -118,13 +118,15 @@ Project uses:
 │   ├── a2ui.py                # A2UI component models
 │   ├── tools/
 │   │   ├── fan_out.py         # A2UI interaction tool
-│   │   └── experiential.py    # Intervention composition tool
+│   │   └── experiential.py    # Witness Card low-level render tool
 │   └── config/
 │       ├── models.py          # ModelRegistry (LLM config)
 │       └── prompts.py         # PromptRegistry (Jinja2 templates)
 ├── prompts/                   # Jinja2 system prompt templates
 │   ├── coach_system.j2
-│   └── intervention_composer_system.j2
+│   └── onboarding.j2
+├── skills/
+│   └── coach/                 # Coach skills（含体验式干预与 witness-card）
 ├── config/
 │   └── models.toml            # LLM model configurations
 ├── tests/                     # Pytest test suite
@@ -156,19 +158,16 @@ case "new_component":
     NewComponentView(component: component)
 ```
 
-### Adding a New Intervention Type
+### Adding a New Coach Skill
 
-1. **Update intervention_composer_system.j2**:
-   - Add intervention type documentation
-   - Define theoretical framework
-   - Specify prompt construction rules
+1. **Create skill directory** (`skills/coach/<skill-name>/`):
+   - Add `SKILL.md`
+   - Add `tool.py`
+   - Add `references/` and `scripts/` only when truly needed
 
-2. **Add to purpose enum** (`src/voliti/tools/experiential.py`):
-```python
-InterventionPurpose = Literal[..., "new_type"]
-```
+2. **Export the tool as `TOOL`** in `tool.py`
 
-3. **Update frontend purpose labels** (if needed)
+3. **Keep metadata/layout in code**, not in Coach prompt arguments
 
 ### Modifying System Prompts
 
@@ -285,7 +284,6 @@ read_file("/user/ledger/2026-02-09/143052_meal.json")
 
 - Cache intervention images (already implemented in experiential.py)
 - `azure_openai:gpt-5.4`: Main Coach Agent
-- `azure_openai:gpt-5.4-nano`: Intervention Composer subagent
 - `gpt-image-1.5`: 图片生成（experiential.py 直接调用）
 - Batch multiple A2UI components in single interrupt
 

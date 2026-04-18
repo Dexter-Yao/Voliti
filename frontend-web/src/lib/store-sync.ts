@@ -3,10 +3,11 @@
 
 import {
   buildMirrorDataFromStoreValues,
+  type WitnessCard,
   type MirrorData,
 } from "./mirror-contract";
 
-export type { MirrorData } from "./mirror-contract";
+export type { MirrorData, WitnessCard } from "./mirror-contract";
 
 export interface ForwardMarkerSummary {
   id: string;
@@ -20,6 +21,7 @@ export interface CoachContextData {
   briefing: string | null;
   mirrorData: MirrorData;
   onboardingComplete: boolean;
+  witnessCards: WitnessCard[];
   upcomingMarkers: ForwardMarkerSummary[];
 }
 
@@ -39,6 +41,7 @@ async function fetchCoachContextInternal(): Promise<CoachContextData> {
     briefing: payload.briefing ?? null,
     mirrorData: payload.mirrorData ?? buildMirrorDataFromStoreValues({}),
     onboardingComplete: Boolean(payload.onboardingComplete),
+    witnessCards: payload.witnessCards ?? [],
     upcomingMarkers: payload.upcomingMarkers ?? [],
   };
 }

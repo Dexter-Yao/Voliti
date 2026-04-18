@@ -5,7 +5,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildMirrorDataFromStoreValues } from "./mirror-contract";
+import {
+  buildAcceptedWitnessCardsFromStoreItems,
+  buildMirrorDataFromStoreValues,
+} from "./mirror-contract";
 
 function loadFixture(name: string): Record<string, unknown> {
   const path = resolve(process.cwd(), "../tests/contracts/fixtures/store", name);
@@ -44,5 +47,61 @@ describe("buildMirrorDataFromStoreValues", () => {
     expect(data.identity_statement).toContain("清醒选择");
     expect(data.dashboardConfig?.north_star.label).toBe("体重趋势");
     expect(data.dashboardConfig?.support_metrics[0]?.label).toBe("达标天数");
+  });
+});
+
+describe("buildAcceptedWitnessCardsFromStoreItems", () => {
+  it("keeps only accepted witness cards and orders them by newest first", () => {
+    const cards = buildAcceptedWitnessCardsFromStoreItems([
+      {
+        key: "card_pending",
+        value: {
+          achievement_title: "尚未收下",
+          imageData: "data:image/jpeg;base64,pending",
+          narrative: "pending",
+          status: "pending",
+          timestamp: "2026-04-18T01:00:00Z",
+        },
+      },
+      {
+        key: "card_old",
+        value: {
+          achievement_title: "较早收下",
+          imageData: "data:image/jpeg;base64,old",
+          narrative: "old",
+          status: "accepted",
+          timestamp: "2026-04-18T02:00:00Z",
+        },
+      },
+      {
+        key: "card_new",
+        value: {
+          achievement_title: "最新收下",
+          imageData: "data:image/jpeg;base64,new",
+          narrative: "new",
+          status: "accepted",
+          timestamp: "2026-04-18T03:00:00Z",
+        },
+      },
+    ]);
+
+    expect(cards).toEqual([
+      {
+        achievementType: "explicit",
+        id: "card_new",
+        narrative: "new",
+        src: "data:image/jpeg;base64,new",
+        alt: "最新收下",
+        createdAt: "2026-04-18T03:00:00Z",
+      },
+      {
+        achievementType: "explicit",
+        id: "card_old",
+        narrative: "old",
+        src: "data:image/jpeg;base64,old",
+        alt: "较早收下",
+        createdAt: "2026-04-18T02:00:00Z",
+      },
+    ]);
   });
 });

@@ -1,24 +1,24 @@
 {#
 ABOUTME: User profile canonical template fragment
-ABOUTME: 供 onboarding / coach prompt 引用，六维画像 MECE 结构
+ABOUTME: Referenced by onboarding and coach prompts as the six-dimension MECE profile structure
 #}
 # User Profile
-<!-- 写入规则：关键词或短语，≤20 字/项；多值逗号分隔 ≤5 项；未知留空 -->
-<!-- 演进规则：可在任意 section 下新增字段、可重命名字段以更准确反映语义、值允许为空 -->
+<!-- Writing rule: use keywords or short phrases, <=20 Chinese characters per item; for multi-value fields use comma-separated lists with <=5 items; leave unknown fields blank -->
+<!-- Evolution rule: fields may be added under any section, renamed when the semantics become clearer, and left empty when unknown -->
 
 ## Identity
 - name:
 - identity_statement:
 - privacy_preference: private | open
-- onboarding_complete: false  <!-- 整个 onboarding 流程是否完成 -->
+- onboarding_complete: false  <!-- Whether the full onboarding flow is complete -->
 
 ## Medical Constraints
-<!-- Coach 不得建议违反此节任何条目 -->
+<!-- Coach must not suggest anything that violates this section -->
 - food_allergies_or_intolerances:
 - conditions_affecting_exercise:
 
 ## Motivation
-<!-- 减脂与健康管理的内在驱动 -->
+<!-- Intrinsic drivers behind fat loss and health management -->
 - core_drive:
 - drive_intensity: low | medium | high
 
@@ -30,7 +30,7 @@ ABOUTME: 供 onboarding / coach prompt 引用，六维画像 MECE 结构
 - social_dining_frequency:
 
 ## Risk Landscape
-<!-- 可能导致用户脱离计划节奏、失去控制的因素 -->
+<!-- Factors likely to disrupt the user's rhythm or lead to loss of control -->
 - emotional_triggers:
 - physical_triggers:
 - social_triggers:

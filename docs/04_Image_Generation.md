@@ -1,4 +1,4 @@
-<!-- ABOUTME: Witness Card 图片生成技术指南，定义 API 参数、Subagent 架构、统一视觉体系与 Prompt 工程实践 -->
+<!-- ABOUTME: Witness Card 图片生成技术指南，定义 API 参数、Skill 架构、统一视觉体系与 Prompt 工程实践 -->
 <!-- ABOUTME: 产品定位与触发逻辑见 01_Product_Foundation.md 4.1 节"见证系统" -->
 
 # Witness Card 图片生成技术指南
@@ -39,23 +39,25 @@ Witness Card 图片区域为固定比例，由卡片框架模板决定：
 | `4:3` | `1536x1024` | 横版 |
 | `1:1` | `1024x1024` | 正方形 |
 
-## 三、Subagent 架构
+## 三、Skill 架构
 
-图片生成由 Witness Card Composer Subagent 执行。
+图片生成由 `witness-card` skill 执行。Coach 只提供结构化见证字段，不直接拼接最终图片 prompt。
 
 ```
-Coach Agent (Supervisor)
+Coach Agent
 │
 │  1. Coach 判断里程碑时刻 → 决定生成 Witness Card
-│  2. Coach 构造 delegation：成就描述、用户上下文、情感基调
+│  2. Coach 读取 `/skills/coach/witness-card/SKILL.md`
+│  3. Coach 调用 `issue_witness_card(...)`
 │
-├── Witness Card Composer Subagent
-│   ├── 解析 Coach delegation
+├── witness-card skill
+│   ├── 校验字段完整度与最小证据门槛
 │   ├── 选择色温方向（暖色 / 冷色）
 │   ├── 组装图片 prompt（场景 + 风格 + 技术 + 约束）
-│   ├── 撰写卡片文字（Coach 语气的个性化叙事）
-│   └── 调用 compose_witness_card tool
+│   ├── 处理一次静默重试
+│   └── 调用底层 render_witness_card(...)
 │       ├── Azure OpenAI gpt-image-1.5 生成图片
+│       ├── 预写 Store `pending` 记录
 │       ├── 组装 Witness Card（框架 + 图片 + 文字 + 元数据）
 │       └── interrupt() → FanOutPanel → 用户收下/拒绝
 ```
@@ -93,7 +95,7 @@ Coach Agent (Supervisor)
 
 每个图片 prompt 由四个模块组装：`[SCENE] + [STYLE] + [TECHNICAL] + [NEGATIVE]`。
 
-### [SCENE] — 用户场景（Subagent 根据 delegation 构造）
+### [SCENE] — 用户场景（skill 根据结构化字段构造）
 
 场景必须基于用户的**具体经历**，不使用通用意象。
 
@@ -172,7 +174,7 @@ Keep the palette desaturated and muted.
 - 成就标题（简短的里程碑描述）
 - 用户名
 
-文字由 Witness Card Composer Subagent 与图片同时生成，确保文字与图片在情感和内容上协调。
+文字由 Coach 在调用 `issue_witness_card(...)` 时提供叙事字段，图片 prompt 由 skill 脚本按统一视觉体系组装，确保文字与图片在情感和内容上协调。
 
 ---
 
@@ -185,3 +187,4 @@ Keep the palette desaturated and muted.
 | 2026-02-09 | 文档重新定位为技术实现指南；删除理论基础章节（移至 01_Product_Foundation.md）|
 | 2026-04-01 | 图片生成模型从 Gemini 3 Pro Image 迁移至 Azure OpenAI gpt-image-1.5 |
 | 2026-04-07 | 全面重构：从"教练干预 Prompt 模板库"转为"Witness Card 图片生成技术指南"；图片不再承载干预功能，仅用于里程碑见证；移除 5 种固定干预模板和部署表；新增统一视觉体系（品牌一致性 + 色温轴）；图片不再嵌入文字（文字在卡片框架独立呈现）；新增卡片结构定义；新增场景构造原则和留白策略 |
+| 2026-04-18 | Witness Card 生成链路从专项 subagent 调整为 `witness-card` skill + `issue_witness_card(...)` + 底层 render 执行器；新增结构化输入、静默重试与 Store 中间态说明 |

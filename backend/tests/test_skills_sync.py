@@ -52,10 +52,29 @@ def test_theory_md_matches_truth_source(skill_name: str, source_filename: str) -
 
 
 def test_all_four_skills_have_skill_md() -> None:
-    """四份 skill 目录必须都有 SKILL.md（中间件依赖此文件加载元数据）。"""
+    """现有四份干预 skill 目录必须都有 SKILL.md（中间件依赖此文件加载元数据）。"""
     for skill_name in _SKILL_TO_SOURCE:
         skill_md = COACH_SKILLS_ROOT / skill_name / "SKILL.md"
         assert skill_md.exists(), f"SKILL.md missing for skill '{skill_name}': {skill_md}"
+
+
+def test_witness_card_skill_has_required_files() -> None:
+    """witness-card skill 必须具备最小目录骨架。"""
+    skill_dir = COACH_SKILLS_ROOT / "witness-card"
+    assert (skill_dir / "SKILL.md").exists(), "witness-card SKILL.md missing"
+    assert (skill_dir / "tool.py").exists(), "witness-card tool.py missing"
+    assert (
+        skill_dir / "scripts" / "prompt_builder.py"
+    ).exists(), "witness-card prompt_builder.py missing"
+    for filename in (
+        "positioning.md",
+        "visual-system.md",
+        "evidence-rubric.md",
+        "narrative-examples.md",
+    ):
+        assert (
+            skill_dir / "references" / filename
+        ).exists(), f"witness-card reference missing: {filename}"
 
 
 def test_scenario_rehearsal_has_dialogue_examples() -> None:

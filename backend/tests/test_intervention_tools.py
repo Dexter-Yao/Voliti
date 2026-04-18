@@ -1,5 +1,5 @@
-# ABOUTME: 四种 intervention 专用 A2UI 工具测试
-# ABOUTME: 校验 metadata / layout 由工具硬编码、动态加载能发现四工具、_fan_out_core 正常透传
+# ABOUTME: Coach skills 专用工具测试
+# ABOUTME: 校验动态加载能发现各 skill tool，并验证 intervention / witness-card 的核心契约
 
 import importlib.util
 from pathlib import Path
@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from voliti.agent import COACH_TOOLS, _load_intervention_tools
+from voliti.agent import COACH_TOOLS, _load_skill_tools
 from voliti.store_contract import COACH_SKILLS_ROOT
 
 
@@ -17,6 +17,13 @@ _EXPECTED_KINDS = {
     "scenario-rehearsal",
     "metaphor-collaboration",
     "cognitive-reframing",
+}
+_EXPECTED_SKILL_TOOL_NAMES = {
+    "fan_out_future_self_dialogue",
+    "fan_out_scenario_rehearsal",
+    "fan_out_metaphor_collaboration",
+    "fan_out_cognitive_reframing",
+    "issue_witness_card",
 }
 
 
@@ -45,31 +52,27 @@ def _intervention_tools() -> dict[str, Any]:
 
 
 class TestDynamicLoading:
-    """_load_intervention_tools 动态加载行为。"""
+    """_load_skill_tools 动态加载行为。"""
 
-    def test_finds_four_tools(self) -> None:
-        """应发现四个 intervention skill 的 tool.py。"""
-        tools = _load_intervention_tools()
-        assert len(tools) == 4
+    def test_finds_five_skill_tools(self) -> None:
+        """应发现四个 intervention 与一个 witness-card skill 的 tool.py。"""
+        tools = _load_skill_tools()
+        assert len(tools) == 5
 
-    def test_tool_names_match_kinds(self) -> None:
-        """工具函数名应为 fan_out_<intervention_kind>。"""
-        tools = _load_intervention_tools()
+    def test_skill_tool_names_match_contract(self) -> None:
+        """技能工具名应满足统一装载契约。"""
+        tools = _load_skill_tools()
         names = {t.name for t in tools}
-        assert names == {
-            "fan_out_future_self_dialogue",
-            "fan_out_scenario_rehearsal",
-            "fan_out_metaphor_collaboration",
-            "fan_out_cognitive_reframing",
-        }
+        assert names == _EXPECTED_SKILL_TOOL_NAMES
 
     def test_coach_tools_includes_generic_and_interventions(self) -> None:
-        """COACH_TOOLS 包含通用 fan_out、add_forward_marker 和四个专用工具。"""
+        """COACH_TOOLS 包含通用工具、四个干预工具和 witness-card 工具。"""
         names = {t.name for t in COACH_TOOLS}
         assert "fan_out" in names
         assert "add_forward_marker" in names
         for kind in _EXPECTED_KINDS:
             assert f"fan_out_{kind.replace('-', '_')}" in names
+        assert "issue_witness_card" in names
 
 
 class TestMetadataHardcoding:
@@ -218,3 +221,30 @@ class TestInvalidComponents:
             {"components": [{"kind": "nonexistent_kind", "text": "x"}]}
         )
         assert "validation errors" in result.lower()
+
+
+def _witness_card_tool() -> Any:
+    for tool in COACH_TOOLS:
+        if tool.name == "issue_witness_card":
+            return tool
+    raise AssertionError("issue_witness_card tool not found")
+
+
+class TestWitnessCardTool:
+    """Witness Card skill tool 契约。"""
+
+    def test_signature_accepts_only_structured_fields(self) -> None:
+        tool = _witness_card_tool()
+        fields = set(tool.args_schema.model_fields.keys())
+        assert fields == {
+            "achievement_title",
+            "achievement_type",
+            "emotional_tone",
+            "evidence_summary",
+            "scene_anchors",
+            "narrative",
+            "chapter_id",
+            "linked_lifesign_id",
+            "user_quote",
+            "aspect_ratio",
+        }

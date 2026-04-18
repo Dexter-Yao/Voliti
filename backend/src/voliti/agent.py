@@ -1,5 +1,5 @@
 # ABOUTME: Coach Agent 工厂函数
-# ABOUTME: 组装 DeepAgent 配置，创建 Coach Agent 实例（含 A2UI fan_out 工具与 Witness Card Composer Subagent）
+# ABOUTME: 组装 DeepAgent 配置，创建 Coach Agent 实例（含 A2UI fan_out 工具与 coach skills）
 
 import importlib.util
 import logging
@@ -11,11 +11,9 @@ from langgraph.store.base import BaseStore
 
 from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
-from deepagents.middleware.subagents import SubAgent
 
 from voliti.backends.readonly_filesystem import ReadOnlyFilesystemBackend
 from voliti.config.models import ModelRegistry
-from voliti.config.prompts import PromptRegistry
 from voliti.middleware.briefing import BriefingMiddleware
 from voliti.middleware.session_type import SessionTypeMiddleware
 from voliti.middleware.skills_gate import SkillsGateMiddleware
@@ -27,17 +25,16 @@ from voliti.store_contract import (
     InvalidUserIDError,
     resolve_user_namespace,
 )
-from voliti.tools.experiential import compose_witness_card
 from voliti.tools.fan_out import fan_out
 from voliti.tools.marker import add_forward_marker
 
 logger = logging.getLogger(__name__)
 
 
-def _load_intervention_tools() -> list[Any]:
+def _load_skill_tools() -> list[Any]:
     """扫描 backend/skills/coach/*/tool.py，加载每个 skill 目录导出的 TOOL 工具。
 
-    约定：每个 intervention skill 在其目录内提供 tool.py，末尾以 `TOOL = <tool>`
+    约定：每个 coach skill 在其目录内提供 tool.py，末尾以 `TOOL = <tool>`
     暴露 langchain `@tool` 实例。本函数按目录名排序加载以保证工具列表稳定。
 
     发现但加载失败的 tool.py 以 warning 记录并跳过，不阻断 Coach 启动。
@@ -52,22 +49,22 @@ def _load_intervention_tools() -> list[Any]:
         tool_path = skill_dir / "tool.py"
         if not tool_path.is_file():
             continue
-        module_name = f"voliti_intervention_tools.{skill_dir.name.replace('-', '_')}"
+        module_name = f"voliti_skill_tools.{skill_dir.name.replace('-', '_')}"
         try:
             spec = importlib.util.spec_from_file_location(module_name, tool_path)
             if spec is None or spec.loader is None:
-                logger.warning("intervention tool loader: spec missing for %s", tool_path)
+                logger.warning("skill tool loader: spec missing for %s", tool_path)
                 continue
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
         except Exception:  # noqa: BLE001
-            logger.exception("intervention tool loader: failed to import %s", tool_path)
+            logger.exception("skill tool loader: failed to import %s", tool_path)
             continue
 
         tool_obj = getattr(module, "TOOL", None)
         if tool_obj is None:
             logger.warning(
-                "intervention tool loader: %s does not export a TOOL constant", tool_path
+                "skill tool loader: %s does not export a TOOL constant", tool_path
             )
             continue
         tools.append(tool_obj)
@@ -75,15 +72,15 @@ def _load_intervention_tools() -> list[Any]:
     return tools
 
 
-COACH_TOOLS = [fan_out, add_forward_marker, *_load_intervention_tools()]
+COACH_TOOLS = [fan_out, add_forward_marker, *_load_skill_tools()]
 """Coach 直接调用的工具。
 
 构成：
 - `fan_out` / `add_forward_marker`：通用工具
-- `fan_out_<intervention_kind>`：四种体验式干预专用工具，由 `_load_intervention_tools`
-  从 `backend/skills/coach/*/tool.py` 动态加载；metadata 与 layout 由工具硬编码。
+- `fan_out_<intervention_kind>` / `issue_witness_card`：由 `_load_skill_tools`
+  从 `backend/skills/coach/*/tool.py` 动态加载；技能专用 metadata 与失败机制由工具代码承担。
 
-新增第五种 intervention 只需在 `backend/skills/coach/<kind>/` 下加 SKILL.md + tool.py，
+新增 coach skill 只需在 `backend/skills/coach/<name>/` 下加 SKILL.md + tool.py，
 无需修改 agent.py。SkillsGateMiddleware 会自动注入新的 SKILL.md description 到 coaching
 session 的 system prompt，Coach 即可学会调用新工具。
 """
@@ -110,7 +107,7 @@ def _build_coach_middleware(
 
     顺序约束：
     - `SessionTypeMiddleware` 之后插入 `SkillsGateMiddleware`，仅在 coaching session 注入
-      四份 intervention skill 描述到 system prompt；onboarding session 跳过注入以保持引导节奏。
+      coach skills 描述到 system prompt；onboarding session 跳过注入以保持引导节奏。
     """
     return [
         StripDeepAgentDefaultsMiddleware(),
@@ -152,7 +149,7 @@ def _create_backend_factory() -> Callable[..., Any]:
     路由规则：
     - /user/ → StoreBackend（持久存储，按 user_id 分 namespace）
     - /skills/coach/ → 只读 FilesystemBackend，挂载仓库内 `backend/skills/coach/` 目录，
-      承载四份 experiential intervention skill 与其 references/；Coach 对该路径只读
+      承载 coach skills 与其 references/；Coach 对该路径只读
     - 其他 → StateBackend（临时存储）
     """
 
@@ -172,22 +169,6 @@ def _create_backend_factory() -> Callable[..., Any]:
         )
 
     return factory
-
-
-def _create_witness_card_composer() -> SubAgent:
-    """创建 Witness Card Composer Subagent 配置。"""
-    return SubAgent(
-        name="witness_card_composer",
-        description=(
-            "在里程碑时刻为用户生成 Witness Card 见证卡片。"
-            "基于用户的具体成就和行为上下文，构建场景化图片和个性化叙事文字，"
-            "通过 A2UI interrupt 呈送给用户，用户可选择收下或跳过。"
-        ),
-        system_prompt=PromptRegistry.get("intervention_composer_system"),
-        tools=[compose_witness_card],
-        model=ModelRegistry.get("intervention_composer"),
-    )
-
 
 def create_coach_agent(
     *,
@@ -210,7 +191,6 @@ def create_coach_agent(
         "name": "coach",
         "memory": _build_coach_memory_paths(profiles),
         "tools": COACH_TOOLS,
-        "subagents": [_create_witness_card_composer()],
         "middleware": _build_coach_middleware(
             backend_factory=backend_factory,
         ),

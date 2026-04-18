@@ -78,6 +78,17 @@ class TestPromptRegistry:
         assert "day_summary" in result
         assert "read_file" in result
 
+    def test_coach_system_does_not_reference_subagent_middleware(self) -> None:
+        """coach_system 不应继续描述 SubAgentMiddleware 或 witness_card_composer。"""
+        prompts_dir = Path(__file__).resolve().parents[1] / "prompts"
+        PromptRegistry.load(prompts_dir)
+
+        result = PromptRegistry.get("coach_system")
+
+        assert "SubAgentMiddleware" not in result
+        assert "witness_card_composer" not in result
+        assert "issue_witness_card" in result
+
     def test_onboarding_prompt_defines_fan_out_input_schema(self) -> None:
         """onboarding prompt 应明确 fan_out 输入组件的必填字段。"""
         prompts_dir = Path(__file__).resolve().parents[1] / "prompts"
@@ -109,3 +120,14 @@ class TestPromptRegistry:
         assert "# Coach Memory — {user_name}" in result
         assert "## Verified Patterns" in result
         assert "## Claimed vs Revealed" in result
+
+    def test_onboarding_prompt_reads_witness_card_skill_instead_of_subagent(self) -> None:
+        """onboarding wrap-up 应显式读取 witness-card skill，而非调用子代理。"""
+        prompts_dir = Path(__file__).resolve().parents[1] / "prompts"
+        PromptRegistry.load(prompts_dir)
+
+        result = PromptRegistry.get("onboarding")
+
+        assert "witness_card_composer" not in result
+        assert "/skills/coach/witness-card/SKILL.md" in result
+        assert "issue_witness_card" in result

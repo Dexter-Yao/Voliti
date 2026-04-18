@@ -6,7 +6,9 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/server-user";
 import { createServerLangGraphClient } from "@/lib/langgraph/server";
 import {
+  buildAcceptedWitnessCardsFromStoreItems,
   buildMirrorDataFromStoreValues,
+  type WitnessCard,
   type MirrorData,
 } from "@/lib/mirror-contract";
 
@@ -34,6 +36,7 @@ interface CoachContextResponse {
   briefing: string | null;
   mirrorData: MirrorData;
   onboardingComplete: boolean;
+  witnessCards: WitnessCard[];
   upcomingMarkers: ForwardMarkerSummary[];
 }
 
@@ -61,6 +64,38 @@ async function getStoreValue(
     return (item?.value as Record<string, unknown> | undefined) ?? null;
   } catch {
     return null;
+  }
+}
+
+async function getAcceptedWitnessCards(
+  namespace: string[],
+): Promise<WitnessCard[]> {
+  try {
+    const client = createServerLangGraphClient();
+    const items: Array<{
+      key: string;
+      value: Record<string, unknown> | null;
+      createdAt?: string;
+      updatedAt?: string;
+    }> = [];
+    const pageSize = 100;
+
+    for (let offset = 0; ; offset += pageSize) {
+      const page = await client.store.searchItems(
+        [...namespace, "interventions"],
+        {
+          limit: pageSize,
+          offset,
+        },
+      );
+
+      items.push(...page.items);
+      if (page.items.length < pageSize) break;
+    }
+
+    return buildAcceptedWitnessCardsFromStoreItems(items);
+  } catch {
+    return [];
   }
 }
 
@@ -112,6 +147,7 @@ export async function GET() {
     copingPlansValue,
     briefingValue,
     markersValue,
+    witnessCards,
   ] = await Promise.all([
     getStoreValue(STORE_KEYS.profile, namespace),
     getStoreValue(STORE_KEYS.goal, namespace),
@@ -120,6 +156,7 @@ export async function GET() {
     getStoreValue(STORE_KEYS.copingPlans, namespace),
     getStoreValue(STORE_KEYS.briefing, namespace),
     getStoreValue(STORE_KEYS.markers, namespace),
+    getAcceptedWitnessCards(namespace),
   ]);
 
   const profileText = unwrapFileValue(profileValue);
@@ -133,6 +170,7 @@ export async function GET() {
       profileValue,
     }),
     onboardingComplete: profileText.includes("onboarding_complete: true"),
+    witnessCards,
     upcomingMarkers: parseUpcomingMarkers(unwrapFileValue(markersValue)),
   };
 

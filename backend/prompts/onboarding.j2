@@ -1,6 +1,6 @@
 {#
-ABOUTME: Onboarding 会话专用指令 — 由 SessionTypeMiddleware 按条件注入
-ABOUTME: 定义完整的 onboarding 流程：入口检测、4 阶段框架、约束规则、数据需求
+ABOUTME: Onboarding-session instructions injected conditionally by SessionTypeMiddleware
+ABOUTME: Defines the full onboarding flow: entry detection, phase framework, constraints, and data requirements
 
 DeepAgent runtime context (this comment block is NOT sent to the LLM):
 
@@ -50,7 +50,7 @@ Purpose: Understand who the user wants to become (identity, not numbers) and the
 **Phase 3: Context & Danger Scenarios**
 Purpose: Map the user's real-world risk landscape — factors that may derail their rhythm.
 - Core (both paths): Call fan_out with a `multi_select` of common high-risk scenarios (节假日 / 聚餐社交 / 出差差旅 / 情绪低谷 / 疲劳睡眠不足) plus a `text_input` for custom scenarios. After selection, follow up on the chosen scenarios with specific questions.
-- Core path addition: After danger scenario selection, follow up with a text_input: "这些情况通常在什么时候、什么环境下发生？" — this contextualizes triggers and seeds Life Context dimensions.
+- Core path addition: After danger scenario selection, follow up with a text_input labeled "这些情况通常在什么时候、什么环境下发生？" to contextualize triggers and seed Life Context dimensions.
 - Full path extras (additional components):
   1. multi_select: "你减脂的动力主要来自？" — 外表形象 / 健康长期 / 他人期待 / 自我掌控感 / 职业需要 / 其他（请填写）
   2. select: "过去减脂时，一次破功会不会变成连续几天的崩溃？" — 经常会 / 偶尔会 / 很少 / 第一次减脂
@@ -88,7 +88,7 @@ Purpose: Ensure all required data is written, trigger the departure ceremony, gu
    - the nearest upcoming event if one is known,
    - this Chapter's weekly success definition.
 1. Write the minimum dataset to Store (see Data Requirements below).
-2. Call `witness_card_composer` subagent for a `future_self` ceremony card — no user consent needed. If the call fails (timeout, generation error), skip gracefully and move on. Never let Witness Card failure block onboarding completion.
+2. Read `/skills/coach/witness-card/SKILL.md`, then call `issue_witness_card(...)` for a `journey` ceremony card — no user consent needed. Provide structured fields, not a free-form image prompt. If the tool returns `needs_more_detail`, fill the missing evidence from what you already know or skip gracefully. If it returns `retryable_failure` or `terminal_failure`, move on without blocking onboarding completion.
 3. Mention that the user can return from Settings to share more about themselves anytime.
 4. Write `onboarding_complete: true` to the profile as the LAST write operation.
 
@@ -169,7 +169,7 @@ Purpose: Ensure all required data is written, trigger the departure ceremony, gu
 - You are explicitly authorized to infer unasked fields from available context.
 - North-star metric: default to weight for fat-loss scenarios (follow Metrics Governance rules).
 - Identity statement: distill from the user's vision, format as "正在[verb phrase]的人".
-- Medical Constraints: default to 无 if not explicitly mentioned.
+- Medical Constraints: default to the user-facing value "无" if not explicitly mentioned.
 - Motivation: infer core_drive from conversation context.
 - Goal: use the user's stated target + a reasonable time frame.
 - Chapter title + milestone: infer from the user's current situation and stated priorities.

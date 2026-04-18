@@ -7,7 +7,6 @@ import io
 import logging
 import os
 import threading
-import uuid
 from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Annotated
@@ -201,8 +200,7 @@ def _generate_image(prompt: str, size: str) -> tuple[str, str]:
     return b64_data, "image/png"
 
 
-@tool
-def compose_witness_card(
+def render_witness_card(
     prompt: str,
     narrative: str = "",
     achievement_title: str = "",
@@ -211,23 +209,18 @@ def compose_witness_card(
     chapter_id: str = "",
     linked_lifesign_id: str = "",
     user_quote: str = "",
-    store: Annotated[BaseStore | None, InjectedStore()] = None,
+    store: BaseStore | None = None,
 ) -> str:
-    """Generate a Witness Card and present it for user review.
+    """生成见证卡并通过 A2UI interrupt 呈送给用户。
 
-    Witness Cards commemorate user milestones with a brand-consistent visual
-    and personalized narrative text. The image contains no text overlay;
-    narrative text is displayed in the card frame's independent area.
+    该函数是 witness-card skill 的底层执行器，只负责：
+    1. 调图片模型
+    2. 生成缩略图
+    3. 预写 Store pending 记录
+    4. 发出 witness-card A2UI interrupt
+    5. 根据用户响应更新 accepted / rejected
 
-    Args:
-        prompt: Full image generation prompt, assembled by Witness Card Composer.
-        narrative: Coach-voice narrative text for the card's text area.
-        achievement_title: Short milestone description (e.g., "第一个 Chapter 完成").
-        achievement_type: "explicit" (user reported), "implicit" (Coach discovered), "journey" (journey node).
-        aspect_ratio: Aspect ratio, e.g. "3:4", "1:1", "4:3".
-        chapter_id: Current Chapter ID if applicable.
-        linked_lifesign_id: Related LifeSign ID if applicable.
-        user_quote: User's own words related to this achievement.
+    对上层来说，失败以友好的文本返回，不抛异常。
     """
     cache_key = hashlib.sha256(prompt.encode()).hexdigest()
 
@@ -343,3 +336,34 @@ def compose_witness_card(
     if accepted:
         return f"User accepted the Witness Card ({achievement_title}). Card saved as {card_id}."
     return f"User reviewed and dismissed the Witness Card ({achievement_title})."
+
+
+@tool
+def compose_witness_card(
+    prompt: str,
+    narrative: str = "",
+    achievement_title: str = "",
+    achievement_type: str = "explicit",
+    aspect_ratio: str = "3:4",
+    chapter_id: str = "",
+    linked_lifesign_id: str = "",
+    user_quote: str = "",
+    store: Annotated[BaseStore | None, InjectedStore()] = None,
+) -> str:
+    """Generate a Witness Card and present it for user review.
+
+    This compatibility wrapper keeps the low-level image + interrupt flow
+    available as a tool-shaped callable, while the Coach now reaches it via the
+    witness-card skill instead of a dedicated subagent.
+    """
+    return render_witness_card(
+        prompt=prompt,
+        narrative=narrative,
+        achievement_title=achievement_title,
+        achievement_type=achievement_type,
+        aspect_ratio=aspect_ratio,
+        chapter_id=chapter_id,
+        linked_lifesign_id=linked_lifesign_id,
+        user_quote=user_quote,
+        store=store,
+    )

@@ -5,9 +5,8 @@
 
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
-import { fetchMirrorData, type MirrorData } from "@/lib/store-sync";
-import { getWitnessCards, type WitnessCard } from "@/lib/witness-card-store";
 import { RefreshCw, X } from "lucide-react";
+import { fetchCoachContext, type CoachContextData, type WitnessCard } from "@/lib/store-sync";
 
 function EmptyState() {
   return (
@@ -20,17 +19,16 @@ function EmptyState() {
 }
 
 export function MirrorPanel() {
-  const [data, setData] = useState<MirrorData | null>(null);
+  const [data, setData] = useState<CoachContextData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cards, setCards] = useState<WitnessCard[]>([]);
   const [expandedCard, setExpandedCard] = useState<WitnessCard | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchMirrorData();
+      const result = await fetchCoachContext();
       setData(result);
     } catch (err) {
       setError(
@@ -41,7 +39,6 @@ export function MirrorPanel() {
     } finally {
       setLoading(false);
     }
-    setCards(getWitnessCards());
   }, []);
 
   useEffect(() => {
@@ -72,15 +69,17 @@ export function MirrorPanel() {
     );
   }
 
-  if (!data?.chapter) {
+  if (!data?.mirrorData.chapter) {
     return <EmptyState />;
   }
 
-  const { chapter, copingPlans, dashboardConfig, identity_statement, goal } = data;
+  const { chapter, copingPlans, dashboardConfig, identity_statement, goal } =
+    data.mirrorData;
   const processGoalTargets = new Map(
     chapter?.process_goals.map((processGoal) => [processGoal.metric_key, processGoal.target]) ?? [],
   );
   const supportMetrics = dashboardConfig?.support_metrics ?? [];
+  const cards = data.witnessCards ?? [];
 
   return (
     <div className="flex h-full flex-col overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1A1816]/15 [&::-webkit-scrollbar-track]:bg-transparent">

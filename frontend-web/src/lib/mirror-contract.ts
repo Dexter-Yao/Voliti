@@ -61,6 +61,15 @@ export interface CopingPlan {
   status?: string;
 }
 
+export interface WitnessCard {
+  id: string;
+  src: string;
+  alt: string;
+  createdAt: string;
+  narrative: string;
+  achievementType: string;
+}
+
 export interface MirrorData {
   chapter: ChapterData | null;
   copingPlans: CopingPlan[];
@@ -123,6 +132,61 @@ interface BuildMirrorDataInput {
   dashboardConfigValue?: Record<string, unknown> | null;
   goalValue?: Record<string, unknown> | null;
   profileValue?: Record<string, unknown> | null;
+}
+
+interface StoreWitnessCardItem {
+  key: string;
+  value: Record<string, unknown> | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+function readStringValue(
+  value: Record<string, unknown> | null,
+  key: string,
+): string {
+  const raw = value?.[key];
+  return typeof raw === "string" ? raw : "";
+}
+
+function resolveWitnessCardCreatedAt(item: StoreWitnessCardItem): string {
+  const value = item.value;
+  const timestamp = readStringValue(value, "timestamp");
+  if (timestamp) return timestamp;
+  if (typeof item.updatedAt === "string" && item.updatedAt) return item.updatedAt;
+  if (typeof item.createdAt === "string" && item.createdAt) return item.createdAt;
+  return "";
+}
+
+export function buildAcceptedWitnessCardsFromStoreItems(
+  items: StoreWitnessCardItem[],
+): WitnessCard[] {
+  return items
+    .filter((item) => readStringValue(item.value, "status") === "accepted")
+    .map((item) => {
+      const value = item.value;
+      const src = readStringValue(value, "imageData");
+      const alt = readStringValue(value, "achievement_title") || "见证卡";
+      const narrative = readStringValue(value, "narrative");
+      const achievementType =
+        readStringValue(value, "achievement_type") || "explicit";
+      const createdAt = resolveWitnessCardCreatedAt(item);
+
+      if (!src || !createdAt) return null;
+
+      return {
+        id: item.key,
+        src,
+        alt,
+        createdAt,
+        narrative,
+        achievementType,
+      };
+    })
+    .filter((card): card is WitnessCard => card !== null)
+    .sort(
+      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+    );
 }
 
 export function buildMirrorDataFromStoreValues(input: BuildMirrorDataInput): MirrorData {

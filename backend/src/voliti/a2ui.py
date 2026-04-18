@@ -143,7 +143,7 @@ class A2UIPayload(BaseModel):
 
     - **分派键**（前端消费）：`surface`、`intervention_kind`、`layout` 的前端变体。
       由工具代码硬编码注入（如 `fan_out_future_self_dialogue` 等专用工具、
-      `compose_witness_card`）；Coach 不参与写入。
+      `issue_witness_card` 调用的底层执行器）；Coach 不参与写入。
     - **身份键**（追踪消费）：`card_id` 等。由写入它的工具硬编码，供前端/LangSmith
       去重与聚合。
     - **上下文键**（观测消费）：`trigger_reason` / `chapter_id` / `user_state` 等。
