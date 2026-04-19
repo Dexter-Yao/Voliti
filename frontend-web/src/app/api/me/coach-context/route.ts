@@ -30,6 +30,7 @@ interface ForwardMarkerSummary {
   description: string;
   riskLevel: string;
   linkedLifeSign: string | null;
+  isPast: boolean;
 }
 
 interface CoachContextResponse {
@@ -38,6 +39,7 @@ interface CoachContextResponse {
   onboardingComplete: boolean;
   witnessCards: WitnessCard[];
   upcomingMarkers: ForwardMarkerSummary[];
+  allMarkers: ForwardMarkerSummary[];
 }
 
 function jsonError(status: number, error: string) {
@@ -99,7 +101,7 @@ async function getAcceptedWitnessCards(
   }
 }
 
-function parseUpcomingMarkers(markersText: string): ForwardMarkerSummary[] {
+function parseAllMarkers(markersText: string): ForwardMarkerSummary[] {
   try {
     const parsed = JSON.parse(markersText) as {
       markers?: Array<Record<string, unknown>>;
@@ -107,26 +109,25 @@ function parseUpcomingMarkers(markersText: string): ForwardMarkerSummary[] {
     const now = Date.now();
 
     return (parsed.markers ?? [])
-      .filter((marker) => marker.status === "upcoming")
-      .map((marker) => ({
-        id: typeof marker.id === "string" ? marker.id : "",
-        date: typeof marker.date === "string" ? marker.date : "",
-        description:
-          typeof marker.description === "string" ? marker.description : "",
-        riskLevel:
-          typeof marker.risk_level === "string" ? marker.risk_level : "medium",
-        linkedLifeSign:
-          typeof marker.linked_lifesign === "string"
-            ? marker.linked_lifesign
-            : null,
-      }))
-      .filter((marker) => marker.id && marker.date && marker.description)
-      .filter((marker) => {
-        const timestamp = Date.parse(marker.date);
-        return Number.isFinite(timestamp) && timestamp >= now;
+      .map((marker) => {
+        const date = typeof marker.date === "string" ? marker.date : "";
+        const timestamp = Date.parse(date);
+        return {
+          id: typeof marker.id === "string" ? marker.id : "",
+          date,
+          description:
+            typeof marker.description === "string" ? marker.description : "",
+          riskLevel:
+            typeof marker.risk_level === "string" ? marker.risk_level : "medium",
+          linkedLifeSign:
+            typeof marker.linked_lifesign === "string"
+              ? marker.linked_lifesign
+              : null,
+          isPast: Number.isFinite(timestamp) && timestamp < now,
+        };
       })
-      .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
-      .slice(0, 3);
+      .filter((marker) => marker.id && marker.date && marker.description)
+      .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   } catch {
     return [];
   }
@@ -160,6 +161,8 @@ export async function GET() {
   ]);
 
   const profileText = unwrapFileValue(profileValue);
+  const allMarkers = parseAllMarkers(unwrapFileValue(markersValue));
+  const now = Date.now();
   const response: CoachContextResponse = {
     briefing: unwrapFileValue(briefingValue) || null,
     mirrorData: buildMirrorDataFromStoreValues({
@@ -171,7 +174,11 @@ export async function GET() {
     }),
     onboardingComplete: profileText.includes("onboarding_complete: true"),
     witnessCards,
-    upcomingMarkers: parseUpcomingMarkers(unwrapFileValue(markersValue)),
+    upcomingMarkers: allMarkers
+      .filter((m) => !m.isPast && Date.parse(m.date) >= now)
+      .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+      .slice(0, 3),
+    allMarkers,
   };
 
   return NextResponse.json(response, {

@@ -15,6 +15,7 @@ export interface ForwardMarkerSummary {
   description: string;
   riskLevel: string;
   linkedLifeSign: string | null;
+  isPast: boolean;
 }
 
 export interface CoachContextData {
@@ -23,6 +24,7 @@ export interface CoachContextData {
   onboardingComplete: boolean;
   witnessCards: WitnessCard[];
   upcomingMarkers: ForwardMarkerSummary[];
+  allMarkers: ForwardMarkerSummary[];
 }
 
 async function fetchCoachContextInternal(): Promise<CoachContextData> {
@@ -43,6 +45,7 @@ async function fetchCoachContextInternal(): Promise<CoachContextData> {
     onboardingComplete: Boolean(payload.onboardingComplete),
     witnessCards: payload.witnessCards ?? [],
     upcomingMarkers: payload.upcomingMarkers ?? [],
+    allMarkers: payload.allMarkers ?? [],
   };
 }
 

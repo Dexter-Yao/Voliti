@@ -6,7 +6,7 @@
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, X } from "lucide-react";
-import { fetchCoachContext, type CoachContextData, type WitnessCard } from "@/lib/store-sync";
+import { fetchCoachContext, type CoachContextData, type WitnessCard, type ForwardMarkerSummary } from "@/lib/store-sync";
 
 function EmptyState() {
   return (
@@ -14,6 +14,106 @@ function EmptyState() {
       <div className="text-center text-sm text-[#1A1816]/30">
         <p>完成引导流程后查看 Mirror 数据</p>
       </div>
+    </div>
+  );
+}
+
+type RiskFilter = "all" | "high" | "medium" | "low";
+
+const RISK_LABELS: Record<string, string> = {
+  high: "高",
+  medium: "中",
+  low: "低",
+};
+
+const RISK_COLORS: Record<string, string> = {
+  high: "text-red-500/70",
+  medium: "text-[#B87333]/80",
+  low: "text-[#1A1816]/40",
+};
+
+function formatMarkerDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function EventStream({ markers }: { markers: ForwardMarkerSummary[] }) {
+  const [filter, setFilter] = useState<RiskFilter>("all");
+
+  const visible = markers.filter(
+    (m) => filter === "all" || m.riskLevel === filter,
+  );
+
+  const pills: { key: RiskFilter; label: string }[] = [
+    { key: "all", label: "全部" },
+    { key: "high", label: "高风险" },
+    { key: "medium", label: "普通" },
+    { key: "low", label: "低风险" },
+  ];
+
+  return (
+    <div className="space-y-3 border-t border-[#1A1816]/5 pt-4">
+      <span className="font-mono-system text-[10px] uppercase tracking-[2px] text-[#B87333]">
+        事件日志
+      </span>
+
+      <div className="flex flex-wrap gap-1.5">
+        {pills.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setFilter(key)}
+            className={`rounded-full px-2.5 py-0.5 font-mono-system text-[9px] uppercase tracking-[1px] transition-colors ${
+              filter === key
+                ? "bg-[#B87333] text-white"
+                : "bg-[#1A1816]/5 text-[#1A1816]/40 hover:bg-[#1A1816]/10"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {visible.length === 0 ? (
+        <p className="text-[11px] text-[#1A1816]/30">暂无记录</p>
+      ) : (
+        <div className="flex flex-col gap-0">
+          {visible.map((marker, idx) => (
+            <div key={marker.id} className="flex gap-2.5">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                    marker.isPast ? "bg-[#1A1816]/20" : "bg-[#B87333]"
+                  }`}
+                />
+                {idx < visible.length - 1 && (
+                  <div className="w-px flex-1 bg-[#1A1816]/8 my-0.5" />
+                )}
+              </div>
+              <div className="pb-3 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono-system text-[9px] text-[#1A1816]/30">
+                    {formatMarkerDate(marker.date)}
+                  </span>
+                  <span
+                    className={`font-mono-system text-[9px] uppercase ${RISK_COLORS[marker.riskLevel] ?? "text-[#1A1816]/40"}`}
+                  >
+                    {RISK_LABELS[marker.riskLevel] ?? marker.riskLevel}
+                  </span>
+                  {marker.isPast && (
+                    <span className="font-mono-system text-[9px] text-[#1A1816]/20">
+                      已过
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[11px] leading-4 text-[#1A1816]/60">
+                  {marker.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -220,6 +320,11 @@ export function MirrorPanel() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Event stream */}
+        {(data.allMarkers?.length ?? 0) > 0 && (
+          <EventStream markers={data.allMarkers} />
         )}
 
         {/* Witness Card gallery */}
