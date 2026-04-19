@@ -63,7 +63,7 @@ export function OnboardingWelcome({
           Voliti
         </h1>
         <p className="mt-3 text-center font-serif-coach text-lg text-[#1A1816]/70">
-          AI 减脂行为教练
+          AI 减脂私密行为教练
         </p>
 
         <div className="mt-8 space-y-4 text-sm leading-relaxed text-[#1A1816]/80">

@@ -4,6 +4,7 @@
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
+from jinja2.sandbox import SandboxedEnvironment
 
 
 class PromptRegistry:
@@ -18,7 +19,7 @@ class PromptRegistry:
     @classmethod
     def load(cls, prompts_dir: Path) -> None:
         """从指定目录加载 Jinja2 模板环境。"""
-        cls._env = Environment(
+        cls._env = SandboxedEnvironment(
             loader=FileSystemLoader(str(prompts_dir)),
             undefined=StrictUndefined,
             keep_trailing_newline=True,
