@@ -43,8 +43,8 @@ class TestPromptRegistry:
         """get 应渲染 Jinja2 变量。"""
         (tmp_path / "test.j2").write_text("你好，{{ user_name }}！")
         PromptRegistry.load(tmp_path)
-        result = PromptRegistry.get("test", user_name="Dexter")
-        assert result == "你好，Dexter！"
+        result = PromptRegistry.get("test", user_name="Alice")
+        assert result == "你好，Alice！"
 
     def test_get_undefined_variable_raises(self, tmp_path: Path) -> None:
         """模板中使用未提供的变量应抛出异常（StrictUndefined）。"""

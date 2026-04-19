@@ -9,7 +9,6 @@ from voliti.semantic_memory import (
     is_authoritative_semantic_memory_path,
     is_candidate_signal_path,
     is_observability_only_path,
-    is_runtime_only_path,
 )
 from voliti.store_contract import (
     CHAPTER_CURRENT_KEY,

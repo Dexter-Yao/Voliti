@@ -45,7 +45,7 @@ _CANDIDATE_SIGNAL_PREFIXES = (
     "/derived/",
 )
 _ARCHIVE_SOURCE_PREFIXES = ("/archive/", "/day_summary/", "/conversation_archive/")
-_RUNTIME_ONLY_PREFIXES: tuple[()] = ()
+_RUNTIME_ONLY_PREFIXES: tuple[str, ...] = ()
 _OBSERVABILITY_ONLY_PREFIXES = (
     "/observability/",
 )
@@ -94,11 +94,6 @@ def is_candidate_signal_path(path: str) -> bool:
 def is_archive_source_path(path: str) -> bool:
     """判断路径是否属于 archive 原始证据。"""
     return classify_semantic_memory_path(path) == "archive_source"
-
-
-def is_runtime_only_path(path: str) -> bool:
-    """判断路径是否属于运行时原始数据。"""
-    return classify_semantic_memory_path(path) == "runtime_only"
 
 
 def is_observability_only_path(path: str) -> bool:
