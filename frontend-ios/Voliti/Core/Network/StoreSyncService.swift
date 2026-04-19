@@ -59,8 +59,7 @@ final class StoreSyncService: StoreSyncing {
         async let lifeSignFresh = syncLifeSignPlans()
         async let dashboardFresh = syncDashboardConfig()
         async let chapterFresh = syncChapter()
-        async let ledgerFresh = syncLedgerEvents()
-        let statuses = await [lifeSignFresh, dashboardFresh, chapterFresh, ledgerFresh]
+        let statuses = await [lifeSignFresh, dashboardFresh, chapterFresh]
         return statuses.allSatisfy { $0 } ? .fresh : .stale
     }
 
@@ -257,91 +256,4 @@ final class StoreSyncService: StoreSyncing {
         }
     }
 
-    // MARK: - Ledger Events
-
-    func syncLedgerEvents() async -> Bool {
-        do {
-            let userItems = try await fetchUserItems()
-            let items = userItems.filter { item in
-                guard let key = item["key"] as? String else { return false }
-                return key.hasPrefix(StoreContract.ledgerPrefix)
-            }
-
-            for item in items {
-                // Store item 结构：顶层 key 作为事件 id，value 包含事件字段
-                guard let eventId = item["key"] as? String else {
-                    logger.warning("Ledger item missing key or value, skipping")
-                    continue
-                }
-                let value = try decodeJSONValue(item)
-
-                guard let kind = value["kind"] as? String,
-                      let timestampStr = value["timestamp"] as? String,
-                      let evidence = value["evidence"] as? String else {
-                    logger.warning("Ledger event \(eventId) missing required fields (kind/timestamp/evidence), skipping")
-                    continue
-                }
-
-                guard let timestamp = Self.isoFormatter.date(from: timestampStr) else {
-                    logger.warning("Ledger event \(eventId) has unparseable timestamp '\(timestampStr)', skipping")
-                    continue
-                }
-
-                let recordedAt: Date
-                if let recordedAtStr = value["recorded_at"] as? String {
-                    recordedAt = Self.isoFormatter.date(from: recordedAtStr) ?? .now
-                } else {
-                    recordedAt = .now
-                }
-
-                // 去重：已存在则跳过，不覆盖本地数据
-                var descriptor = FetchDescriptor<BehaviorEvent>(
-                    predicate: #Predicate { $0.id == eventId }
-                )
-                descriptor.fetchLimit = 1
-                guard try modelContext.fetch(descriptor).isEmpty else { continue }
-
-                let event = BehaviorEvent(
-                    id: eventId,
-                    timestamp: timestamp,
-                    recordedAt: recordedAt,
-                    kind: kind,
-                    evidence: evidence,
-                    summary: value["summary"] as? String,
-                    tags: value["tags"] as? [String] ?? []
-                )
-
-                // metrics: [[String: Any]] → [MetricEntry] → Data
-                if let metricsRaw = value["metrics"] as? [[String: Any]] {
-                    do {
-                        let metricsData = try JSONSerialization.data(withJSONObject: metricsRaw)
-                        let entries = try JSONDecoder().decode([MetricEntry].self, from: metricsData)
-                        event.setMetrics(entries)
-                    } catch {
-                        logger.warning("Ledger event \(eventId) metrics parse error: \(error.localizedDescription), storing without metrics")
-                    }
-                }
-
-                // context: [String: Any] → flatten to [String: String] → Data
-                if let contextRaw = value["context"] as? [String: Any] {
-                    let contextStrings = contextRaw.compactMapValues { "\($0)" }
-                    event.setContext(contextStrings)
-                }
-
-                // refs: [String: Any] → flatten to [String: String] → Data
-                if let refsRaw = value["refs"] as? [String: Any] {
-                    let refsStrings = refsRaw.compactMapValues { "\($0)" }
-                    event.setRefs(refsStrings)
-                }
-
-                modelContext.insert(event)
-            }
-
-            logger.info("Ledger sync: \(items.count) items processed")
-            return true
-        } catch {
-            logger.error("Ledger sync failed: \(error.localizedDescription)")
-            return false
-        }
-    }
 }

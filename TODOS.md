@@ -100,7 +100,7 @@
 - **Depends on:** Onboarding prompt 重写完成
 - **Source:** /plan-ceo-review 2026-04-12, cherry-pick ceremony deferred
 
-## P2: Jinja2 PromptRegistry 改用 SandboxedEnvironment
+## ~~P2: Jinja2 PromptRegistry 改用 SandboxedEnvironment~~ ✓ 已完成
 - **What:** `backend/src/voliti/config/prompts.py` 的 `Environment` 替换为 `SandboxedEnvironment`
 - **Why:** 防止未来 prompt kwargs 混���用户输入时的 SSTI 风险
 - **Pros:** 1 行改动，零破坏性
@@ -111,7 +111,7 @@
 - **Depends on:** 无
 - **Source:** 代码审计 2026-03-20
 
-## P2: 图片生成 API 错误处理
+## ~~P2: 图片生成 API 错误处理~~ ✓ 已完成
 - **What:** `backend/src/voliti/experiential.py` 的图片生成调用添加错误处理
 - **Why:** API 返回异常时零防护，IndexError/AttributeError 导致进程崩溃
 - **Pros:** ~10 行改动，防止生产崩溃
@@ -144,21 +144,21 @@
 - **Why:** 单个数字缺乏时间维度，用户看不到趋势方向。知识库研究显示"模式 > 数字"是行为教练的核心原则
 - **Pros:** 让用户一眼看到方向而非只看到绝对值
 - **Cons:** 需要后端提供结构化历史数据，当前 Store 无此数据
-- **Context:** 当前 day_summary 是纯文本摘要无法解析数值。需要 Coach 写入 `/ledger/{date}/{time}_metric.json` 或新增专用趋势 Store key。指标类型由 Coach 动态决定，不限于体重
+- **Context:** 当前 day_summary 是纯文本摘要无法解析数值。需要新增专用趋势 Store key（如 `/derived/metrics_history/`），由日终 Pipeline 写入结构化指标快照。指标类型由 Coach 动态决定，不限于体重
 - **Effort:** M (human) → S (CC+gstack)
 - **Priority:** P2
-- **Depends on:** Ledger 数据写入机制确定
+- **Depends on:** 专用趋势 Store key 设计
 - **Source:** /design-shotgun 2026-04-17, Mirror 重设计
 
-## P2: Mirror 日志 Filter pills + 事件流
+## ~~P2: Mirror 日志 Filter pills + 事件流~~ ✓ 已完成
 - **What:** Mirror 底部添加日志区：动态 filter pills（按事件类型过滤）+ 时间线形式的事件条目列表
 - **Why:** DESIGN.md 规格中定义了日志区但从未实现。事件流让用户看到"今天发生了什么"的完整记录
 - **Pros:** 补全 Mirror 的信息层次（Chapter → 指标 → 预案 → 日志），让面板从"静态配置展示"变为"动态活动记录"
-- **Cons:** 需要扩展 store-sync.ts 读取 day_summary 或 ledger 前缀数据
-- **Context:** 当前 `fetchMirrorData` 不读取 day_summary。需要扩展读取最近 N 天数据。Ledger 前缀 `/ledger/` 已在 store_contract.py 定义
+- **Cons:** 需要扩展 store-sync.ts 读取 day_summary 前缀数据
+- **Context:** 当前 `fetchMirrorData` 不读取 day_summary。需要扩展读取最近 N 天数据，已通过 Forward Markers 实现事件流展示
 - **Effort:** M (human) → S (CC+gstack)
 - **Priority:** P2
-- **Depends on:** Ledger 或 day_summary 的前端读取 API
+- **Depends on:** day_summary 的前端读取 API
 - **Source:** /design-shotgun 2026-04-17, Mirror 重设计
 
 ## P2: LifeSign 触发/成功统计
@@ -171,6 +171,28 @@
 - **Priority:** P2
 - **Depends on:** Coach 对话中的 LifeSign 激活检测机制
 - **Source:** /design-shotgun 2026-04-17, Mirror 重设计
+
+## P2: 工具层接入 Store 契约校验
+- **What:** 把 `backend/src/voliti/tools/*.py` 中直接调用 `store.put()` 的路径（marker.py / experiential.py / coach_memory 等）迁移到 `store_write_validated()`，校验失败时把中文错误消息转发给 Coach
+- **Why:** 契约校验层已就绪但尚未接入任何工具，当前写入仍是裸 `store.put()`，Coach 可能写入结构不合法的数据
+- **Pros:** 基础设施已稳定，每个工具改动点仅 3 行，无侵入；Coach 拿到中文错误可自主决策重试
+- **Cons:** 需要逐工具梳理哪些路径是强格式 JSON、对应哪个 Pydantic 模型
+- **Context:** 2026-04-19 Store 契约校验层落地时刻意不改动工具，先让基础设施稳定；`docs/plans/jazzy-greeting-piglet.md` 的"工具层接入模式"章节已给出样板代码
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** 当前契约层稳定运行一段时间，确认无模型层面的偏差
+- **Source:** Store 契约校验层落地 2026-04-19
+
+## P3: 前端展示字段 ↔ Store 契约一致性校验
+- **What:** 梳理前端 Mirror / Coach 上下文实际消费的 Store JSON 字段，与 `backend/src/voliti/contracts/` 中 Pydantic 模型形成显式对齐矩阵；必要时在前端增加字段级断言
+- **Why:** 契约层当前只保证"结构完整"（必要字段存在），但未锁定前端实际需要的字段集；若 Coach 写入结构合法但关键字段缺失，前端会静默降级
+- **Pros:** 让前端消费契约成为显式约束，避免后端改 prompt 导致前端静默破损
+- **Cons:** 需要前后端字段需求单独梳理；过早固化会增加模型演进成本
+- **Context:** 契约层方案 2026-04-19 明确"不锁定前端显示字段"为本次范围外，待数据流稳定后再做
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P3
+- **Depends on:** 工具层接入契约校验完成
+- **Source:** Store 契约校验层落地 2026-04-19
 
 ## P2: LangGraph Cron API 能力调研
 - **What:** 在天级 Thread Phase 3 开始前调研 LangGraph Cloud Cron API，确认是否支持按用户时区触发定时 run、是否能绑定到特定 thread

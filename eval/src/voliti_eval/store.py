@@ -137,12 +137,6 @@ async def populate_store(
         )
         logger.info("[%s] Populated %s", user_id, _STORE_CONTRACT.TIMELINE_MARKERS_KEY)
 
-    for entry in pre_state.ledger_entries:
-        key = f"/ledger/{entry.date}/{entry.time}_{entry.type}.json"
-        payload = json.dumps(entry.data, ensure_ascii=False, indent=2)
-        await store_client.put_item(ns, key=key, value=make_file_value(payload))
-        logger.info("[%s] Populated %s", user_id, key)
-
 
 async def snapshot_store(store_client: Any, *, user_id: str = "user") -> StoreSnapshot:
     """抓取当前用户 namespace 的完整 Store 快照。"""

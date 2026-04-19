@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final
 
+from pydantic import BaseModel, ValidationError
+
 USER_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$")
 STORE_NAMESPACE_PREFIX = "voliti"
 
@@ -31,7 +33,6 @@ LIFESIGNS_KEY = "/lifesigns.md"
 BRIEFING_STORE_KEY = "/derived/briefing.md"
 DAY_SUMMARY_PREFIX = "/day_summary/"
 CONVERSATION_ARCHIVE_PREFIX = "/conversation_archive/"
-LEDGER_PREFIX = "/ledger/"
 BRIEFING_FILE_PATH = "/user/derived/briefing.md"
 INTERVENTIONS_SEGMENT = "interventions"
 
@@ -94,3 +95,77 @@ def unwrap_file_value(value: dict[str, Any]) -> str:
 def parse_json_file_value(value: dict[str, Any]) -> Any:
     """解包文件封装值并解析其中的 JSON 正文。"""
     return json.loads(unwrap_file_value(value))
+
+
+# ── 强格式 Store 路径契约校验 ─────────────────────────────────────────────────
+
+
+def _format_write_error(exc: ValidationError, model_class: type[BaseModel]) -> str:
+    """将 Pydantic ValidationError 转为可操作的中文错误说明。"""
+    from voliti.contracts import CANONICAL_EXAMPLES
+
+    lines = [f"Store 写入校验失败（{model_class.__name__}）："]
+    for error in exc.errors():
+        field_path = " → ".join(str(loc) for loc in error["loc"]) or "(根级别)"
+        current_val = error.get("input", "<未提供>")
+        lines.append(f"  • 字段 `{field_path}`：{error['msg']}（当前值：{current_val!r}）")
+    example = CANONICAL_EXAMPLES.get(model_class)
+    if example:
+        lines.append(f"\n最小合法格式参考：{example}")
+    return "\n".join(lines)
+
+
+def store_write_validated(
+    store: Any,
+    namespace: tuple[str, ...],
+    key: str,
+    data: dict[str, Any],
+    model_class: type[BaseModel],
+    *,
+    now: datetime | None = None,
+) -> tuple[bool, str]:
+    """校验 data 并写入 Store。
+
+    写入端 fail-closed：校验失败时不写 Store，返回 (False, 中文错误消息)。
+    错误消息由调用方（工具函数）转发给 Coach，Coach 据此决策是否修正后重试。
+    """
+    try:
+        record = model_class.model_validate(data)
+    except ValidationError as exc:
+        return False, _format_write_error(exc, model_class)
+
+    content = record.model_dump_json()
+    store.put(namespace, key, make_file_value(content, now=now))
+    return True, ""
+
+
+def store_read_validated(
+    raw_value: dict[str, Any] | None,
+    model_class: type[BaseModel],
+    store_key: str,
+) -> BaseModel | None:
+    """从 Store 原始值读取并校验结构完整性。
+
+    读取端 fail-closed：
+    - raw_value 为 None（键不存在）→ 返回 None（正常情况，不报错）
+    - raw_value 存在但解析/校验失败 → 抛出 InvalidStoreValueError
+    """
+    if raw_value is None:
+        return None
+
+    try:
+        text = unwrap_file_value(raw_value)
+        data = json.loads(text)
+        return model_class.model_validate(data)
+    except (InvalidStoreValueError, json.JSONDecodeError) as exc:
+        raise InvalidStoreValueError(
+            f"[{store_key}] JSON 解析失败：{exc}"
+        ) from exc
+    except ValidationError as exc:
+        field_errors = "; ".join(
+            f"{'.'.join(str(loc) for loc in e['loc'])}: {e['msg']}"
+            for e in exc.errors()
+        )
+        raise InvalidStoreValueError(
+            f"[{store_key}] 契约校验失败（{model_class.__name__}）：{field_errors}"
+        ) from exc

@@ -907,7 +907,7 @@ struct StorePaginationTests {
 
             let itemCount = offset == 0 ? expectedFirstCount : expectedSecondCount
             let items: [[String: Any]] = (0..<itemCount).map { index in
-                ["key": "/ledger/item_\(offset + index)", "namespace": userNamespace]
+                ["key": "/goal/item_\(offset + index)", "namespace": userNamespace]
             }
             let response = HTTPURLResponse(
                 url: url,
@@ -948,7 +948,7 @@ struct StorePaginationTests {
                 let itemCount = offset == 0 ? expectedFirstCount : expectedSecondCount
                 let items: [[String: Any]] = (0..<itemCount).map { index in
                     let ordinal = offset + index
-                    let subnamespace = ordinal.isMultiple(of: 2) ? "ledger" : "coping-plans"
+                    let subnamespace = ordinal.isMultiple(of: 2) ? "goal" : "coping-plans"
                     return [
                         "key": "/\(subnamespace)/item_\(ordinal).json",
                         "namespace": userNamespace + [subnamespace],
@@ -991,7 +991,7 @@ struct StorePaginationTests {
         try await api.clearUserStore()
 
         let expectedDeletedItems: Set<String> = Set((0..<(expectedFirstCount + expectedSecondCount)).map { ordinal in
-            let subnamespace = ordinal.isMultiple(of: 2) ? "ledger" : "coping-plans"
+            let subnamespace = ordinal.isMultiple(of: 2) ? "goal" : "coping-plans"
             let namespace = (userNamespace + [subnamespace]).joined(separator: "/")
             return namespace + "::" + "/\(subnamespace)/item_\(ordinal).json"
         })

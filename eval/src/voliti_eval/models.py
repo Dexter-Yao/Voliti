@@ -63,15 +63,6 @@ class CopingPlan(BaseModel):
     status: str = "active"
 
 
-class LedgerEntry(BaseModel):
-    """预填充的 ledger 事件。"""
-
-    date: str
-    time: str
-    type: str
-    data: dict[str, Any]
-
-
 class DashboardConfigData(BaseModel):
     """预填充的 dashboardConfig 定义。"""
 
@@ -136,7 +127,6 @@ class PreState(BaseModel):
     briefing: str | None = None
     day_summaries: dict[str, str] = Field(default_factory=dict)
     conversation_archives: dict[str, str] = Field(default_factory=dict)
-    ledger_entries: list[LedgerEntry] = Field(default_factory=list)
     dashboard_config: DashboardConfigData | None = None
     goal: GoalData | None = None
     chapter: ChapterData | None = None

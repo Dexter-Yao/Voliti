@@ -194,37 +194,6 @@ prompt = PromptRegistry.get("coach_system", domain="weight management", methodol
 - Keep prompts version-controlled
 - Document required variables in comments
 
-### Working with Behavioral Ledger
-
-The ledger uses a virtual file system abstracted by DeepAgent.
-
-**Write event:**
-```python
-# In agent tool or system prompt instruction
-write_file(
-    path="/user/ledger/2026-02-09/143052_meal.json",
-    content={
-        "ts": "2026-02-09T14:30:52Z",
-        "type": "meal",
-        "evidence": "User said: 'I had a salad for lunch'",
-        "summary": "Mixed greens salad",
-        "tags": ["lunch", "healthy"],
-    }
-)
-```
-
-**Query patterns:**
-```python
-# List events in date range
-glob("/user/ledger/2026-02-*/")
-
-# Search for keyword in evidence
-grep(pattern="stress", path="/user/ledger/")
-
-# Read specific event
-read_file("/user/ledger/2026-02-09/143052_meal.json")
-```
-
 ## Debugging Common Issues
 
 ### Backend won't start

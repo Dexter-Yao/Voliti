@@ -45,9 +45,7 @@ _CANDIDATE_SIGNAL_PREFIXES = (
     "/derived/",
 )
 _ARCHIVE_SOURCE_PREFIXES = ("/archive/", "/day_summary/", "/conversation_archive/")
-_RUNTIME_ONLY_PREFIXES = (
-    "/ledger/",
-)
+_RUNTIME_ONLY_PREFIXES: tuple[()] = ()
 _OBSERVABILITY_ONLY_PREFIXES = (
     "/observability/",
 )

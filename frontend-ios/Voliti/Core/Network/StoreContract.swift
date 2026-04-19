@@ -15,7 +15,6 @@ enum StoreContract {
     static let chapterCurrentKey = "/chapter/current.json"
     static let timelineMarkersKey = "/timeline/markers.json"
     static let copingPlansPrefix = "/coping_plans/"
-    static let ledgerPrefix = "/ledger/"
 
     static var userNamespace: [String] {
         [namespacePrefix, APIConfiguration.userID]

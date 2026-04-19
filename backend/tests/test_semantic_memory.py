@@ -50,12 +50,6 @@ def test_classify_semantic_memory_path_marks_archive_sources() -> None:
     assert is_archive_source_path("/archive/conversations/2026-04-10/conv.json")
 
 
-def test_classify_semantic_memory_path_marks_runtime_only_paths() -> None:
-    assert classify_semantic_memory_path("/ledger/2026-04-10/080000_observation.json") == "runtime_only"
-    assert classify_semantic_memory_path("/user/ledger/2026-04-10/080000_observation.json") == "runtime_only"
-    assert is_runtime_only_path("/ledger/2026-04-10/080000_observation.json")
-
-
 def test_classify_semantic_memory_path_marks_observability_only_paths() -> None:
     assert classify_semantic_memory_path("/observability/traces/trace.json") == "observability_only"
     assert classify_semantic_memory_path("/user/observability/events/run.json") == "observability_only"
