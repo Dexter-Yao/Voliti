@@ -1,0 +1,21 @@
+{
+  "version": "1",
+  "content": [
+    "{",
+    "  \"markers\": [",
+    "    {",
+    "      \"id\": \"mk_fixture_001\",",
+    "      \"date\": \"2026-05-01T09:00:00+08:00\",",
+    "      \"timezone\": \"Asia/Shanghai\",",
+    "      \"description\": \"五一假期外出聚餐，饮食控制难度高\",",
+    "      \"risk_level\": \"high\",",
+    "      \"status\": \"upcoming\",",
+    "      \"created_at\": \"2026-04-19T10:00:00Z\",",
+    "      \"linked_lifesign\": null",
+    "    }",
+    "  ]",
+    "}"
+  ],
+  "created_at": "2026-04-19T10:00:00Z",
+  "modified_at": "2026-04-19T10:00:00Z"
+}

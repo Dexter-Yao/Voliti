@@ -8,6 +8,7 @@ import { createServerLangGraphClient } from "@/lib/langgraph/server";
 import {
   buildAcceptedWitnessCardsFromStoreItems,
   buildMirrorDataFromStoreValues,
+  parseJsonFileValue,
   type WitnessCard,
   type MirrorData,
 } from "@/lib/mirror-contract";
@@ -45,6 +46,31 @@ interface CoachContextResponse {
 function jsonError(status: number, error: string) {
   return NextResponse.json({ error }, { status });
 }
+
+function assertValidStoreJson(
+  value: Record<string, unknown> | null,
+  requiredKeys: readonly string[],
+  storeKey: string,
+): void {
+  if (value === null) return;
+  const parsed = parseJsonFileValue<Record<string, unknown>>(value);
+  if (parsed === null) {
+    throw new Error(`[${storeKey}] JSON 解析失败`);
+  }
+  for (const key of requiredKeys) {
+    if (parsed[key] === undefined) {
+      throw new Error(`[${storeKey}] 必要字段缺失：${key}`);
+    }
+  }
+}
+
+// 与 backend/src/voliti/contracts/__init__.py 中 Pydantic 必填字段镜像；模型演进时需同步
+const STORE_REQUIRED_KEYS = {
+  chapter: ["chapter_number", "goal_id", "start_date", "planned_end_date", "process_goals"],
+  goal: ["id", "description", "north_star_target", "start_date", "target_date"],
+  dashboardConfig: ["north_star", "support_metrics"],
+  markers: ["markers"],
+} as const;
 
 function unwrapFileValue(
   value: Record<string, unknown> | null | undefined,
@@ -159,6 +185,20 @@ export async function GET() {
     getStoreValue(STORE_KEYS.markers, namespace),
     getAcceptedWitnessCards(namespace),
   ]);
+
+  try {
+    assertValidStoreJson(chapterValue, STORE_REQUIRED_KEYS.chapter, STORE_KEYS.chapter);
+    assertValidStoreJson(goalValue, STORE_REQUIRED_KEYS.goal, STORE_KEYS.goal);
+    assertValidStoreJson(
+      dashboardConfigValue,
+      STORE_REQUIRED_KEYS.dashboardConfig,
+      STORE_KEYS.dashboardConfig,
+    );
+    assertValidStoreJson(markersValue, STORE_REQUIRED_KEYS.markers, STORE_KEYS.markers);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Store 数据结构异常";
+    return jsonError(500, message);
+  }
 
   const profileText = unwrapFileValue(profileValue);
   const allMarkers = parseAllMarkers(unwrapFileValue(markersValue));
