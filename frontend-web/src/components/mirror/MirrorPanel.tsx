@@ -26,11 +26,19 @@ const RISK_LABELS: Record<string, string> = {
   low: "低",
 };
 
+// high 使用 design-tokens.json 中 --color-risk-red 语义色（#8B3A3A）
 const RISK_COLORS: Record<string, string> = {
-  high: "text-red-500/70",
+  high: "text-[#8B3A3A]/70",
   medium: "text-[#B87333]/80",
   low: "text-[#1A1816]/40",
 };
+
+const RISK_PILLS: { key: RiskFilter; label: string }[] = [
+  { key: "all", label: "全部" },
+  { key: "high", label: "高风险" },
+  { key: "medium", label: "普通" },
+  { key: "low", label: "低风险" },
+];
 
 function formatMarkerDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -45,13 +53,6 @@ function EventStream({ markers }: { markers: ForwardMarkerSummary[] }) {
     (m) => filter === "all" || m.riskLevel === filter,
   );
 
-  const pills: { key: RiskFilter; label: string }[] = [
-    { key: "all", label: "全部" },
-    { key: "high", label: "高风险" },
-    { key: "medium", label: "普通" },
-    { key: "low", label: "低风险" },
-  ];
-
   return (
     <div className="space-y-3 border-t border-[#1A1816]/5 pt-4">
       <span className="font-mono-system text-[10px] uppercase tracking-[2px] text-[#B87333]">
@@ -59,7 +60,7 @@ function EventStream({ markers }: { markers: ForwardMarkerSummary[] }) {
       </span>
 
       <div className="flex flex-wrap gap-1.5">
-        {pills.map(({ key, label }) => (
+        {RISK_PILLS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setFilter(key)}

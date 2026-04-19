@@ -9,9 +9,11 @@ import {
   buildAcceptedWitnessCardsFromStoreItems,
   buildMirrorDataFromStoreValues,
   parseJsonFileValue,
+  unwrapFileValue,
   type WitnessCard,
   type MirrorData,
 } from "@/lib/mirror-contract";
+import type { ForwardMarkerSummary } from "@/lib/store-sync";
 
 export const runtime = "nodejs";
 
@@ -24,15 +26,6 @@ const STORE_KEYS = {
   markers: "/timeline/markers.json",
   profile: "/profile/context.md",
 } as const;
-
-interface ForwardMarkerSummary {
-  id: string;
-  date: string;
-  description: string;
-  riskLevel: string;
-  linkedLifeSign: string | null;
-  isPast: boolean;
-}
 
 interface CoachContextResponse {
   briefing: string | null;
@@ -71,16 +64,6 @@ const STORE_REQUIRED_KEYS = {
   dashboardConfig: ["north_star", "support_metrics"],
   markers: ["markers"],
 } as const;
-
-function unwrapFileValue(
-  value: Record<string, unknown> | null | undefined,
-): string {
-  const content = value?.content;
-  if (Array.isArray(content) && content.every((line) => typeof line === "string")) {
-    return content.join("\n");
-  }
-  return "";
-}
 
 async function getStoreValue(
   key: string,
