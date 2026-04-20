@@ -35,6 +35,8 @@ DAY_SUMMARY_PREFIX = "/day_summary/"
 CONVERSATION_ARCHIVE_PREFIX = "/conversation_archive/"
 BRIEFING_FILE_PATH = "/user/derived/briefing.md"
 INTERVENTIONS_SEGMENT = "interventions"
+PLAN_CURRENT_KEY = "/plan/current.json"
+PLAN_ARCHIVE_SEGMENT = "plan_archive"
 
 
 class InvalidUserIDError(ValueError):
@@ -63,6 +65,20 @@ def make_interventions_namespace(user_id: str) -> tuple[str, str, str]:
     """构造 Witness Card 所在的 Store namespace。"""
     user_namespace = make_user_namespace(user_id)
     return (*user_namespace, INTERVENTIONS_SEGMENT)
+
+
+def make_plan_archive_namespace(user_id: str) -> tuple[str, str, str]:
+    """构造 Plan archive 所在的 Store 子 namespace。
+    archive 文件 key 格式：{plan_id}_v{version}.json；
+    用子 namespace 避免与 user namespace 下的其他 key（day_summary / briefing 等）混杂。"""
+    user_namespace = make_user_namespace(user_id)
+    return (*user_namespace, PLAN_ARCHIVE_SEGMENT)
+
+
+def resolve_plan_archive_namespace(config: dict[str, Any] | None) -> tuple[str, str, str]:
+    """从 configurable config 中解析 Plan archive namespace。"""
+    user_namespace = resolve_user_namespace(config)
+    return (*user_namespace, PLAN_ARCHIVE_SEGMENT)
 
 
 def resolve_user_namespace(config: dict[str, Any] | None) -> tuple[str, str]:
