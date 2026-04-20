@@ -164,7 +164,7 @@ Key routing rules:
 | 2026-04-10 | 同步跨端契约验证入口（conversation archive 系统后于 2026-04-13 删除） |
 | 2026-04-12 | 文档体系精简 8 → 6：删除已完成的里程碑（05）和 Harness 方案（08），合并 DeepAgent 边界到架构文档；编号顺延；修正 Store key 示例；AGENTS.md 同步维护 |
 | 2026-04-12 | 新增 frontend-web/ Web MVP（Next.js 15），项目结构、工具链、验证入口同步更新 |
-| 2026-04-13 | 删除已完成的方案文档（docs/plans/）；架构约定修正为 iOS/Web 双端；AGENTS.md 同步 |
+| 2026-04-13 | 架构约定修正为 iOS/Web 双端；AGENTS.md 同步 |
 | 2026-04-13 | 天级 Thread 重组 Phase 1-3：删除 MemoryLifecycleMW + JourneyAnalysisMW + conversation archive 系统；新增 BriefingMW + briefing 计算 + 日终 Pipeline + Cron 触发；MemoryMW 4→3 路径；Coach prompt 精简；前端封存 thread 只读 + 常量集中 |
 | 2026-04-13 | A2UI 增强（reject reason + 重置 + Cmd+Enter）；删除 agent-inbox 脚手架（~2000 行）和死代码（api-key / ContentBlocksPreview）；架构文档新增 Web MVP 客户端章节 |
 | 2026-04-13 | Eval lite profile 设为默认（10 维 10 seed）；Web QA 修复 6 项（tool 泄漏 + 设置面板 + onboarding 状态） |
