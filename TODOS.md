@@ -204,3 +204,51 @@
 - **Priority:** P2
 - **Depends on:** 天级 Thread Phase 2 完成
 - **Source:** /plan-eng-review 2026-04-13
+
+## P2: Plan Archive retention 策略
+
+- **What:** 为 `/plan/archive/{plan_id}_v{n}.json` 定义 retention 策略（如保留最近 20 版、老版本合并为 change_summary 摘要、或冷数据删除）
+- **Why:** Plan Skill 落地后 archive 永不清理，长期累积；MVP 10 人规模 × 1 年 ~2MB 可接受，但用户规模 / 单用户活跃度上升后需治理
+- **Pros:** 防止 Store 长期膨胀；版本 diff UI 可基于压缩摘要做快速浏览
+- **Cons:** 过早实现会固化尚未稳定的版本语义
+- **Context:** Plan Skill 方案 F CEO review Section 7 发现；触发条件建议：达到 100 人规模或单用户 archive 体积达 KB 级
+- **Effort:** S (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Plan Skill Phase A 落地 + 观察使用频次
+- **Source:** /plan-ceo-review 2026-04-20 Plan Skill 方案 F Section 7 GAP 27
+
+## P2: Plan 上线生产数据前改双读兼容部署
+
+- **What:** 将 Plan Skill 的部署模式从"硬切换"升级为"双读兼容窗口"：后端先支持 `/plan/*` + `/goal/*` + `/chapter/*` 并存一段时间；前端先切换至读 `/plan/*` 并 verify；verify 窗口结束后再清理旧路径
+- **Why:** MVP 硬切换仅适用于"测试数据可丢"场景；正式生产数据首次上线前必须改为可回滚的双读模式
+- **Pros:** 支持阶段性灰度与 rollback；数据层与代码层解耦
+- **Cons:** 实现复杂度高于硬切换（后端需要同时维护两套读写路径）
+- **Context:** Plan Skill 方案 F CEO review Section 9 明示
+- **Effort:** M (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Plan Skill Phase A-C 稳定 + 首批真实用户数据上线计划
+- **Source:** /plan-ceo-review 2026-04-20 Plan Skill 方案 F Section 9 GAP 28
+
+## P2: 00-synthesis.md 迁移为 evergreen 设计文档
+
+- **What:** Plan Skill Phase C 完成后，将 `docs/plans/plan-skill-research/00-synthesis.md` 拆分为：（a）`docs/plan-skill-design.md`（evergreen 架构规格，无 CEO review 过程）；（b）保留 `docs/plans/plan-skill-research/*` 作为决策历史归档；主 CLAUDE.md「关键参考文档」表指向新 evergreen 文档
+- **Why:** 现版本含四条重写变更记录，是收敛过程文档；与 CLAUDE.md「正文 evergreen，变更日志独立」规范存在张力
+- **Pros:** 新人读设计文档不被历史版本流程干扰；决策历史在归档区保留可追溯
+- **Cons:** 实施中文档可能还会微调；过早拆分要返工
+- **Context:** Plan Skill 方案 F CEO review Section 10 发现；触发条件：Phase C 完成后文档稳定时
+- **Effort:** S (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Plan Skill Phase C 完成
+- **Source:** /plan-ceo-review 2026-04-20 Plan Skill 方案 F Section 10 GAP 30
+
+## P2: read_plan_history / read_plan_version tool
+
+- **What:** 为 Coach 提供两个 read tool：`read_plan_history(limit: int = 5)` 返回 archive 版本列表（version / change_summary / revised_at）；`read_plan_version(version: int)` 返回指定版本完整 PlanDocument
+- **Why:** Coach 在用户问"你之前建议过什么节奏"时可按需拉取历史版本，符合 Anthropic "just-in-time retrieval" 原则；MVP 默认只通过 Briefing 注入当前版本，历史不可访问
+- **Pros:** archive 文件已在，加 tool 成本低；扩展 Coach 跨版本对话能力
+- **Cons:** 非 MVP 必须；需要观察真实使用场景确认 ROI
+- **Context:** Plan Skill 方案 F § 十一 小议题 5；MVP 先 defer，观察使用场景后决定
+- **Effort:** S (human) → S (CC+gstack)
+- **Priority:** P2
+- **Depends on:** Plan Skill Phase A 落地 + 一段时间使用观察
+- **Source:** /plan-ceo-review 2026-04-20 Plan Skill 方案 F
