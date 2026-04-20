@@ -1,13 +1,20 @@
-# ABOUTME: Store 强格式 JSON 路径的 Pydantic 契约模型
-# ABOUTME: 对应 docs/05_Runtime_Contracts.md 中 authoritative_semantic 分类的 JSON 路径
+# ABOUTME: Store 强格式 JSON 路径的 Pydantic 契约模型聚合入口
+# ABOUTME: 具名子模块承载各路径契约；本文件做 re-export 与 CANONICAL_EXAMPLES 绑定
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from typing import Final, Literal
+from typing import Final
+
+from voliti.contracts.dashboard import (
+    DashboardConfigRecord,
+    NorthStarConfig,
+    SupportMetric,
+)
+from voliti.contracts.markers import MarkerItem, MarkersRecord
 
 
-# ── /chapter/current.json ──────────────────────────────────────────────────────
+# ── /chapter/current.json（待 Plan Skill Phase A.4 清理）──────────────────────
 
 class ProcessGoalRecord(BaseModel):
     key: str
@@ -28,7 +35,7 @@ class ChapterRecord(BaseModel):
     process_goals: list[ProcessGoalRecord] = Field(min_length=1, max_length=5)
 
 
-# ── /goal/current.json ─────────────────────────────────────────────────────────
+# ── /goal/current.json（待 Plan Skill Phase A.4 清理）────────────────────────
 
 class NorthStarTarget(BaseModel):
     key: str
@@ -46,45 +53,21 @@ class GoalRecord(BaseModel):
     status: str = "active"
 
 
-# ── /timeline/markers.json ─────────────────────────────────────────────────────
-
-class MarkerItem(BaseModel):
-    id: str
-    date: str
-    timezone: str = "Asia/Shanghai"
-    description: str = Field(min_length=2, max_length=100)
-    risk_level: Literal["low", "medium", "high"] = "medium"
-    status: Literal["upcoming", "passed", "cancelled"] = "upcoming"
-    created_at: str
-    linked_lifesign: str | None = None
-
-
-class MarkersRecord(BaseModel):
-    markers: list[MarkerItem]
-
-
-# ── /profile/dashboardConfig ───────────────────────────────────────────────────
-
-class NorthStarConfig(BaseModel):
-    key: str
-    label: str
-    type: str
-    unit: str | None = None
-    delta_direction: str | None = None
-
-
-class SupportMetric(BaseModel):
-    key: str
-    label: str
-    type: str
-    unit: str | None = None
-    order: int | None = None
-
-
-class DashboardConfigRecord(BaseModel):
-    north_star: NorthStarConfig
-    support_metrics: list[SupportMetric]
-    user_goal: str | None = None
+__all__ = [
+    # Plan Skill Phase A.4 将删除的旧契约
+    "ProcessGoalRecord",
+    "ChapterRecord",
+    "NorthStarTarget",
+    "GoalRecord",
+    # 拆分后仍经 __init__.py 可访问
+    "MarkerItem",
+    "MarkersRecord",
+    "NorthStarConfig",
+    "SupportMetric",
+    "DashboardConfigRecord",
+    # Coach 写入最小合法格式示例
+    "CANONICAL_EXAMPLES",
+]
 
 
 # 提供给 Coach 的最小合法格式示例；与模型类直接绑定，避免字符串键在重命名时静默漂移
