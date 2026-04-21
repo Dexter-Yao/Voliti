@@ -217,27 +217,32 @@ export function MirrorPanel() {
     );
   }
 
-  if (!data?.mirrorData.chapter) {
-    return <EmptyState />;
-  }
-
-  const { chapter, copingPlans, dashboardConfig, identity_statement, goal } =
-    data.mirrorData;
-  const freshnessLabel = formatFreshnessLabel(data?.planView?.week_freshness);
-
-  // 直接从 data.plan 取 active chapter 的叙事字段（why_this_chapter / why_this_goal），
-  // 绕过 adapter 丢失的这些字段——C.2 重构时再把 adapter 移除
-  const activePlanChapter =
+  const activeChapter =
     data?.plan && data?.planView?.active_chapter_index != null
       ? data.plan.chapters.find(
           (c) => c.chapter_index === data.planView!.active_chapter_index,
         ) ?? null
       : null;
-  const processGoalTargets = new Map(
-    chapter?.process_goals.map((processGoal) => [processGoal.metric_key, processGoal.target]) ?? [],
-  );
+
+  if (!activeChapter || !data) {
+    return <EmptyState />;
+  }
+
+  const { plan, copingPlans, dashboardConfig, identityStatement } = data;
+  const freshnessLabel = formatFreshnessLabel(data.planView?.week_freshness);
+
+  // Support metrics 目前按 index 对齐到 process_goals（onboarding 后 dashboardConfig
+  // 可能仍是空 support_metrics 的 placeholder，此时下方 grid 不渲染）
   const supportMetrics = dashboardConfig?.support_metrics ?? [];
   const cards = data.witnessCards ?? [];
+  const PLAN_METRIC_UNIT_MAP: Record<string, string> = {
+    weight_kg: "kg",
+    weight_lb: "lb",
+    bodyfat_pct: "%",
+  };
+  const northStarUnit =
+    dashboardConfig?.north_star?.unit ||
+    (plan ? PLAN_METRIC_UNIT_MAP[plan.target.metric] ?? "" : "");
 
   return (
     <div className="flex h-full flex-col overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1A1816]/15 [&::-webkit-scrollbar-track]:bg-transparent">
@@ -257,44 +262,38 @@ export function MirrorPanel() {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="font-mono-system text-[10px] uppercase tracking-[2px] text-[#B87333]">
-              Chapter {chapter.chapter_number}
+              Chapter {activeChapter.chapter_index}
             </span>
-            {activePlanChapter?.why_this_chapter && (
-              <InfoTooltip label={`第 ${chapter.chapter_number} 章的来由`}>
-                {activePlanChapter.why_this_chapter}
+            {activeChapter.why_this_chapter && (
+              <InfoTooltip label={`第 ${activeChapter.chapter_index} 章的来由`}>
+                {activeChapter.why_this_chapter}
               </InfoTooltip>
             )}
-            {chapter.start_date && (
-              <span className="text-xs text-[#1A1816]/30">
-                自 {chapter.start_date}
-              </span>
-            )}
+            <span className="text-xs text-[#1A1816]/30">
+              自 {activeChapter.start_date}
+            </span>
             {freshnessLabel && (
               <span className="ml-auto font-mono-system text-[10px] text-[#1A1816]/40">
                 {freshnessLabel}
               </span>
             )}
           </div>
-          {identity_statement && (
+          {identityStatement && (
             <p className="font-serif-coach text-sm italic text-[#1A1816]/70">
-              &ldquo;{identity_statement}&rdquo;
+              &ldquo;{identityStatement}&rdquo;
             </p>
           )}
-          {goal?.description && (
-            <p className="text-xs text-[#1A1816]/50">{goal.description}</p>
+          {plan?.target_summary && (
+            <p className="text-xs text-[#1A1816]/50">{plan.target_summary}</p>
           )}
-          {chapter.title && (
-            <p className="text-xs font-medium text-[#1A1816]/60">{chapter.title}</p>
-          )}
-          {chapter.milestone && (
-            <p className="text-xs text-[#1A1816]/40">{chapter.milestone}</p>
-          )}
+          <p className="text-xs font-medium text-[#1A1816]/60">{activeChapter.name}</p>
+          <p className="text-xs text-[#1A1816]/40">{activeChapter.milestone}</p>
         </div>
 
-        {/* Journey progress bar */}
-        {chapter.start_date && chapter.planned_end_date && (() => {
-          const start = new Date(chapter.start_date).getTime();
-          const end = new Date(chapter.planned_end_date).getTime();
+        {/* Journey progress bar — 当前 chapter 进度 */}
+        {(() => {
+          const start = new Date(activeChapter.start_date).getTime();
+          const end = new Date(activeChapter.end_date).getTime();
           const now = Date.now();
           const total = end - start;
           const elapsed = now - start;
@@ -308,7 +307,7 @@ export function MirrorPanel() {
                 <div className="absolute top-[-3px] h-2 w-2 rounded-full bg-[#B87333]" style={{ left: `${pct}%` }} />
               </div>
               <div className="mt-1 flex justify-between font-mono-system text-[8px] text-[#1A1816]/30">
-                <span>{chapter.start_date.slice(5, 10)}</span>
+                <span>{activeChapter.start_date.slice(5, 10)}</span>
                 <span>Day {dayNum}/{totalDays}</span>
               </div>
             </>
@@ -316,60 +315,57 @@ export function MirrorPanel() {
         })()}
 
         {/* North Star metric */}
-        {dashboardConfig?.north_star && (
+        {plan && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <div className="flex items-baseline justify-between">
               <span className="font-mono-system text-[10px] uppercase tracking-[2px] text-[#B87333]">
-                ★ {dashboardConfig.north_star.label}
+                ★ {dashboardConfig?.north_star?.label ?? "北极星"}
               </span>
             </div>
             <div className="flex items-end gap-3">
-              {goal?.north_star_target ? (
-                <span className="font-serif-coach text-[36px] font-semibold text-[#1A1816]">
-                  {goal.north_star_target.baseline}
-                  <span className="font-mono-system text-xs text-[#B87333]">
-                    {" "}{goal.north_star_target.unit}
-                  </span>
+              <span className="font-serif-coach text-[36px] font-semibold text-[#1A1816]">
+                {plan.target.baseline}
+                <span className="font-mono-system text-xs text-[#B87333]">
+                  {" "}{northStarUnit}
                 </span>
-              ) : (
-                <span className="font-serif-coach text-[36px] font-semibold text-[#1A1816]">—</span>
-              )}
-              {goal?.north_star_target && (
-                <span className="text-xs text-[#1A1816]/30">
-                  → {goal.north_star_target.target}
-                  {goal.north_star_target.unit}
-                </span>
-              )}
+              </span>
+              <span className="text-xs text-[#1A1816]/30">
+                → {plan.target.goal_value}
+                {northStarUnit}
+              </span>
             </div>
           </div>
         )}
 
-        {/* Support metrics */}
-        {supportMetrics.length > 0 && (
+        {/* Support metrics —— 与 active chapter 的 process_goals 按序对齐展示 */}
+        {supportMetrics.length > 0 && activeChapter.process_goals.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <div className="grid grid-cols-3 text-center">
-              {supportMetrics.map((metric, idx) => {
-                const whyThisGoal =
-                  activePlanChapter?.process_goals[idx]?.why_this_goal ?? null;
+              {supportMetrics.slice(0, 3).map((metric, idx) => {
+                const processGoal = activeChapter.process_goals[idx] ?? null;
+                const target = processGoal
+                  ? `${processGoal.weekly_target_days}/${processGoal.weekly_total_days}`
+                  : "—";
+                const label = processGoal?.name ?? metric.label;
                 return (
                   <div
                     key={metric.key}
                     className={idx > 0 ? "border-l border-[#1A1816]/10" : ""}
                   >
                     <div className="font-serif-coach text-xl font-medium text-[#1A1816]">
-                      {processGoalTargets.get(metric.key) ?? "—"}
+                      {target}
                     </div>
                     <div className="inline-flex items-center justify-center gap-1">
                       <span className="font-mono-system text-[9px] uppercase tracking-[1px] text-[#1A1816]/40">
-                        {metric.label}
+                        {label}
                       </span>
-                      {whyThisGoal && (
+                      {processGoal?.why_this_goal && (
                         <InfoTooltip
-                          label={`${metric.label} 的来由`}
+                          label={`${label} 的来由`}
                           iconSize={10}
                           align={idx === supportMetrics.length - 1 ? "right" : "left"}
                         >
-                          {whyThisGoal}
+                          {processGoal.why_this_goal}
                         </InfoTooltip>
                       )}
                     </div>

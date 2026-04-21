@@ -1,36 +1,5 @@
 // ABOUTME: Mirror Store 契约解析器
-// ABOUTME: 把 coach-context 返回的 PlanDocument + PlanViewRecord 投影为 Mirror 组件所需的数据对象
-
-export interface ChapterData {
-  id?: string;
-  chapter_number: number;
-  goal_id: string;
-  title: string;
-  milestone: string;
-  start_date: string;
-  planned_end_date: string;
-  status?: string;
-  process_goals: Array<{
-    key: string;
-    description: string;
-    target: string;
-    metric_key: string;
-  }>;
-}
-
-export interface GoalData {
-  id: string;
-  description: string;
-  north_star_target: {
-    key: string;
-    baseline: number;
-    target: number;
-    unit: string;
-  };
-  start_date: string;
-  target_date: string;
-  status: string;
-}
+// ABOUTME: PlanDocument / PlanView / CopingPlan / DashboardConfig / WitnessCard 的 TS 投影与辅助解析
 
 export interface PlanProcessGoal {
   name: string;
@@ -212,14 +181,6 @@ export interface WitnessCard {
   achievementType: string;
 }
 
-export interface MirrorData {
-  chapter: ChapterData | null;
-  copingPlans: CopingPlan[];
-  dashboardConfig: DashboardConfigData | null;
-  identity_statement: string | null;
-  goal: GoalData | null;
-}
-
 export function unwrapFileValue(value: Record<string, unknown> | null | undefined): string {
   const content = value?.content;
   if (Array.isArray(content) && content.every((line) => typeof line === "string")) {
@@ -267,20 +228,6 @@ export function parseIdentityStatement(markdown: string): string | null {
   }
   return null;
 }
-
-interface BuildMirrorDataFromPlanInput {
-  plan: PlanDocumentData;
-  planView: PlanViewData;
-  profileValue?: Record<string, unknown> | null;
-  copingPlansValue?: Record<string, unknown> | null;
-  dashboardConfigValue?: Record<string, unknown> | null;
-}
-
-const PLAN_METRIC_UNIT_MAP: Record<string, string> = {
-  weight_kg: "kg",
-  weight_lb: "lb",
-  bodyfat_pct: "%",
-};
 
 interface StoreWitnessCardItem {
   key: string;
@@ -337,55 +284,3 @@ export function buildAcceptedWitnessCardsFromStoreItems(
     );
 }
 
-export function buildMirrorDataFromPlan(input: BuildMirrorDataFromPlanInput): MirrorData {
-  const { plan, planView } = input;
-
-  const activeChapter =
-    planView.active_chapter_index != null
-      ? plan.chapters.find((c) => c.chapter_index === planView.active_chapter_index) ?? null
-      : null;
-
-  const chapter: ChapterData | null = activeChapter
-    ? {
-        chapter_number: activeChapter.chapter_index,
-        goal_id: plan.plan_id,
-        title: activeChapter.name,
-        milestone: activeChapter.milestone,
-        start_date: activeChapter.start_date,
-        planned_end_date: activeChapter.end_date,
-        status: plan.status,
-        process_goals: activeChapter.process_goals.map((pg) => ({
-          key: pg.name,
-          description: pg.name,
-          target: `${pg.weekly_target_days}/${pg.weekly_total_days}`,
-          metric_key: "",
-        })),
-      }
-    : null;
-
-  const goal: GoalData = {
-    id: plan.plan_id,
-    description: plan.target_summary,
-    north_star_target: {
-      key: plan.target.metric,
-      baseline: plan.target.baseline,
-      target: plan.target.goal_value,
-      unit: PLAN_METRIC_UNIT_MAP[plan.target.metric] ?? "",
-    },
-    start_date: plan.started_at,
-    target_date: plan.planned_end_at,
-    status: plan.status,
-  };
-
-  const dashboardConfig = parseJsonFileValue<DashboardConfigData>(input.dashboardConfigValue);
-  const profileMarkdown = unwrapFileValue(input.profileValue);
-  const copingMarkdown = unwrapFileValue(input.copingPlansValue);
-
-  return {
-    chapter,
-    copingPlans: copingMarkdown ? parseCopingPlans(copingMarkdown) : [],
-    dashboardConfig,
-    identity_statement: profileMarkdown ? parseIdentityStatement(profileMarkdown) : null,
-    goal,
-  };
-}

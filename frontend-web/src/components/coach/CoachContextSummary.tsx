@@ -21,28 +21,34 @@ export function CoachContextSummary({
   context: CoachContextData;
   compact?: boolean;
 }) {
-  const firstPlan = context.mirrorData.copingPlans[0] ?? null;
+  const firstLifeSign = context.copingPlans[0] ?? null;
   const firstMarker = context.upcomingMarkers[0] ?? null;
-  const firstProcessGoal = context.mirrorData.chapter?.process_goals[0] ?? null;
+  const activeChapter =
+    context.plan && context.planView?.active_chapter_index != null
+      ? context.plan.chapters.find(
+          (c) => c.chapter_index === context.planView!.active_chapter_index,
+        ) ?? null
+      : null;
+  const firstProcessGoalName = activeChapter?.process_goals[0]?.name ?? null;
   const cards = [
     {
       label: "本周成功定义",
       value:
-        context.mirrorData.chapter?.milestone
-        || context.mirrorData.chapter?.title
+        activeChapter?.milestone
+        || activeChapter?.name
         || "先把这一阶段的节奏建立起来。",
     },
     {
       label: "当前高风险场景",
       value:
-        firstPlan?.trigger
+        firstLifeSign?.trigger
         || "教练会继续帮你识别最容易失守的时刻。",
     },
     {
       label: firstMarker ? "最近前瞻事件" : "下一步聚焦",
       value: firstMarker
         ? `${formatMarkerDate(firstMarker.date)} · ${firstMarker.description}`
-        : firstPlan?.coping_response || firstProcessGoal?.description || "先把第一步做得足够轻。",
+        : firstLifeSign?.coping_response || firstProcessGoalName || "先把第一步做得足够轻。",
     },
   ];
 

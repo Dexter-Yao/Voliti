@@ -2,14 +2,16 @@
 // ABOUTME: namespace ("voliti", user_id)，路径与 store_contract.py 一致
 
 import {
-  type MirrorData,
+  type CopingPlan,
+  type DashboardConfigData,
   type PlanDocumentData,
   type PlanViewData,
   type WitnessCard,
 } from "./mirror-contract";
 
 export type {
-  MirrorData,
+  CopingPlan,
+  DashboardConfigData,
   PlanDocumentData,
   PlanViewData,
   WitnessCard,
@@ -26,22 +28,16 @@ export interface ForwardMarkerSummary {
 
 export interface CoachContextData {
   briefing: string | null;
-  mirrorData: MirrorData;
   onboardingComplete: boolean;
   plan: PlanDocumentData | null;
   planView: PlanViewData | null;
+  dashboardConfig: DashboardConfigData | null;
+  copingPlans: CopingPlan[];
+  identityStatement: string | null;
   witnessCards: WitnessCard[];
   upcomingMarkers: ForwardMarkerSummary[];
   allMarkers: ForwardMarkerSummary[];
 }
-
-const EMPTY_MIRROR_DATA: MirrorData = {
-  chapter: null,
-  copingPlans: [],
-  dashboardConfig: null,
-  identity_statement: null,
-  goal: null,
-};
 
 async function fetchCoachContextInternal(): Promise<CoachContextData> {
   const response = await fetch("/api/me/coach-context", {
@@ -57,10 +53,12 @@ async function fetchCoachContextInternal(): Promise<CoachContextData> {
   const payload = await response.json() as CoachContextData;
   return {
     briefing: payload.briefing ?? null,
-    mirrorData: payload.mirrorData ?? EMPTY_MIRROR_DATA,
     onboardingComplete: Boolean(payload.onboardingComplete),
     plan: payload.plan ?? null,
     planView: payload.planView ?? null,
+    dashboardConfig: payload.dashboardConfig ?? null,
+    copingPlans: payload.copingPlans ?? [],
+    identityStatement: payload.identityStatement ?? null,
     witnessCards: payload.witnessCards ?? [],
     upcomingMarkers: payload.upcomingMarkers ?? [],
     allMarkers: payload.allMarkers ?? [],
@@ -69,11 +67,6 @@ async function fetchCoachContextInternal(): Promise<CoachContextData> {
 
 export async function fetchCoachContext(): Promise<CoachContextData> {
   return fetchCoachContextInternal();
-}
-
-export async function fetchMirrorData(): Promise<MirrorData> {
-  const payload = await fetchCoachContextInternal();
-  return payload.mirrorData;
 }
 
 export async function fetchOnboardingComplete(): Promise<boolean> {

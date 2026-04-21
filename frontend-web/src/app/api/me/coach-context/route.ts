@@ -7,13 +7,12 @@ import { getAuthenticatedUser } from "@/lib/auth/server-user";
 import { createServerLangGraphClient } from "@/lib/langgraph/server";
 import {
   buildAcceptedWitnessCardsFromStoreItems,
-  buildMirrorDataFromPlan,
   parseCopingPlans,
   parseIdentityStatement,
   parseJsonFileValue,
   unwrapFileValue,
+  type CopingPlan,
   type DashboardConfigData,
-  type MirrorData,
   type PlanDocumentData,
   type PlanViewData,
   type WitnessCard,
@@ -32,10 +31,12 @@ const STORE_KEYS = {
 
 interface CoachContextResponse {
   briefing: string | null;
-  mirrorData: MirrorData;
   onboardingComplete: boolean;
   plan: PlanDocumentData | null;
   planView: PlanViewData | null;
+  dashboardConfig: DashboardConfigData | null;
+  copingPlans: CopingPlan[];
+  identityStatement: string | null;
   witnessCards: WitnessCard[];
   upcomingMarkers: ForwardMarkerSummary[];
   allMarkers: ForwardMarkerSummary[];
@@ -177,22 +178,6 @@ function parseAllMarkers(markersText: string): ForwardMarkerSummary[] {
   }
 }
 
-function buildFallbackMirrorData(input: {
-  profileValue: Record<string, unknown> | null;
-  copingPlansValue: Record<string, unknown> | null;
-  dashboardConfigValue: Record<string, unknown> | null;
-}): MirrorData {
-  const profileMarkdown = unwrapFileValue(input.profileValue);
-  const copingMarkdown = unwrapFileValue(input.copingPlansValue);
-  return {
-    chapter: null,
-    goal: null,
-    copingPlans: copingMarkdown ? parseCopingPlans(copingMarkdown) : [],
-    dashboardConfig: parseJsonFileValue<DashboardConfigData>(input.dashboardConfigValue),
-    identity_statement: profileMarkdown ? parseIdentityStatement(profileMarkdown) : null,
-  };
-}
-
 export async function GET() {
   const user = await getAuthenticatedUser();
   if (!user) {
@@ -231,29 +216,18 @@ export async function GET() {
   }
 
   const profileText = unwrapFileValue(profileValue);
+  const copingMarkdown = unwrapFileValue(copingPlansValue);
   const allMarkers = parseAllMarkers(unwrapFileValue(markersValue));
   const now = Date.now();
 
-  const mirrorData: MirrorData = planPayload
-    ? buildMirrorDataFromPlan({
-        plan: planPayload.plan,
-        planView: planPayload.planView,
-        profileValue,
-        copingPlansValue,
-        dashboardConfigValue,
-      })
-    : buildFallbackMirrorData({
-        profileValue,
-        copingPlansValue,
-        dashboardConfigValue,
-      });
-
   const response: CoachContextResponse = {
     briefing: unwrapFileValue(briefingValue) || null,
-    mirrorData,
     onboardingComplete: profileText.includes("onboarding_complete: true"),
     plan: planPayload?.plan ?? null,
     planView: planPayload?.planView ?? null,
+    dashboardConfig: parseJsonFileValue<DashboardConfigData>(dashboardConfigValue),
+    copingPlans: copingMarkdown ? parseCopingPlans(copingMarkdown) : [],
+    identityStatement: profileText ? parseIdentityStatement(profileText) : null,
     witnessCards,
     upcomingMarkers: allMarkers
       .filter((m) => !m.isPast && Date.parse(m.date) >= now)
