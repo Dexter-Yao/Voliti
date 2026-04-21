@@ -7,5 +7,8 @@
     "coach_qwen": "./src/voliti/graph.py:graph_qwen",
     "day_end_pipeline": "./src/voliti/pipeline/graph.py:graph"
   },
+  "http": {
+    "app": "./src/voliti/http_app.py:app"
+  },
   "env": ".env"
 }

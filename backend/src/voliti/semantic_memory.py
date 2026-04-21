@@ -7,11 +7,10 @@ import re
 from typing import Literal
 
 from voliti.store_contract import (
-    CHAPTER_CURRENT_KEY,
     COACH_MEMORY_KEY,
     COPING_PLANS_INDEX_KEY,
-    GOAL_CURRENT_KEY,
     LIFESIGNS_KEY,
+    PLAN_CURRENT_KEY,
     PROFILE_CONTEXT_KEY,
     PROFILE_DASHBOARD_CONFIG_KEY,
     TIMELINE_MARKERS_KEY,
@@ -30,16 +29,14 @@ _AUTHORITATIVE_PATHS = frozenset(
     {
         PROFILE_CONTEXT_KEY,
         PROFILE_DASHBOARD_CONFIG_KEY,
-        GOAL_CURRENT_KEY,
-        CHAPTER_CURRENT_KEY,
+        PLAN_CURRENT_KEY,
         COPING_PLANS_INDEX_KEY,
         TIMELINE_MARKERS_KEY,
         COACH_MEMORY_KEY,
         LIFESIGNS_KEY,
     }
 )
-_GOAL_ARCHIVE_PATTERN = re.compile(r"^/goal/archive/[^/]+\.json$")
-_CHAPTER_ARCHIVE_PATTERN = re.compile(r"^/chapter/archive/[^/]+\.json$")
+_PLAN_ARCHIVE_PATTERN = re.compile(r"^/plan/archive/[^/]+\.json$")
 _COPING_PLAN_PATTERN = re.compile(r"^/coping_plans/[^/]+\.json$")
 _CANDIDATE_SIGNAL_PREFIXES = (
     "/derived/",
@@ -64,9 +61,7 @@ def classify_semantic_memory_path(path: str) -> SemanticMemoryPathClass:
 
     if normalized_path in _AUTHORITATIVE_PATHS:
         return "authoritative_semantic"
-    if _GOAL_ARCHIVE_PATTERN.fullmatch(normalized_path):
-        return "authoritative_semantic"
-    if _CHAPTER_ARCHIVE_PATTERN.fullmatch(normalized_path):
+    if _PLAN_ARCHIVE_PATTERN.fullmatch(normalized_path):
         return "authoritative_semantic"
     if _COPING_PLAN_PATTERN.fullmatch(normalized_path):
         return "authoritative_semantic"

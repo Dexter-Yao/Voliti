@@ -23,7 +23,7 @@ from voliti.tools.plan_tools import (
     _merge_revise_plan,
     _merge_set_goal_status,
     _merge_update_week_narrative,
-    _read_current_plan_with_self_heal,
+    read_current_plan_with_self_heal,
     revise_plan,
     set_goal_status,
     update_week_narrative,
@@ -401,7 +401,7 @@ class TestArchiveFirstAndSelfHeal:
             make_file_value(v3.model_dump_json()),
         )
 
-        result = _read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
+        result = read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
         assert result is not None
         assert result.version == 3
 
@@ -427,14 +427,14 @@ class TestArchiveFirstAndSelfHeal:
             make_file_value(baseline_plan.model_dump_json()),
         )
 
-        result = _read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
+        result = read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
         assert result is not None
         assert result.version == 1
 
     def test_self_heal_returns_none_for_new_user(self) -> None:
         """无 current 无 archive → 返回 None（新用户场景）。"""
         store = InMemoryStore()
-        result = _read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
+        result = read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
         assert result is None
 
     def test_self_heal_archive_corrupt_skipped(
@@ -451,7 +451,7 @@ class TestArchiveFirstAndSelfHeal:
             make_file_value("garbage"),
         )
         # 此时 archive 最大合法版本为空，current=v1，函数应返回 v1 不崩
-        result = _read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
+        result = read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
         assert result is not None
         assert result.version == 1
 

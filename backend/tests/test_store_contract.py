@@ -10,20 +10,18 @@ from langgraph.store.memory import InMemoryStore
 from pydantic import BaseModel, ValidationError
 
 from voliti.contracts import (
-    ChapterRecord,
     DashboardConfigRecord,
-    GoalRecord,
     MarkersRecord,
 )
+from voliti.contracts.plan import PlanDocument
 from voliti.store_contract import (
     BRIEFING_FILE_PATH,
     BRIEFING_STORE_KEY,
-    CHAPTER_CURRENT_KEY,
     CONVERSATION_ARCHIVE_PREFIX,
     DAY_SUMMARY_PREFIX,
-    GOAL_CURRENT_KEY,
     InvalidStoreValueError,
     InvalidUserIDError,
+    PLAN_CURRENT_KEY,
     PROFILE_CONTEXT_KEY,
     PROFILE_DASHBOARD_CONFIG_KEY,
     TIMELINE_MARKERS_KEY,
@@ -96,7 +94,7 @@ def test_unwrap_file_value_rejects_non_list_content() -> None:
 def test_store_keys_are_stable() -> None:
     assert PROFILE_CONTEXT_KEY == "/profile/context.md"
     assert PROFILE_DASHBOARD_CONFIG_KEY == "/profile/dashboardConfig"
-    assert CHAPTER_CURRENT_KEY == "/chapter/current.json"
+    assert PLAN_CURRENT_KEY == "/plan/current.json"
     assert BRIEFING_STORE_KEY == "/derived/briefing.md"
     assert DAY_SUMMARY_PREFIX == "/day_summary/"
     assert CONVERSATION_ARCHIVE_PREFIX == "/conversation_archive/"
@@ -117,48 +115,18 @@ def test_shared_profile_fixture_round_trip() -> None:
 # ── 契约模型正向测试 ─────────────────────────────────────────────────────────
 
 
-def _valid_chapter_dict() -> dict[str, Any]:
+def _valid_dashboard_dict() -> dict[str, Any]:
     return {
-        "chapter_number": 1,
-        "goal_id": "goal_001",
-        "title": "建立工作日饮食节奏",
-        "milestone": "蛋白质达标率 ≥ 70%",
-        "start_date": "2026-04-19T00:00:00Z",
-        "planned_end_date": "2026-05-03T00:00:00Z",
-        "status": "active",
-        "process_goals": [
-            {
-                "key": "pg_001",
-                "description": "每日记录三餐",
-                "target": "5/7 天",
-                "metric_key": "meal_log_days",
-            }
+        "north_star": {"key": "weight_trend", "label": "体重趋势", "type": "numeric"},
+        "support_metrics": [
+            {"key": "protein_days", "label": "达标天", "type": "count"}
         ],
     }
 
 
-def test_chapter_record_accepts_valid_data() -> None:
-    record = ChapterRecord.model_validate(_valid_chapter_dict())
-    assert record.chapter_number == 1
-    assert len(record.process_goals) == 1
-
-
-def test_goal_record_accepts_valid_data() -> None:
-    data = {
-        "id": "goal_001",
-        "description": "12周内从75kg减至70kg",
-        "north_star_target": {
-            "key": "weight_trend",
-            "baseline": 75,
-            "target": 70,
-            "unit": "kg",
-        },
-        "start_date": "2026-04-19T00:00:00Z",
-        "target_date": "2026-07-12T00:00:00Z",
-        "status": "active",
-    }
-    record = GoalRecord.model_validate(data)
-    assert record.north_star_target.baseline == 75
+def test_dashboard_config_record_accepts_valid_data() -> None:
+    record = DashboardConfigRecord.model_validate(_valid_dashboard_dict())
+    assert record.north_star.key == "weight_trend"
 
 
 def test_markers_record_accepts_valid_data() -> None:
@@ -178,39 +146,21 @@ def test_markers_record_accepts_valid_data() -> None:
     assert record.markers[0].risk_level == "high"
 
 
-def test_dashboard_config_record_accepts_valid_data() -> None:
-    data = {
-        "north_star": {"key": "weight_trend", "label": "体重趋势", "type": "numeric"},
-        "support_metrics": [
-            {"key": "protein_days", "label": "达标天", "type": "count"}
-        ],
-    }
-    record = DashboardConfigRecord.model_validate(data)
-    assert record.north_star.key == "weight_trend"
-
-
 # ── 契约模型负向测试 ─────────────────────────────────────────────────────────
 
 
-def test_chapter_record_rejects_missing_goal_id() -> None:
-    data = _valid_chapter_dict()
-    data.pop("goal_id")
+def test_dashboard_config_record_rejects_missing_north_star() -> None:
+    data = _valid_dashboard_dict()
+    data.pop("north_star")
     with pytest.raises(ValidationError):
-        ChapterRecord.model_validate(data)
+        DashboardConfigRecord.model_validate(data)
 
 
-def test_chapter_record_rejects_zero_chapter_number() -> None:
-    data = _valid_chapter_dict()
-    data["chapter_number"] = 0
+def test_dashboard_config_record_rejects_support_metrics_not_list() -> None:
+    data = _valid_dashboard_dict()
+    data["support_metrics"] = "not_a_list"
     with pytest.raises(ValidationError):
-        ChapterRecord.model_validate(data)
-
-
-def test_chapter_record_rejects_empty_process_goals() -> None:
-    data = _valid_chapter_dict()
-    data["process_goals"] = []
-    with pytest.raises(ValidationError):
-        ChapterRecord.model_validate(data)
+        DashboardConfigRecord.model_validate(data)
 
 
 def test_markers_record_rejects_invalid_risk_level() -> None:
@@ -237,48 +187,64 @@ def test_store_write_validated_writes_on_valid_data() -> None:
     store = InMemoryStore()
     namespace = ("voliti", "user_00001")
     ok, msg = store_write_validated(
-        store, namespace, CHAPTER_CURRENT_KEY, _valid_chapter_dict(), ChapterRecord
+        store,
+        namespace,
+        PROFILE_DASHBOARD_CONFIG_KEY,
+        _valid_dashboard_dict(),
+        DashboardConfigRecord,
     )
     assert ok is True
     assert msg == ""
-    item = store.get(namespace, CHAPTER_CURRENT_KEY)
+    item = store.get(namespace, PROFILE_DASHBOARD_CONFIG_KEY)
     assert item is not None
     parsed = parse_json_file_value(item.value)
-    assert parsed["chapter_number"] == 1
+    assert parsed["north_star"]["key"] == "weight_trend"
 
 
 def test_store_write_validated_does_not_write_on_invalid_data() -> None:
     store = InMemoryStore()
     namespace = ("voliti", "user_00001")
-    data = _valid_chapter_dict()
-    data["chapter_number"] = 0
+    data = _valid_dashboard_dict()
+    data.pop("north_star")
     ok, msg = store_write_validated(
-        store, namespace, CHAPTER_CURRENT_KEY, data, ChapterRecord
+        store,
+        namespace,
+        PROFILE_DASHBOARD_CONFIG_KEY,
+        data,
+        DashboardConfigRecord,
     )
     assert ok is False
     assert len(msg) > 10
-    assert store.get(namespace, CHAPTER_CURRENT_KEY) is None
+    assert store.get(namespace, PROFILE_DASHBOARD_CONFIG_KEY) is None
 
 
 def test_store_write_validated_error_message_contains_field_and_example() -> None:
     store = InMemoryStore()
     namespace = ("voliti", "user_00001")
-    data = _valid_chapter_dict()
-    data["process_goals"] = []
+    data = _valid_dashboard_dict()
+    data.pop("north_star")
     ok, msg = store_write_validated(
-        store, namespace, CHAPTER_CURRENT_KEY, data, ChapterRecord
+        store,
+        namespace,
+        PROFILE_DASHBOARD_CONFIG_KEY,
+        data,
+        DashboardConfigRecord,
     )
     assert ok is False
-    assert "process_goals" in msg
+    assert "north_star" in msg
     assert "最小合法格式参考" in msg
-    assert "ChapterRecord" in msg
+    assert "DashboardConfigRecord" in msg
 
 
 def test_store_write_validated_rejects_completely_empty_dict() -> None:
     store = InMemoryStore()
     namespace = ("voliti", "user_00001")
     ok, msg = store_write_validated(
-        store, namespace, CHAPTER_CURRENT_KEY, {}, ChapterRecord
+        store,
+        namespace,
+        PROFILE_DASHBOARD_CONFIG_KEY,
+        {},
+        DashboardConfigRecord,
     )
     assert ok is False
     assert isinstance(msg, str) and len(msg) > 10
@@ -288,14 +254,19 @@ def test_store_write_validated_rejects_completely_empty_dict() -> None:
 
 
 def test_store_read_validated_returns_none_when_key_absent() -> None:
-    assert store_read_validated(None, ChapterRecord, CHAPTER_CURRENT_KEY) is None
+    assert (
+        store_read_validated(None, DashboardConfigRecord, PROFILE_DASHBOARD_CONFIG_KEY)
+        is None
+    )
 
 
 def test_store_read_validated_returns_model_on_valid_data() -> None:
-    raw = _load_fixture("chapter_current.value.json")
-    result = store_read_validated(raw, ChapterRecord, CHAPTER_CURRENT_KEY)
-    assert isinstance(result, ChapterRecord)
-    assert result.chapter_number == 1
+    raw = _load_fixture("dashboard_config.value.json")
+    result = store_read_validated(
+        raw, DashboardConfigRecord, PROFILE_DASHBOARD_CONFIG_KEY
+    )
+    assert isinstance(result, DashboardConfigRecord)
+    assert result.north_star.key
 
 
 def test_store_read_validated_raises_on_malformed_json() -> None:
@@ -306,27 +277,35 @@ def test_store_read_validated_raises_on_malformed_json() -> None:
         "modified_at": "2026-04-19T00:00:00Z",
     }
     with pytest.raises(InvalidStoreValueError):
-        store_read_validated(corrupted, ChapterRecord, CHAPTER_CURRENT_KEY)
+        store_read_validated(
+            corrupted, DashboardConfigRecord, PROFILE_DASHBOARD_CONFIG_KEY
+        )
 
 
 def test_store_read_validated_raises_on_schema_violation() -> None:
-    data = _valid_chapter_dict()
-    data["chapter_number"] = -1
+    data = _valid_dashboard_dict()
+    data.pop("north_star")
     raw = make_file_value(json.dumps(data))
     with pytest.raises(InvalidStoreValueError):
-        store_read_validated(raw, ChapterRecord, CHAPTER_CURRENT_KEY)
+        store_read_validated(
+            raw, DashboardConfigRecord, PROFILE_DASHBOARD_CONFIG_KEY
+        )
 
 
 def test_store_read_validated_raises_on_malformed_envelope() -> None:
     raw = {"content": "not a list"}
     with pytest.raises(InvalidStoreValueError):
-        store_read_validated(raw, ChapterRecord, CHAPTER_CURRENT_KEY)
+        store_read_validated(
+            raw, DashboardConfigRecord, PROFILE_DASHBOARD_CONFIG_KEY
+        )
 
 
 def test_store_read_validated_error_message_contains_store_key() -> None:
-    raw = make_file_value(json.dumps({"chapter_number": -1}))
-    with pytest.raises(InvalidStoreValueError, match=CHAPTER_CURRENT_KEY):
-        store_read_validated(raw, ChapterRecord, CHAPTER_CURRENT_KEY)
+    raw = make_file_value(json.dumps({"support_metrics": []}))
+    with pytest.raises(InvalidStoreValueError, match=PROFILE_DASHBOARD_CONFIG_KEY):
+        store_read_validated(
+            raw, DashboardConfigRecord, PROFILE_DASHBOARD_CONFIG_KEY
+        )
 
 
 # ── Fixture ↔ Pydantic 同步测试 ──────────────────────────────────────────────
@@ -335,10 +314,13 @@ def test_store_read_validated_error_message_contains_store_key() -> None:
 @pytest.mark.parametrize(
     "fixture_name,model_class,store_key",
     [
-        ("chapter_current.value.json", ChapterRecord, CHAPTER_CURRENT_KEY),
-        ("goal_current.value.json", GoalRecord, GOAL_CURRENT_KEY),
+        ("plan_current.value.json", PlanDocument, PLAN_CURRENT_KEY),
         ("markers.value.json", MarkersRecord, TIMELINE_MARKERS_KEY),
-        ("dashboard_config.value.json", DashboardConfigRecord, PROFILE_DASHBOARD_CONFIG_KEY),
+        (
+            "dashboard_config.value.json",
+            DashboardConfigRecord,
+            PROFILE_DASHBOARD_CONFIG_KEY,
+        ),
     ],
 )
 def test_fixture_passes_contract_model(

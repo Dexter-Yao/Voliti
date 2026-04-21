@@ -46,7 +46,7 @@ _OK_PREFIX = "Plan 写入成功。"
 # ────────────────────────────────────────────────────────────────────────
 
 
-def _read_current_plan_with_self_heal(
+def read_current_plan_with_self_heal(
     store: BaseStore,
     user_namespace: tuple[str, ...],
     archive_namespace: tuple[str, ...],
@@ -198,7 +198,7 @@ def _execute_plan_tool(
     user_namespace = resolve_user_namespace(config)
     archive_namespace = resolve_plan_archive_namespace(config)
 
-    current = _read_current_plan_with_self_heal(store, user_namespace, archive_namespace)
+    current = read_current_plan_with_self_heal(store, user_namespace, archive_namespace)
 
     try:
         new_plan_candidate = merge_fn(current)

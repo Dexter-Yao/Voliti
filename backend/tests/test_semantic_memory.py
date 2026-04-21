@@ -11,9 +11,9 @@ from voliti.semantic_memory import (
     is_observability_only_path,
 )
 from voliti.store_contract import (
-    CHAPTER_CURRENT_KEY,
     COACH_MEMORY_KEY,
     COPING_PLANS_INDEX_KEY,
+    PLAN_CURRENT_KEY,
     PROFILE_CONTEXT_KEY,
     PROFILE_DASHBOARD_CONFIG_KEY,
     TIMELINE_MARKERS_KEY,
@@ -23,14 +23,14 @@ from voliti.store_contract import (
 def test_authoritative_semantic_memory_paths_are_stable() -> None:
     assert is_authoritative_semantic_memory_path(PROFILE_CONTEXT_KEY)
     assert is_authoritative_semantic_memory_path(PROFILE_DASHBOARD_CONFIG_KEY)
-    assert is_authoritative_semantic_memory_path(CHAPTER_CURRENT_KEY)
+    assert is_authoritative_semantic_memory_path(PLAN_CURRENT_KEY)
     assert is_authoritative_semantic_memory_path(COPING_PLANS_INDEX_KEY)
     assert is_authoritative_semantic_memory_path(TIMELINE_MARKERS_KEY)
     assert is_authoritative_semantic_memory_path(COACH_MEMORY_KEY)
 
 
 def test_authoritative_semantic_memory_path_accepts_structured_entities() -> None:
-    assert is_authoritative_semantic_memory_path("/chapter/archive/ch_001.json")
+    assert is_authoritative_semantic_memory_path("/plan/archive/plan_001_v2.json")
     assert is_authoritative_semantic_memory_path("/coping_plans/ls_001.json")
 
 

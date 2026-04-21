@@ -1,5 +1,5 @@
 // ABOUTME: 已登录用户的教练上下文聚合接口
-// ABOUTME: 在服务端按受信任用户边界读取 Store，返回 onboarding、Mirror 与最近前瞻摘要
+// ABOUTME: 在服务端按受信任用户边界读取 Store + 调 LangGraph custom_route 派生 plan_view
 
 import { NextResponse } from "next/server";
 
@@ -7,11 +7,16 @@ import { getAuthenticatedUser } from "@/lib/auth/server-user";
 import { createServerLangGraphClient } from "@/lib/langgraph/server";
 import {
   buildAcceptedWitnessCardsFromStoreItems,
-  buildMirrorDataFromStoreValues,
+  buildMirrorDataFromPlan,
+  parseCopingPlans,
+  parseIdentityStatement,
   parseJsonFileValue,
   unwrapFileValue,
-  type WitnessCard,
+  type DashboardConfigData,
   type MirrorData,
+  type PlanDocumentData,
+  type PlanViewData,
+  type WitnessCard,
 } from "@/lib/mirror-contract";
 import type { ForwardMarkerSummary } from "@/lib/store-sync";
 
@@ -19,10 +24,8 @@ export const runtime = "nodejs";
 
 const STORE_KEYS = {
   briefing: "/derived/briefing.md",
-  chapter: "/chapter/current.json",
   copingPlans: "/coping_plans_index.md",
   dashboardConfig: "/profile/dashboardConfig",
-  goal: "/goal/current.json",
   markers: "/timeline/markers.json",
   profile: "/profile/context.md",
 } as const;
@@ -31,6 +34,8 @@ interface CoachContextResponse {
   briefing: string | null;
   mirrorData: MirrorData;
   onboardingComplete: boolean;
+  plan: PlanDocumentData | null;
+  planView: PlanViewData | null;
   witnessCards: WitnessCard[];
   upcomingMarkers: ForwardMarkerSummary[];
   allMarkers: ForwardMarkerSummary[];
@@ -57,10 +62,8 @@ function assertValidStoreJson(
   }
 }
 
-// 与 backend/src/voliti/contracts/__init__.py 中 Pydantic 必填字段镜像；模型演进时需同步
+// 与 backend/src/voliti/contracts/ 中 Pydantic 必填字段镜像；模型演进时需同步
 const STORE_REQUIRED_KEYS = {
-  chapter: ["chapter_number", "goal_id", "start_date", "planned_end_date", "process_goals"],
-  goal: ["id", "description", "north_star_target", "start_date", "target_date"],
   dashboardConfig: ["north_star", "support_metrics"],
   markers: ["markers"],
 } as const;
@@ -110,6 +113,38 @@ async function getAcceptedWitnessCards(
   }
 }
 
+async function fetchPlanViewPayload(
+  userId: string,
+): Promise<{ plan: PlanDocumentData; planView: PlanViewData } | null> {
+  const apiUrl = process.env.LANGGRAPH_API_URL;
+  if (!apiUrl) return null;
+
+  const url = `${apiUrl.replace(/\/$/, "")}/plan-view/${encodeURIComponent(userId)}`;
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (process.env.LANGSMITH_API_KEY) {
+    headers["x-api-key"] = process.env.LANGSMITH_API_KEY;
+  }
+
+  try {
+    const response = await fetch(url, { headers, cache: "no-store" });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      console.error(
+        `plan-view upstream non-ok: ${response.status} ${await response.text()}`,
+      );
+      return null;
+    }
+    const body = (await response.json()) as {
+      plan: PlanDocumentData;
+      plan_view: PlanViewData;
+    };
+    return { plan: body.plan, planView: body.plan_view };
+  } catch (err) {
+    console.error("plan-view fetch failed", err);
+    return null;
+  }
+}
+
 function parseAllMarkers(markersText: string): ForwardMarkerSummary[] {
   try {
     const parsed = JSON.parse(markersText) as {
@@ -142,6 +177,22 @@ function parseAllMarkers(markersText: string): ForwardMarkerSummary[] {
   }
 }
 
+function buildFallbackMirrorData(input: {
+  profileValue: Record<string, unknown> | null;
+  copingPlansValue: Record<string, unknown> | null;
+  dashboardConfigValue: Record<string, unknown> | null;
+}): MirrorData {
+  const profileMarkdown = unwrapFileValue(input.profileValue);
+  const copingMarkdown = unwrapFileValue(input.copingPlansValue);
+  return {
+    chapter: null,
+    goal: null,
+    copingPlans: copingMarkdown ? parseCopingPlans(copingMarkdown) : [],
+    dashboardConfig: parseJsonFileValue<DashboardConfigData>(input.dashboardConfigValue),
+    identity_statement: profileMarkdown ? parseIdentityStatement(profileMarkdown) : null,
+  };
+}
+
 export async function GET() {
   const user = await getAuthenticatedUser();
   if (!user) {
@@ -151,27 +202,23 @@ export async function GET() {
   const namespace = ["voliti", user.id];
   const [
     profileValue,
-    goalValue,
-    chapterValue,
     dashboardConfigValue,
     copingPlansValue,
     briefingValue,
     markersValue,
     witnessCards,
+    planPayload,
   ] = await Promise.all([
     getStoreValue(STORE_KEYS.profile, namespace),
-    getStoreValue(STORE_KEYS.goal, namespace),
-    getStoreValue(STORE_KEYS.chapter, namespace),
     getStoreValue(STORE_KEYS.dashboardConfig, namespace),
     getStoreValue(STORE_KEYS.copingPlans, namespace),
     getStoreValue(STORE_KEYS.briefing, namespace),
     getStoreValue(STORE_KEYS.markers, namespace),
     getAcceptedWitnessCards(namespace),
+    fetchPlanViewPayload(user.id),
   ]);
 
   try {
-    assertValidStoreJson(chapterValue, STORE_REQUIRED_KEYS.chapter, STORE_KEYS.chapter);
-    assertValidStoreJson(goalValue, STORE_REQUIRED_KEYS.goal, STORE_KEYS.goal);
     assertValidStoreJson(
       dashboardConfigValue,
       STORE_REQUIRED_KEYS.dashboardConfig,
@@ -186,16 +233,27 @@ export async function GET() {
   const profileText = unwrapFileValue(profileValue);
   const allMarkers = parseAllMarkers(unwrapFileValue(markersValue));
   const now = Date.now();
+
+  const mirrorData: MirrorData = planPayload
+    ? buildMirrorDataFromPlan({
+        plan: planPayload.plan,
+        planView: planPayload.planView,
+        profileValue,
+        copingPlansValue,
+        dashboardConfigValue,
+      })
+    : buildFallbackMirrorData({
+        profileValue,
+        copingPlansValue,
+        dashboardConfigValue,
+      });
+
   const response: CoachContextResponse = {
     briefing: unwrapFileValue(briefingValue) || null,
-    mirrorData: buildMirrorDataFromStoreValues({
-      chapterValue,
-      copingPlansValue,
-      dashboardConfigValue,
-      goalValue,
-      profileValue,
-    }),
+    mirrorData,
     onboardingComplete: profileText.includes("onboarding_complete: true"),
+    plan: planPayload?.plan ?? null,
+    planView: planPayload?.planView ?? null,
     witnessCards,
     upcomingMarkers: allMarkers
       .filter((m) => !m.isPast && Date.parse(m.date) >= now)
