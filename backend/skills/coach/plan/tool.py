@@ -5,9 +5,16 @@ from __future__ import annotations
 
 from voliti.tools.plan_tools import (
     create_plan,
+    fan_out_plan_builder,
     revise_plan,
     set_goal_status,
     update_week_narrative,
 )
 
-TOOLS = [create_plan, set_goal_status, update_week_narrative, revise_plan]
+TOOLS = [
+    create_plan,
+    set_goal_status,
+    update_week_narrative,
+    revise_plan,
+    fan_out_plan_builder,
+]

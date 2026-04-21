@@ -458,6 +458,278 @@ def _merge_revise_plan(
 # ────────────────────────────────────────────────────────────────────────
 
 
+def _build_plan_builder_components(
+    plan: PlanDocument, chapter_index: int
+) -> list[dict[str, Any]] | None:
+    """按约定顺序生成 Plan Builder overlay 的 A2UI components。
+
+    约定的 key 命名映射（前后端对齐）：
+      - "milestone"        → patch.chapters[i].milestone
+      - "rhythm.meals"     → patch.chapters[i].daily_rhythm.meals.value
+      - "rhythm.training"  → patch.chapters[i].daily_rhythm.training.value
+      - "rhythm.sleep"     → patch.chapters[i].daily_rhythm.sleep.value
+
+    chapter_index 不匹配任何 chapter → 返回 None，由调用方透传错误给 Coach。
+    """
+    chapter = next(
+        (c for c in plan.chapters if c.chapter_index == chapter_index),
+        None,
+    )
+    if chapter is None:
+        return None
+
+    components: list[dict[str, Any]] = [
+        {"kind": "text", "text": f"“{plan.overall_narrative}”"},
+        {"kind": "text", "text": f"{plan.target_summary}"},
+        {
+            "kind": "text",
+            "text": (
+                f"Chapter {chapter.chapter_index} · {chapter.name}\n"
+                f"{chapter.why_this_chapter}"
+            ),
+        },
+        {
+            "kind": "text_input",
+            "key": "milestone",
+            "label": "本章目标（可调整文案）",
+            "value": chapter.milestone,
+        },
+        {"kind": "text", "text": "每日节奏"},
+        {
+            "kind": "text_input",
+            "key": "rhythm.meals",
+            "label": "三餐",
+            "value": chapter.daily_rhythm.meals.value,
+        },
+        {
+            "kind": "text_input",
+            "key": "rhythm.training",
+            "label": "训练",
+            "value": chapter.daily_rhythm.training.value,
+        },
+        {
+            "kind": "text_input",
+            "key": "rhythm.sleep",
+            "label": "作息",
+            "value": chapter.daily_rhythm.sleep.value,
+        },
+    ]
+
+    # 数值字段只读展示，不开放编辑（C.3.a 原则：数值协商留给对话）
+    components.append(
+        {
+            "kind": "text",
+            "text": (
+                f"热量区间 {chapter.daily_calorie_range[0]}-{chapter.daily_calorie_range[1]} kcal · "
+                f"蛋白 {chapter.daily_protein_grams_range[0]}-{chapter.daily_protein_grams_range[1]} g · "
+                f"每周训练 {chapter.weekly_training_count} 次"
+            ),
+        }
+    )
+
+    return components
+
+
+def _apply_plan_builder_submission(
+    plan: PlanDocument,
+    chapter_index: int,
+    data: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    """把 Plan Builder submit data 翻译为 PlanPatch dict + 人类可读的变更清单。
+
+    只接受 C.3.a 四个可编辑字段（milestone / rhythm.{meals,training,sleep}）；
+    其他 key 忽略（防御性，防止协议演进后旧字段残留触发校验错误）。
+    返回 ({}，[]) 表示无有效改动。
+    """
+    chapter = next(
+        (c for c in plan.chapters if c.chapter_index == chapter_index),
+        None,
+    )
+    if chapter is None:
+        return {}, []
+
+    chapter_patch: dict[str, Any] = {"chapter_index": chapter_index}
+    changes: list[str] = []
+
+    new_milestone = data.get("milestone")
+    if isinstance(new_milestone, str):
+        stripped = new_milestone.strip()
+        if stripped and stripped != chapter.milestone:
+            chapter_patch["milestone"] = stripped
+            changes.append(f"本章目标 → {stripped}")
+
+    rhythm_patch: dict[str, Any] = {}
+    rhythm_labels = {"meals": "三餐", "training": "训练", "sleep": "作息"}
+    for slot in ("meals", "training", "sleep"):
+        raw = data.get(f"rhythm.{slot}")
+        if not isinstance(raw, str):
+            continue
+        stripped = raw.strip()
+        if not stripped:
+            continue
+        current_value = getattr(chapter.daily_rhythm, slot).value
+        if stripped == current_value:
+            continue
+        rhythm_patch[slot] = {
+            "value": stripped,
+            "tooltip": getattr(chapter.daily_rhythm, slot).tooltip,
+        }
+        changes.append(f"{rhythm_labels[slot]} → {stripped}")
+
+    if rhythm_patch:
+        full_rhythm = {
+            "meals": {
+                "value": chapter.daily_rhythm.meals.value,
+                "tooltip": chapter.daily_rhythm.meals.tooltip,
+            },
+            "training": {
+                "value": chapter.daily_rhythm.training.value,
+                "tooltip": chapter.daily_rhythm.training.tooltip,
+            },
+            "sleep": {
+                "value": chapter.daily_rhythm.sleep.value,
+                "tooltip": chapter.daily_rhythm.sleep.tooltip,
+            },
+        }
+        full_rhythm.update(rhythm_patch)
+        chapter_patch["daily_rhythm"] = full_rhythm
+
+    if len(chapter_patch) <= 1:
+        return {}, []
+
+    return {"chapters": [chapter_patch]}, changes
+
+
+@tool
+def fan_out_plan_builder(
+    chapter_index: int | None = None,
+    *,
+    store: Annotated[BaseStore, InjectedToolArg],
+    config: Annotated[dict[str, Any], InjectedToolArg],
+) -> str:
+    """Open the Plan Builder full-screen overlay so the user can review and lightly
+    revise the current Plan's active chapter.
+
+    C.3.a scope — editable fields (four text strings only):
+      - `milestone`
+      - `rhythm.meals` / `rhythm.training` / `rhythm.sleep`
+
+    Numeric fields (calorie range, protein range, training count, weekly target days)
+    are read-only in this version; numeric revisions stay in conversation where Coach
+    can negotiate against health-safety thresholds.
+
+    Behavior:
+      - Reads the current Plan with self-heal; rejects if no Plan exists (tells Coach
+        to call `create_plan` first).
+      - Resolves target chapter via `chapter_index` (defaults to the plan's first
+        chapter; Coach can pin a specific chapter when revising a non-active one).
+      - Presents a full-screen overlay (`surface="plan-builder"`, `layout="full"`).
+      - On submit with real changes → calls revise_plan internally with a minimal patch
+        and returns a Chinese summary naming what changed.
+      - On empty submit → treats as user acknowledgement, no write.
+      - On reject / skip → returns the plain-text reason for Coach to pick up.
+
+    Args:
+        chapter_index: 1-based chapter index to open for editing. When None, opens the
+            first chapter (most common case: the currently active chapter is the one
+            the user wants to micro-adjust).
+    """
+    from voliti.a2ui import A2UIPayload
+    from voliti.tools.fan_out import _fan_out_core
+
+    now = datetime.now(timezone.utc)
+    user_namespace = resolve_user_namespace(config)
+    archive_namespace = resolve_plan_archive_namespace(config)
+
+    plan = read_current_plan_with_self_heal(store, user_namespace, archive_namespace)
+    if plan is None:
+        return (
+            "Plan 尚未创建，Plan Builder 无法打开。请先调用 create_plan 建立首份 Plan。"
+        )
+
+    resolved_index = chapter_index if chapter_index is not None else plan.chapters[0].chapter_index
+    components = _build_plan_builder_components(plan, resolved_index)
+    if components is None:
+        available = sorted(c.chapter_index for c in plan.chapters)
+        return (
+            f"chapter_index={resolved_index} 不对应任何已有 chapter；"
+            f"可用 chapter_index：{available}。"
+        )
+
+    try:
+        payload = A2UIPayload(
+            components=components,
+            layout="full",
+            metadata={"surface": "plan-builder"},
+        )
+    except ValidationError as exc:
+        logger.info(
+            "plan_tools: plan builder payload validation failed",
+            extra={"error_count": exc.error_count()},
+        )
+        return (
+            f"Plan Builder 组件构造失败（{exc.error_count()} 处校验错误），"
+            "请改走对话方式与用户确认方案。"
+        )
+
+    # interrupt → 等待用户响应（同步返回摘要/数据）
+    raw_response_summary = _fan_out_core(payload)
+
+    # _fan_out_core 对 submit 返回 "User responded: k=v, k=v"；
+    # reject / skip / empty 有独立分支文案；解析用户编辑的最稳妥方式是
+    # 重新打开 payload 的 raw interrupt response。这里为保持最小改动，
+    # 借助摘要字符串前缀判断——非 "User responded:" 前缀的情况直接透传。
+    if not raw_response_summary.startswith("User responded:"):
+        return raw_response_summary
+
+    # 重新进入 Store 读取最新 Plan（_fan_out_core 期间 Coach 可能已变更），
+    # 以最新 Plan 为基线做 submission → patch 翻译
+    latest_plan = read_current_plan_with_self_heal(store, user_namespace, archive_namespace)
+    if latest_plan is None:
+        return "Plan Builder 响应期间 Plan 被清空，未写入。"
+
+    # 从摘要字符串解析 key=value（摘要格式由 _fan_out_core 控制）
+    body = raw_response_summary[len("User responded:"):].strip()
+    if not body or body == "(acknowledged the observation)":
+        return "User acknowledged the plan as is."
+
+    submission: dict[str, Any] = {}
+    for pair in body.split(","):
+        pair = pair.strip()
+        if not pair or "=" not in pair:
+            continue
+        k, v = pair.split("=", 1)
+        submission[k.strip()] = v.strip()
+
+    patch_dict, changes = _apply_plan_builder_submission(
+        latest_plan, resolved_index, submission
+    )
+    if not patch_dict or not changes:
+        return "User submitted the plan panel without changes."
+
+    try:
+        patch_model = PlanPatch.model_validate(patch_dict)
+    except ValidationError as exc:
+        logger.info(
+            "plan_tools: plan builder patch validation failed",
+            extra={"error_count": exc.error_count()},
+        )
+        return format_plan_write_error(exc)
+
+    def merge(current: PlanDocument | None) -> PlanDocument:
+        return _merge_revise_plan(current, patch=patch_model, now=now)
+
+    write_result = _execute_plan_tool(
+        store=store,
+        config=config,
+        merge_fn=merge,
+        is_structural=_patch_touches_structural(patch_model),
+        now=now,
+    )
+    changes_text = "；".join(changes)
+    return f"User edited plan via builder → {changes_text}\n{write_result}"
+
+
 @tool
 def create_plan(
     document: dict[str, Any],

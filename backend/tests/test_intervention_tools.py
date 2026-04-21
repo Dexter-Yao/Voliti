@@ -28,6 +28,7 @@ _EXPECTED_SKILL_TOOL_NAMES = {
     "set_goal_status",
     "update_week_narrative",
     "revise_plan",
+    "fan_out_plan_builder",
 }
 
 
@@ -43,15 +44,24 @@ def _load_tool_module(tool_path: Path) -> Any:
 
 
 def _intervention_tools() -> dict[str, Any]:
-    """按 KIND 常量建立 intervention_kind → tool 索引。"""
+    """按 KIND 常量建立 intervention_kind → tool 索引。
+
+    仅覆盖四个干预 skill 目录（其 tool.py 导出 KIND 常量）。Plan Builder 这类
+    非 intervention 的 fan_out_* 工具（skill 目录名与工具名不同构）自动跳过。
+    """
     index: dict[str, Any] = {}
     for tool in COACH_TOOLS:
         if not tool.name.startswith("fan_out_") or tool.name == "fan_out":
             continue
-        # 从对应 tool.py 的 KIND 常量定位，避免对工具名做字符串 replace
         skill_dir = tool.name.removeprefix("fan_out_").replace("_", "-")
-        module = _load_tool_module(COACH_SKILLS_ROOT / skill_dir / "tool.py")
-        index[module.KIND] = tool
+        tool_path = COACH_SKILLS_ROOT / skill_dir / "tool.py"
+        if not tool_path.is_file():
+            continue   # 非 intervention 工具（如 Plan Builder）走 plan/ 目录
+        module = _load_tool_module(tool_path)
+        kind = getattr(module, "KIND", None)
+        if kind is None:
+            continue
+        index[kind] = tool
     return index
 
 

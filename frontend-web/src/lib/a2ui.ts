@@ -113,6 +113,7 @@ export const SurfaceSchema = z.enum([
   "coaching",
   "intervention",
   "witness-card",
+  "plan-builder",
 ]);
 export type Surface = z.infer<typeof SurfaceSchema>;
 

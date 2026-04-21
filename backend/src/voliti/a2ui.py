@@ -7,8 +7,17 @@ from langgraph.config import get_config
 from langgraph.types import Interrupt
 from pydantic import BaseModel, Field
 
-Surface = Literal["onboarding", "coaching", "intervention", "witness-card"]
-"""A2UI 交互形态分类，写入 A2UIPayload.metadata["surface"]；详见 docs/05_Runtime_Contracts.md §8.5。"""
+Surface = Literal[
+    "onboarding",
+    "coaching",
+    "intervention",
+    "witness-card",
+    "plan-builder",
+]
+"""A2UI 交互形态分类，写入 A2UIPayload.metadata["surface"]；详见 docs/05_Runtime_Contracts.md §8.5。
+
+plan-builder 为 Plan 共建全屏 overlay，由 fan_out_plan_builder 工具注入，
+Coach 不直接写入该 surface。"""
 
 InterventionKind = Literal[
     "future-self-dialogue",

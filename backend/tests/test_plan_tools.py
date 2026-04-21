@@ -19,12 +19,15 @@ from voliti.store_contract import (
     unwrap_file_value,
 )
 from voliti.tools.plan_tools import (
+    _apply_plan_builder_submission,
+    _build_plan_builder_components,
     _execute_plan_tool,
     _merge_create_plan,
     _merge_revise_plan,
     _merge_set_goal_status,
     _merge_update_week_narrative,
     create_plan,
+    fan_out_plan_builder,
     read_current_plan_with_self_heal,
     revise_plan,
     set_goal_status,
@@ -638,3 +641,123 @@ class TestCreatePlanEndToEnd:
         # 失败时 current 与 archive 都不应被写入
         assert empty_store.get(USER_NS, PLAN_CURRENT_KEY) is None
         assert list(empty_store.search(ARCHIVE_NS, limit=10)) == []
+
+
+# ── Plan Builder（C.3.a）───────────────────────────────────────────────────
+
+
+class TestBuildPlanBuilderComponents:
+    def test_returns_none_for_unknown_chapter_index(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        assert _build_plan_builder_components(baseline_plan, 99) is None
+
+    def test_emits_four_text_inputs_with_stable_keys(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        components = _build_plan_builder_components(baseline_plan, 1)
+        assert components is not None
+        input_keys = [c["key"] for c in components if c["kind"] == "text_input"]
+        assert input_keys == [
+            "milestone",
+            "rhythm.meals",
+            "rhythm.training",
+            "rhythm.sleep",
+        ]
+
+    def test_numeric_fields_go_into_a_text_only_row(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """热量 / 蛋白 / 训练次数 C.3.a 只读，以 text 合并呈现。"""
+        components = _build_plan_builder_components(baseline_plan, 1)
+        assert components is not None
+        numeric_rows = [
+            c for c in components if c["kind"] == "text" and "kcal" in c.get("text", "")
+        ]
+        assert len(numeric_rows) == 1
+        assert "蛋白" in numeric_rows[0]["text"]
+        assert "每周训练" in numeric_rows[0]["text"]
+
+    def test_top_of_panel_anchors_user_narrative(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """第一条组件应呈现用户自己的 overall_narrative，让共建感以"被看见"开场。"""
+        components = _build_plan_builder_components(baseline_plan, 1)
+        assert components is not None
+        assert components[0]["kind"] == "text"
+        assert baseline_plan.overall_narrative in components[0]["text"]
+
+
+class TestApplyPlanBuilderSubmission:
+    def test_empty_submission_yields_no_patch(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        patch, changes = _apply_plan_builder_submission(baseline_plan, 1, {})
+        assert patch == {}
+        assert changes == []
+
+    def test_unchanged_values_are_filtered_out(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        data = {
+            "milestone": baseline_plan.chapters[0].milestone,
+            "rhythm.meals": baseline_plan.chapters[0].daily_rhythm.meals.value,
+        }
+        patch, changes = _apply_plan_builder_submission(baseline_plan, 1, data)
+        assert patch == {}
+        assert changes == []
+
+    def test_milestone_change_produces_chapter_patch(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        data = {"milestone": "连续三周早餐蛋白 5/7"}
+        patch, changes = _apply_plan_builder_submission(baseline_plan, 1, data)
+        assert patch["chapters"][0]["chapter_index"] == 1
+        assert patch["chapters"][0]["milestone"] == "连续三周早餐蛋白 5/7"
+        assert changes == ["本章目标 → 连续三周早餐蛋白 5/7"]
+
+    def test_rhythm_change_includes_full_rhythm_and_keeps_existing_tooltips(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """daily_rhythm 是嵌套 model，patch 需整体给出；未改动 slot 的 tooltip 必须保留。"""
+        data = {"rhythm.training": "每周三次 · 力量为主"}
+        patch, changes = _apply_plan_builder_submission(baseline_plan, 1, data)
+        chapter_patch = patch["chapters"][0]
+        assert chapter_patch["daily_rhythm"]["training"]["value"] == "每周三次 · 力量为主"
+        # meals / sleep 沿用原 value + tooltip
+        assert chapter_patch["daily_rhythm"]["meals"]["value"] == baseline_plan.chapters[0].daily_rhythm.meals.value
+        assert chapter_patch["daily_rhythm"]["meals"]["tooltip"] == baseline_plan.chapters[0].daily_rhythm.meals.tooltip
+        assert changes == ["训练 → 每周三次 · 力量为主"]
+
+    def test_unknown_keys_are_ignored(self, baseline_plan: PlanDocument) -> None:
+        """C.3.a 只接受四个约定 key；未来协议演进时旧字段残留不应触发错误。"""
+        data = {"weekly_training_count": "5", "milestone": "新目标"}
+        patch, changes = _apply_plan_builder_submission(baseline_plan, 1, data)
+        assert "chapters" in patch
+        assert patch["chapters"][0].get("weekly_training_count") is None
+        assert changes == ["本章目标 → 新目标"]
+
+    def test_empty_whitespace_values_are_ignored(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        data = {"milestone": "   ", "rhythm.meals": ""}
+        patch, changes = _apply_plan_builder_submission(baseline_plan, 1, data)
+        assert patch == {}
+        assert changes == []
+
+
+class TestFanOutPlanBuilderGuards:
+    def test_rejects_when_plan_missing(self, empty_store: InMemoryStore) -> None:
+        result = fan_out_plan_builder.func(
+            chapter_index=None, store=empty_store, config=CONFIG
+        )
+        assert "Plan 尚未创建" in result
+
+    def test_rejects_unknown_chapter_index(
+        self, store_with_plan: InMemoryStore
+    ) -> None:
+        result = fan_out_plan_builder.func(
+            chapter_index=99, store=store_with_plan, config=CONFIG
+        )
+        assert "不对应任何已有 chapter" in result
+        assert "可用 chapter_index" in result

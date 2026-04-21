@@ -25,6 +25,8 @@ import { ScenarioLayout } from "./intervention/ScenarioLayout";
 import { MetaphorLayout } from "./intervention/MetaphorLayout";
 import { ReframingLayout } from "./intervention/ReframingLayout";
 import type { InterventionLayoutProps } from "./intervention/types";
+import { PlanBuilderShell } from "./plan-builder/PlanBuilderShell";
+import { PlanBuilderLayout } from "./plan-builder/PlanBuilderLayout";
 
 const LAYOUT_HEIGHT: Record<A2UIPayload["layout"], string> = {
   half: "50vh",
@@ -33,10 +35,13 @@ const LAYOUT_HEIGHT: Record<A2UIPayload["layout"], string> = {
 };
 
 /**
- * Surface 视觉外壳映射（仅 non-intervention 使用）。
- * intervention 分支走全屏 overlay，不经过 Sheet。
+ * Surface 视觉外壳映射（仅非全屏 overlay 的 surface 使用）。
+ * intervention 与 plan-builder 走全屏 overlay，不经过 Sheet。
  */
-const SURFACE_CLASS: Record<Exclude<Surface, "intervention">, string> = {
+const SURFACE_CLASS: Record<
+  Exclude<Surface, "intervention" | "plan-builder">,
+  string
+> = {
   onboarding: "",
   coaching: "",
   "witness-card": "",
@@ -87,7 +92,22 @@ export function A2UIDrawer({
     );
   }
 
-  // 其他 surface：保持现有 Sheet 视觉
+  // Plan Builder 分支：全屏 overlay + 专用 Layout
+  if (surface === "plan-builder") {
+    return (
+      <PlanBuilderShell onRequestClose={onClose}>
+        <PlanBuilderLayout
+          components={payload.components}
+          isSubmitting={isSubmitting}
+          onSubmit={onSubmit}
+          onReject={onReject}
+          onSkip={onSkip}
+        />
+      </PlanBuilderShell>
+    );
+  }
+
+  // 其他 surface：保持现有 Sheet 视觉（intervention / plan-builder 分支上面已 return）
   const sheetSurface = surface === "intervention" ? "coaching" : surface;
   return (
     <Sheet open={!!payload} onOpenChange={(open) => !open && onClose()}>
