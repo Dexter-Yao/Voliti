@@ -7,12 +7,47 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { fetchCoachContext, type CoachContextData, type WitnessCard, type ForwardMarkerSummary } from "@/lib/store-sync";
+import { derivePlanPhaseCopy, formatFreshnessLabel } from "@/lib/plan-freshness";
 
 function EmptyState() {
   return (
     <div className="flex h-full items-center justify-center p-8">
       <div className="text-center text-sm text-[#1A1816]/30">
         <p>完成引导流程后查看 Mirror 数据</p>
+      </div>
+    </div>
+  );
+}
+
+function PhasePlaceholder({
+  headline,
+  sublead,
+  onRefresh,
+}: {
+  headline: string;
+  sublead: string | null;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-[#1A1816]/5 px-4 py-3">
+        <h2 className="font-mono-system text-[11px] uppercase tracking-[2px] text-[#1A1816]/40">
+          Mirror
+        </h2>
+        <button
+          onClick={onRefresh}
+          className="text-[#1A1816]/30 transition-colors hover:text-[#1A1816]/60"
+        >
+          <RefreshCw className="size-3.5" />
+        </button>
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+        <span className="font-mono-system text-[11px] uppercase tracking-[2px] text-[#B87333]">
+          {headline}
+        </span>
+        {sublead && (
+          <p className="font-serif-coach text-sm text-[#1A1816]/60">{sublead}</p>
+        )}
       </div>
     </div>
   );
@@ -170,12 +205,24 @@ export function MirrorPanel() {
     );
   }
 
+  const phaseCopy = derivePlanPhaseCopy(data?.plan, data?.planView);
+  if (phaseCopy) {
+    return (
+      <PhasePlaceholder
+        headline={phaseCopy.headline}
+        sublead={phaseCopy.sublead}
+        onRefresh={refresh}
+      />
+    );
+  }
+
   if (!data?.mirrorData.chapter) {
     return <EmptyState />;
   }
 
   const { chapter, copingPlans, dashboardConfig, identity_statement, goal } =
     data.mirrorData;
+  const freshnessLabel = formatFreshnessLabel(data?.planView?.week_freshness);
   const processGoalTargets = new Map(
     chapter?.process_goals.map((processGoal) => [processGoal.metric_key, processGoal.target]) ?? [],
   );
@@ -205,6 +252,11 @@ export function MirrorPanel() {
             {chapter.start_date && (
               <span className="text-xs text-[#1A1816]/30">
                 自 {chapter.start_date}
+              </span>
+            )}
+            {freshnessLabel && (
+              <span className="ml-auto font-mono-system text-[10px] text-[#1A1816]/40">
+                {freshnessLabel}
               </span>
             )}
           </div>
