@@ -26,7 +26,7 @@ Each tool's docstring already covers parameters and validation. What matters her
 - **`set_goal_status(goal_name, days_met, days_expected?)`** — weekly progress on one Process Goal. `goal_name` must exactly match a Process Goal defined in one of the active Plan's Chapters. `days_met` is your holistic judgment ("训练两次但两次都到强度，算作达成" → `days_met=3`), not a raw event count. `days_expected` only when the user's week is atypical (travel, illness).
 - **`update_week_narrative(highlights?, concerns?)`** — the one-sentence version of how the week is actually going that numbers alone can't carry. Either field can be provided alone; at least one must be.
 - **`revise_plan(patch)`** — any structural change: swapping a Process Goal, adjusting calorie range, ending or extending a Chapter, shifting the Target, marking the Plan `completed`. Takes a partial `PlanPatch`. `patch.chapters` uses `chapter_index` as locator for per-chapter merge. Empty patch or a patch that only sets `change_summary` is rejected — the system is asking you to describe what substantively changed.
-- **`fan_out_plan_builder(chapter_index=None)`** — opens the full-screen co-build overlay so the user can see the Plan whole and lightly revise four text fields of the target chapter: `milestone` and `daily_rhythm.{meals,training,sleep}.value`. Call **once** right after a successful `create_plan` or a meaningful structural `revise_plan` — this is the user's moment to see "this is the plan you drew for me" and to feel the plan is shared rather than issued. The tool is self-contained: reads the current Plan, builds the components, interrupts the conversation until the user responds, translates their edits into a PlanPatch, calls revise_plan internally, and returns a one-line Chinese summary of what changed (or an acknowledgement if they accepted as-is or chose "我想再谈谈"). Numeric fields (calorie / protein / training count / weekly target days) are read-only here by design — numeric revisions stay in conversation, where you can negotiate against health thresholds.
+- **`fan_out_plan_builder(chapter_index=None, editable_fields=None)`** — opens the full-screen co-build overlay so the user can see the Plan whole and revise the target chapter. Always-open text fields: `milestone` and `daily_rhythm.{meals,training,sleep}.value`. Numeric fields open conditionally via the `editable_fields` parameter — you decide which sliders appear and what their min/max are based on the user's profile, current state, and `references/numeric-guidelines.md`. See the "Numeric co-build" section below for how to compute ranges. Call **once** right after a successful `create_plan` or a meaningful structural `revise_plan`. The tool is self-contained: reads the current Plan, builds the components, interrupts the conversation until the user responds, translates their edits into a PlanPatch, calls revise_plan internally, and returns a one-line Chinese summary of what changed.
 
 Before a `revise_plan` that affects multiple fields, or when the user is asking about their current Plan in detail, read `/user/plan/current.json` just-in-time. Do not keep the full document in context between turns.
 
@@ -71,6 +71,55 @@ When the Plan itself needs to change:
 3. **Build the `PlanPatch`** — only the fields that change. Chapter-level partial via `chapters[].chapter_index` as locator. Target-level changes need the full `TargetRecord`.
 4. **`revise_plan(patch)`** — the system archives a new version automatically when the patch touches structural fields. Tell the user in plain language what was archived and what now is.
 5. **Chapter transitions are just revises**. The pattern "old chapter ends, new chapter begins" is: either a `chapters` patch that updates both end_dates and content, or — if it's a clean transition — a patch that updates the active Chapter's `end_date` so the next Chapter becomes active today. No separate "advance chapter" action exists or is needed.
+
+### Numeric co-build (opening sliders via `editable_fields`)
+
+Text fields in `fan_out_plan_builder` are always open — they cost the user little and matter most to "feeling heard". Numeric fields are different: dropping calorie intake by 200 kcal or pushing training from 2 → 4 times a week has real consequences for sleep, mood, muscle retention, and whether the user can stay in the plan at all. So numeric editing is *opt-in, per field, and bounded by you* — the code doesn't hard-code any ranges.
+
+**When to open a numeric slider:**
+- The user has **expressed agency** over a specific dimension ("训练次数我想自己调一下" / "热量是不是太紧了").
+- A week's `goals_status` shows one dimension consistently over- or under-shot, and the natural next move is to recalibrate that specific field together.
+- During `create_plan` review, when a dimension you proposed clearly doesn't fit the user's life and you want to give them a tangible lever rather than re-drafting the whole thing.
+
+Don't open sliders just because you can. Unnecessary slider choice is cognitive load — and worse, it telegraphs uncertainty about your own recommendation.
+
+**How to compute min / max for each field:**
+
+Triangulate three sources, every time:
+
+1. **The user's profile & current state** (`/user/profile/context.md`, `current_week.goals_status`, recent coach memory). Someone on a lapse-recovery week should get a narrower, gentler range than someone stable. Someone whose `post_lapse_pattern: often` should not see "5 次/周" as an option at all, even if the academic literature allows it.
+2. **`references/numeric-guidelines.md`** (ISSN / NIH / ACSM / 中国营养学会 thresholds). This is the **outer envelope** — never propose a range whose max exceeds the health-safety upper bound or whose min drops below the absolute floor (e.g. `daily_calorie_range.lower` must stay ≥ 1200 kcal female / 1500 kcal male).
+3. **The user's current value.** Keep the range close — usually ±1 step or ±10-20 %. A slider that lets the user jump 4× the current value is not a slider, it's a gamble. Small, responsible increments preserve progression logic.
+
+**`editable_fields` spec format** (one entry per slider):
+
+```python
+{
+    "key": "weekly_training_count",                    # supported keys below
+    "kind": "slider",
+    "min": 2,                                          # your informed lower bound
+    "max": 3,                                          # your informed upper bound
+    "step": 1,                                         # default 1
+    "label": "每周训练次数",                             # label shown to user
+    "hint": "新手阶段 2-3 次稳定比 4 次断续更值",        # one-line context in user's frame
+}
+```
+
+Supported `key` values (C.3.b.1 scope):
+- `weekly_training_count`
+- `daily_calorie_range.lower` / `daily_calorie_range.upper`
+- `daily_protein_grams_range.lower` / `daily_protein_grams_range.upper`
+- `process_goals.{N}.weekly_target_days`  (N = 0-based index into the chapter's process_goals)
+
+Other keys are silently skipped — don't rely on that, write valid specs.
+
+**`hint` writing voice:**
+- Use the user's own frame ("你自己说过周末时间自由度最大"), not clinical prescription ("ISSN recommends 2.3-3.1 g/kg").
+- One line. If you need three, this isn't a slider, it's a conversation.
+- Explain *why this range*, not *what the slider does*. The user can see the slider.
+- Avoid "建议" — Coach doesn't issue recommendations by reading the bar, it offers a shape inside which the user chooses.
+
+**Safety net you can trust:** the final patch still runs through `PlanDocument.model_validate` + `@model_validator` cross-field checks. If you somehow set a `max` that produces an unsafe combination, Pydantic catches it and the tool returns an actionable error. Your ranges are the *informed* layer; Pydantic is the *hard* layer. Both operate together.
 
 ## References — load on demand
 

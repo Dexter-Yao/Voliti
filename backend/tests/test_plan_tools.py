@@ -730,11 +730,13 @@ class TestApplyPlanBuilderSubmission:
         assert changes == ["训练 → 每周三次 · 力量为主"]
 
     def test_unknown_keys_are_ignored(self, baseline_plan: PlanDocument) -> None:
-        """C.3.a 只接受四个约定 key；未来协议演进时旧字段残留不应触发错误。"""
-        data = {"weekly_training_count": "5", "milestone": "新目标"}
+        """C.3.b.1 后：未知 key（协议演进后残留字段 / Coach 传错 key）不破坏整体翻译。"""
+        data = {"legacy_foo": "9", "something_else": "x", "milestone": "新目标"}
         patch, changes = _apply_plan_builder_submission(baseline_plan, 1, data)
         assert "chapters" in patch
-        assert patch["chapters"][0].get("weekly_training_count") is None
+        # 未知 key 不进入 patch
+        assert patch["chapters"][0].get("legacy_foo") is None
+        assert patch["chapters"][0].get("something_else") is None
         assert changes == ["本章目标 → 新目标"]
 
     def test_empty_whitespace_values_are_ignored(
@@ -761,3 +763,251 @@ class TestFanOutPlanBuilderGuards:
         )
         assert "不对应任何已有 chapter" in result
         assert "可用 chapter_index" in result
+
+
+# ── Plan Builder 数值字段（C.3.b.1）────────────────────────────────────────
+
+
+class TestEditableFieldToSlider:
+    def test_rejects_non_slider_kind(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        from voliti.tools.plan_tools import _editable_field_to_slider
+
+        spec = {"key": "weekly_training_count", "kind": "text_input", "min": 2, "max": 4, "label": "x"}
+        assert _editable_field_to_slider(spec, baseline_plan.chapters[0]) is None
+
+    def test_rejects_min_greater_than_max(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        from voliti.tools.plan_tools import _editable_field_to_slider
+
+        spec = {"key": "weekly_training_count", "kind": "slider", "min": 5, "max": 3, "label": "x"}
+        assert _editable_field_to_slider(spec, baseline_plan.chapters[0]) is None
+
+    def test_rejects_unknown_key(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        from voliti.tools.plan_tools import _editable_field_to_slider
+
+        spec = {"key": "blood_pressure", "kind": "slider", "min": 0, "max": 100, "label": "x"}
+        assert _editable_field_to_slider(spec, baseline_plan.chapters[0]) is None
+
+    def test_clamps_initial_value_into_coach_range(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """当前 chapter 的 weekly_training_count=2，Coach 给 [3, 5]，slider 初值应 clamp 到 3。"""
+        from voliti.tools.plan_tools import _editable_field_to_slider
+
+        spec = {"key": "weekly_training_count", "kind": "slider",
+                "min": 3, "max": 5, "step": 1, "label": "每周训练次数"}
+        slider = _editable_field_to_slider(spec, baseline_plan.chapters[0])
+        assert slider == {
+            "kind": "slider",
+            "key": "weekly_training_count",
+            "label": "每周训练次数",
+            "min": 3,
+            "max": 5,
+            "step": 1,
+            "value": 3,
+        }
+
+    def test_resolves_process_goal_index_path(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        from voliti.tools.plan_tools import _editable_field_to_slider
+
+        spec = {
+            "key": "process_goals.0.weekly_target_days",
+            "kind": "slider",
+            "min": 3,
+            "max": 7,
+            "label": "早餐蛋白目标天数",
+        }
+        slider = _editable_field_to_slider(spec, baseline_plan.chapters[0])
+        assert slider is not None
+        # chapter 1 的 process_goals[0].weekly_target_days == 5
+        assert slider["value"] == 5
+
+
+class TestBuildPlanBuilderComponentsWithEditableFields:
+    def test_without_editable_fields_preserves_readonly_summary(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """不传 editable_fields 时，保持 C.3.a 的只读聚合行。"""
+        components = _build_plan_builder_components(baseline_plan, 1, None)
+        assert components is not None
+        readonly_rows = [
+            c for c in components if c["kind"] == "text" and "kcal" in c.get("text", "")
+        ]
+        assert len(readonly_rows) == 1
+        assert "蛋白" in readonly_rows[0]["text"] and "每周训练" in readonly_rows[0]["text"]
+
+    def test_editable_field_emits_hint_before_slider(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        editable = [
+            {
+                "key": "weekly_training_count",
+                "kind": "slider",
+                "min": 2,
+                "max": 3,
+                "label": "每周训练次数",
+                "hint": "新手阶段 2-3 次稳定比 4 次断续更值",
+            }
+        ]
+        components = _build_plan_builder_components(baseline_plan, 1, editable)
+        assert components is not None
+        kinds = [c["kind"] for c in components]
+        # 期望末尾出现 text("数值调整") -> text(hint) -> slider
+        slider_pos = next(i for i, c in enumerate(components) if c["kind"] == "slider")
+        assert components[slider_pos - 1]["text"] == "新手阶段 2-3 次稳定比 4 次断续更值"
+        assert components[slider_pos - 2]["text"] == "数值调整"
+        assert "slider" in kinds
+
+    def test_readonly_summary_drops_edited_fields(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """weekly_training_count 被开放编辑 → 只读聚合行不再重复列出它。"""
+        editable = [
+            {"key": "weekly_training_count", "kind": "slider",
+             "min": 2, "max": 3, "label": "每周训练次数"}
+        ]
+        components = _build_plan_builder_components(baseline_plan, 1, editable)
+        assert components is not None
+        readonly_rows = [
+            c for c in components
+            if c["kind"] == "text"
+            and ("kcal" in c.get("text", "") or "每周训练" in c.get("text", ""))
+            and "数值调整" not in c.get("text", "")
+        ]
+        # 热量 + 蛋白仍在只读行；每周训练不再出现
+        assert len(readonly_rows) == 1
+        assert "每周训练" not in readonly_rows[0]["text"]
+        assert "热量" in readonly_rows[0]["text"]
+        assert "蛋白" in readonly_rows[0]["text"]
+
+    def test_invalid_spec_is_silently_skipped(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """Coach 传错一个 spec 不应让整个 panel 失败。"""
+        editable = [
+            {"key": "made_up_field", "kind": "slider", "min": 0, "max": 100, "label": "x"},
+            {"key": "weekly_training_count", "kind": "slider",
+             "min": 2, "max": 3, "label": "每周训练次数"},
+        ]
+        components = _build_plan_builder_components(baseline_plan, 1, editable)
+        assert components is not None
+        sliders = [c for c in components if c["kind"] == "slider"]
+        assert len(sliders) == 1
+        assert sliders[0]["key"] == "weekly_training_count"
+
+
+class TestApplyPlanBuilderSubmissionNumericFields:
+    def test_weekly_training_count_integer(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        # chapter 1 的 weekly_training_count=2
+        patch, changes = _apply_plan_builder_submission(
+            baseline_plan, 1, {"weekly_training_count": 3}
+        )
+        assert patch["chapters"][0]["weekly_training_count"] == 3
+        assert "每周训练次数 → 3" in changes
+
+    def test_weekly_training_count_accepts_string_digits(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """A2UI slider 可能把 int 序列化为 str（取决于前端传递），兼容两种。"""
+        patch, _ = _apply_plan_builder_submission(
+            baseline_plan, 1, {"weekly_training_count": "3"}
+        )
+        assert patch["chapters"][0]["weekly_training_count"] == 3
+
+    def test_range_lower_only_preserves_upper(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """只改 calorie 下限时，上限必须保留原值。"""
+        patch, changes = _apply_plan_builder_submission(
+            baseline_plan, 1, {"daily_calorie_range.lower": 1600}
+        )
+        assert patch["chapters"][0]["daily_calorie_range"] == [1600, 1800]
+        assert any("热量区间 → 1600-1800" in c for c in changes)
+
+    def test_range_both_endpoints_changed(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        patch, _ = _apply_plan_builder_submission(
+            baseline_plan,
+            1,
+            {"daily_calorie_range.lower": 1550, "daily_calorie_range.upper": 1750},
+        )
+        assert patch["chapters"][0]["daily_calorie_range"] == [1550, 1750]
+
+    def test_range_lower_greater_than_upper_is_ignored(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        """用户把 lower 拉过 upper（前端约束应防止，但防御性处理）→ 保持原值。"""
+        patch, changes = _apply_plan_builder_submission(
+            baseline_plan,
+            1,
+            {"daily_calorie_range.lower": 2000, "daily_calorie_range.upper": 1600},
+        )
+        assert "daily_calorie_range" not in patch.get("chapters", [{}])[0]
+        assert not any("热量" in c for c in changes)
+
+    def test_protein_range_change(self, baseline_plan: PlanDocument) -> None:
+        patch, changes = _apply_plan_builder_submission(
+            baseline_plan, 1, {"daily_protein_grams_range.upper": 125}
+        )
+        assert patch["chapters"][0]["daily_protein_grams_range"] == [90, 125]
+        assert any("蛋白区间 → 90-125 g" in c for c in changes)
+
+    def test_process_goal_weekly_target_days_rewrites_list(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        patch, changes = _apply_plan_builder_submission(
+            baseline_plan, 1, {"process_goals.0.weekly_target_days": 6}
+        )
+        pgs = patch["chapters"][0]["process_goals"]
+        # chapter 1 只有一个 process_goal；应整体重写且新值生效
+        assert len(pgs) == 1
+        assert pgs[0]["weekly_target_days"] == 6
+        assert pgs[0]["name"] == "早餐蛋白 25 克以上"
+        assert any("早餐蛋白 25 克以上 目标 → 6/周" in c for c in changes)
+
+    def test_process_goal_out_of_range_index_ignored(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        patch, changes = _apply_plan_builder_submission(
+            baseline_plan, 1, {"process_goals.7.weekly_target_days": 6}
+        )
+        assert patch == {}
+        assert changes == []
+
+    def test_numeric_no_change_produces_no_patch(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        data = {
+            "weekly_training_count": 2,  # 与 chapter 1 当前值相同
+            "daily_calorie_range.lower": 1500,
+            "daily_calorie_range.upper": 1800,
+        }
+        patch, changes = _apply_plan_builder_submission(baseline_plan, 1, data)
+        assert patch == {}
+        assert changes == []
+
+    def test_mixed_text_and_numeric_changes_stack_in_one_patch(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        data = {
+            "milestone": "连续三周早餐蛋白 5/7",
+            "rhythm.training": "每周三次",
+            "weekly_training_count": 3,
+        }
+        patch, changes = _apply_plan_builder_submission(baseline_plan, 1, data)
+        chapter_patch = patch["chapters"][0]
+        assert chapter_patch["milestone"] == "连续三周早餐蛋白 5/7"
+        assert chapter_patch["weekly_training_count"] == 3
+        assert chapter_patch["daily_rhythm"]["training"]["value"] == "每周三次"
+        # 三条变更都应出现在摘要里
+        assert len(changes) == 3

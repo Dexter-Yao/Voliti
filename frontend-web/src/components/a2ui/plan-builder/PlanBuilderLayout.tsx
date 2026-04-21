@@ -1,5 +1,5 @@
 // ABOUTME: Plan Builder 全屏 overlay body
-// ABOUTME: 渲染 text 只读段 + text_input 可编辑段 + 三个底部操作（确认 / 再谈谈 / 关闭）
+// ABOUTME: 渲染 text / text_input / slider + 底部三操作（确认 / 再谈谈 / 关闭）
 
 "use client";
 
@@ -18,14 +18,24 @@ interface PlanBuilderLayoutProps {
   onSkip: () => void;
 }
 
-function buildInitialData(components: Component[]): Record<string, string> {
-  const data: Record<string, string> = {};
+type FormValue = string | number;
+
+function buildInitialData(components: Component[]): Record<string, FormValue> {
+  const data: Record<string, FormValue> = {};
   for (const c of components) {
     if (c.kind === "text_input") {
       data[c.key] = c.value ?? "";
+    } else if (c.kind === "slider") {
+      data[c.key] = c.value ?? Math.round((c.min + c.max) / 2);
     }
   }
   return data;
+}
+
+function normalizeForCompare(value: FormValue | undefined): string {
+  if (value === undefined) return "";
+  if (typeof value === "number") return String(value);
+  return value.trim();
 }
 
 export function PlanBuilderLayout({
@@ -36,7 +46,7 @@ export function PlanBuilderLayout({
   onSkip,
 }: PlanBuilderLayoutProps) {
   const initialData = useMemo(() => buildInitialData(components), [components]);
-  const [formData, setFormData] = useState<Record<string, string>>(() => ({
+  const [formData, setFormData] = useState<Record<string, FormValue>>(() => ({
     ...initialData,
   }));
   const [discussMode, setDiscussMode] = useState(false);
@@ -44,8 +54,10 @@ export function PlanBuilderLayout({
 
   const hasChanges = useMemo(
     () =>
-      Object.entries(formData).some(
-        ([key, val]) => (val ?? "").trim() !== (initialData[key] ?? "").trim(),
+      Object.keys(initialData).some(
+        (key) =>
+          normalizeForCompare(formData[key]) !==
+          normalizeForCompare(initialData[key]),
       ),
     [formData, initialData],
   );
@@ -95,7 +107,7 @@ export function PlanBuilderLayout({
                   </Label>
                   <Input
                     id={`plan-builder-${component.key}`}
-                    value={formData[component.key] ?? ""}
+                    value={(formData[component.key] as string | undefined) ?? ""}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
@@ -106,6 +118,49 @@ export function PlanBuilderLayout({
                     placeholder={component.placeholder || ""}
                     className="border-[#1A1816]/15 bg-transparent text-sm focus-visible:border-[#B87333] focus-visible:ring-[#B87333]/30"
                   />
+                </div>
+              );
+            }
+            if (component.kind === "slider") {
+              const currentValue = Number(
+                formData[component.key] ??
+                  Math.round((component.min + component.max) / 2),
+              );
+              return (
+                <div key={component.key} className="space-y-2">
+                  <Label
+                    htmlFor={`plan-builder-${component.key}`}
+                    className="font-mono-system text-[10px] uppercase tracking-[1.5px] text-[#1A1816]/50"
+                  >
+                    {component.label}
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono-system text-[11px] text-[#1A1816]/40">
+                      {component.min}
+                    </span>
+                    <input
+                      id={`plan-builder-${component.key}`}
+                      type="range"
+                      min={component.min}
+                      max={component.max}
+                      step={component.step}
+                      value={currentValue}
+                      disabled={isSubmitting || discussMode}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          [component.key]: Number(e.target.value),
+                        }))
+                      }
+                      className="flex-1 accent-[#B87333]"
+                    />
+                    <span className="font-mono-system text-[11px] text-[#1A1816]/40">
+                      {component.max}
+                    </span>
+                    <span className="min-w-[2.5ch] text-center font-serif-coach text-[15px] font-medium text-[#1A1816]">
+                      {currentValue}
+                    </span>
+                  </div>
                 </div>
               );
             }

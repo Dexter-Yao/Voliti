@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Annotated, Any, Callable
 
@@ -458,8 +459,116 @@ def _merge_revise_plan(
 # ────────────────────────────────────────────────────────────────────────
 
 
+_PROCESS_GOAL_DAYS_KEY = re.compile(r"^process_goals\.(\d+)\.weekly_target_days$")
+
+
+def _resolve_numeric_field_value(
+    key: str, chapter: ChapterRecord
+) -> int | None:
+    """Plan Builder 数值字段 key → 当前 chapter 对应值。未知 key 返 None。
+
+    支持 key 集合（C.3.b.1）：
+      - weekly_training_count
+      - daily_calorie_range.lower / .upper
+      - daily_protein_grams_range.lower / .upper
+      - process_goals.{N}.weekly_target_days
+    """
+    if key == "weekly_training_count":
+        return chapter.weekly_training_count
+    if key == "daily_calorie_range.lower":
+        return chapter.daily_calorie_range[0]
+    if key == "daily_calorie_range.upper":
+        return chapter.daily_calorie_range[1]
+    if key == "daily_protein_grams_range.lower":
+        return chapter.daily_protein_grams_range[0]
+    if key == "daily_protein_grams_range.upper":
+        return chapter.daily_protein_grams_range[1]
+    match = _PROCESS_GOAL_DAYS_KEY.fullmatch(key)
+    if match:
+        idx = int(match.group(1))
+        if 0 <= idx < len(chapter.process_goals):
+            return chapter.process_goals[idx].weekly_target_days
+    return None
+
+
+def _editable_field_to_slider(
+    spec: dict[str, Any], chapter: ChapterRecord
+) -> dict[str, Any] | None:
+    """把 Coach 传入的 editable_field spec 转换为 A2UI slider component。
+
+    spec 非法（kind 不是 slider / min>max / key 未识别 / 当前值取不到）→ 返 None，
+    调用方跳过该字段。非致命，便于 Coach 迭代 editable_fields 时不整体失败。
+    """
+    if spec.get("kind") != "slider":
+        return None
+    key = spec.get("key")
+    label = spec.get("label")
+    min_val = spec.get("min")
+    max_val = spec.get("max")
+    step = spec.get("step", 1)
+    if not isinstance(key, str) or not key:
+        return None
+    if not isinstance(label, str) or not label:
+        return None
+    if not isinstance(min_val, int) or not isinstance(max_val, int):
+        return None
+    if min_val > max_val:
+        return None
+    if not isinstance(step, int) or step < 1:
+        step = 1
+
+    current = _resolve_numeric_field_value(key, chapter)
+    if current is None:
+        return None
+
+    # 当前值若在 Coach 给出的区间之外，clamp 到区间内作为 slider 初始值——
+    # 这是 slider 的 UI 约束，并非写入数据；最终写入仍由 Pydantic + Coach
+    # 给的 min/max 共同守护
+    initial = max(min_val, min(int(current), max_val))
+    return {
+        "kind": "slider",
+        "key": key,
+        "label": label,
+        "min": min_val,
+        "max": max_val,
+        "step": step,
+        "value": initial,
+    }
+
+
+def _readonly_numeric_summary(
+    chapter: ChapterRecord, edited_keys: set[str]
+) -> str | None:
+    """把当前 chapter 中 *未开放编辑* 的数值合并为一行只读展示。三项都被编辑 → None。"""
+    segments: list[str] = []
+    calorie_edited = (
+        "daily_calorie_range.lower" in edited_keys
+        and "daily_calorie_range.upper" in edited_keys
+    )
+    protein_edited = (
+        "daily_protein_grams_range.lower" in edited_keys
+        and "daily_protein_grams_range.upper" in edited_keys
+    )
+    wtc_edited = "weekly_training_count" in edited_keys
+    if not calorie_edited:
+        segments.append(
+            f"热量 {chapter.daily_calorie_range[0]}-{chapter.daily_calorie_range[1]} kcal"
+        )
+    if not protein_edited:
+        segments.append(
+            f"蛋白 {chapter.daily_protein_grams_range[0]}-{chapter.daily_protein_grams_range[1]} g"
+        )
+    if not wtc_edited:
+        segments.append(f"每周训练 {chapter.weekly_training_count} 次")
+    if not segments:
+        return None
+    return " · ".join(segments)
+
+
 def _build_plan_builder_components(
-    plan: PlanDocument, chapter_index: int
+    plan: PlanDocument,
+    chapter_index: int,
+    editable_fields: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]] | None:
     """按约定顺序生成 Plan Builder overlay 的 A2UI components。
 
@@ -468,6 +577,13 @@ def _build_plan_builder_components(
       - "rhythm.meals"     → patch.chapters[i].daily_rhythm.meals.value
       - "rhythm.training"  → patch.chapters[i].daily_rhythm.training.value
       - "rhythm.sleep"     → patch.chapters[i].daily_rhythm.sleep.value
+      - 数值字段通过 editable_fields 参数按 spec 开放（见 _resolve_numeric_field_value）
+
+    editable_fields：Coach 供给的数值字段约束列表，每条 spec:
+      { "key": str, "kind": "slider", "min": int, "max": int, "step": int?,
+        "label": str, "hint": str? }
+    Coach 负责根据用户画像/当前 chapter/numeric-guidelines.md 计算合理的
+    min/max，代码只执行。无效 spec 跳过，不阻断整体渲染。
 
     chapter_index 不匹配任何 chapter → 返回 None，由调用方透传错误给 Coach。
     """
@@ -515,19 +631,52 @@ def _build_plan_builder_components(
         },
     ]
 
-    # 数值字段只读展示，不开放编辑（C.3.a 原则：数值协商留给对话）
-    components.append(
-        {
-            "kind": "text",
-            "text": (
-                f"热量区间 {chapter.daily_calorie_range[0]}-{chapter.daily_calorie_range[1]} kcal · "
-                f"蛋白 {chapter.daily_protein_grams_range[0]}-{chapter.daily_protein_grams_range[1]} g · "
-                f"每周训练 {chapter.weekly_training_count} 次"
-            ),
-        }
-    )
+    edited_keys: set[str] = set()
+    numeric_components: list[dict[str, Any]] = []
+    for spec in editable_fields or []:
+        slider = _editable_field_to_slider(spec, chapter)
+        if slider is None:
+            continue
+        hint = spec.get("hint")
+        if isinstance(hint, str) and hint.strip():
+            numeric_components.append({"kind": "text", "text": hint.strip()})
+        numeric_components.append(slider)
+        edited_keys.add(slider["key"])
+
+    if numeric_components:
+        components.append({"kind": "text", "text": "数值调整"})
+        components.extend(numeric_components)
+
+    readonly_line = _readonly_numeric_summary(chapter, edited_keys)
+    if readonly_line is not None:
+        components.append({"kind": "text", "text": readonly_line})
 
     return components
+
+
+def _coerce_int(value: Any) -> int | None:
+    """把 submission data 里的数值（int / 纯数字 str / float）安全转 int，其他返 None。"""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not value.is_integer():
+            return None
+        return int(value)
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            return int(s)
+        except ValueError:
+            try:
+                f = float(s)
+                return int(f) if f.is_integer() else None
+            except ValueError:
+                return None
+    return None
 
 
 def _apply_plan_builder_submission(
@@ -537,7 +686,12 @@ def _apply_plan_builder_submission(
 ) -> tuple[dict[str, Any], list[str]]:
     """把 Plan Builder submit data 翻译为 PlanPatch dict + 人类可读的变更清单。
 
-    只接受 C.3.a 四个可编辑字段（milestone / rhythm.{meals,training,sleep}）；
+    支持的编辑字段（C.3.a + C.3.b.1）：
+      文本 — milestone / rhythm.{meals,training,sleep}
+      数值 — weekly_training_count / daily_calorie_range.{lower,upper} /
+             daily_protein_grams_range.{lower,upper} /
+             process_goals.{N}.weekly_target_days
+
     其他 key 忽略（防御性，防止协议演进后旧字段残留触发校验错误）。
     返回 ({}，[]) 表示无有效改动。
     """
@@ -594,6 +748,63 @@ def _apply_plan_builder_submission(
         full_rhythm.update(rhythm_patch)
         chapter_patch["daily_rhythm"] = full_rhythm
 
+    # 数值字段（C.3.b.1）──────────────────────────────────────────────
+
+    new_wtc = _coerce_int(data.get("weekly_training_count"))
+    if new_wtc is not None and new_wtc != chapter.weekly_training_count:
+        chapter_patch["weekly_training_count"] = new_wtc
+        changes.append(f"每周训练次数 → {new_wtc}")
+
+    # 区间字段：lower / upper 单独提交时需合成完整 tuple，另一端保留原值
+    for range_key, label_zh, unit in (
+        ("daily_calorie_range", "热量区间", "kcal"),
+        ("daily_protein_grams_range", "蛋白区间", "g"),
+    ):
+        current_lower, current_upper = getattr(chapter, range_key)
+        new_lower = _coerce_int(data.get(f"{range_key}.lower"))
+        new_upper = _coerce_int(data.get(f"{range_key}.upper"))
+        if new_lower is None and new_upper is None:
+            continue
+        final_lower = current_lower if new_lower is None else new_lower
+        final_upper = current_upper if new_upper is None else new_upper
+        if final_lower > final_upper:
+            # 用户把 lower 拉过了 upper——维持原值而非出错，Coach 可据日志察觉
+            logger.info(
+                "plan_tools: plan builder range lower>upper, ignoring",
+                extra={"range_key": range_key, "lower": final_lower, "upper": final_upper},
+            )
+            continue
+        if (final_lower, final_upper) == (current_lower, current_upper):
+            continue
+        chapter_patch[range_key] = [final_lower, final_upper]
+        changes.append(f"{label_zh} → {final_lower}-{final_upper} {unit}")
+
+    # process_goals.{N}.weekly_target_days 整体替换 process_goals 列表
+    pg_updates: dict[int, int] = {}
+    for key, value in data.items():
+        match = _PROCESS_GOAL_DAYS_KEY.fullmatch(key)
+        if not match:
+            continue
+        idx = int(match.group(1))
+        if not (0 <= idx < len(chapter.process_goals)):
+            continue
+        new_days = _coerce_int(value)
+        if new_days is None:
+            continue
+        if new_days == chapter.process_goals[idx].weekly_target_days:
+            continue
+        pg_updates[idx] = new_days
+
+    if pg_updates:
+        new_goals: list[dict[str, Any]] = []
+        for i, pg in enumerate(chapter.process_goals):
+            dumped = pg.model_dump()
+            if i in pg_updates:
+                dumped["weekly_target_days"] = pg_updates[i]
+                changes.append(f"{pg.name} 目标 → {pg_updates[i]}/周")
+            new_goals.append(dumped)
+        chapter_patch["process_goals"] = new_goals
+
     if len(chapter_patch) <= 1:
         return {}, []
 
@@ -603,39 +814,57 @@ def _apply_plan_builder_submission(
 @tool
 def fan_out_plan_builder(
     chapter_index: int | None = None,
+    editable_fields: list[dict[str, Any]] | None = None,
     *,
     store: Annotated[BaseStore, InjectedToolArg],
     config: Annotated[dict[str, Any], InjectedToolArg],
 ) -> str:
     """Open the Plan Builder full-screen overlay so the user can review and lightly
-    revise the current Plan's active chapter.
+    revise the current Plan's target chapter.
 
-    C.3.a scope — editable fields (four text strings only):
-      - `milestone`
-      - `rhythm.meals` / `rhythm.training` / `rhythm.sleep`
+    Editable field families:
+      - **Text fields (always open)** — `milestone`, `rhythm.meals` /
+        `rhythm.training` / `rhythm.sleep`.
+      - **Numeric fields (opt-in via `editable_fields`)** — `weekly_training_count`,
+        `daily_calorie_range.{lower,upper}`, `daily_protein_grams_range.{lower,upper}`,
+        `process_goals.{N}.weekly_target_days`. You decide the per-field min/max
+        based on the user's six-dimension profile, the current chapter's position,
+        and `/skills/coach/plan/references/numeric-guidelines.md` — the tool does
+        not hard-code ranges. Keep ranges tight enough that any point inside is a
+        responsible choice for this user.
 
-    Numeric fields (calorie range, protein range, training count, weekly target days)
-    are read-only in this version; numeric revisions stay in conversation where Coach
-    can negotiate against health-safety thresholds.
+    Each editable_field spec is a dict:
+      {"key": str, "kind": "slider", "min": int, "max": int,
+       "step": int (default 1), "label": str, "hint": str (optional)}
+    The `hint` renders as a short line of context above the slider — use it to
+    tell the user *why* this range, in the user's own frame ("你自己说过周末时间
+    自由度最大"), not as an instruction.
+
+    Invalid specs (wrong kind, bad min/max, unknown key, current value unresolvable)
+    are silently skipped so a bad field does not block the whole panel.
 
     Behavior:
-      - Reads the current Plan with self-heal; rejects if no Plan exists (tells Coach
-        to call `create_plan` first).
-      - Resolves target chapter via `chapter_index` (defaults to the plan's first
-        chapter; Coach can pin a specific chapter when revising a non-active one).
+      - Reads the current Plan with self-heal; rejects if no Plan exists.
+      - Resolves target chapter via `chapter_index` (defaults to the first chapter).
       - Presents a full-screen overlay (`surface="plan-builder"`, `layout="full"`).
-      - On submit with real changes → calls revise_plan internally with a minimal patch
-        and returns a Chinese summary naming what changed.
+      - On submit with real changes → calls revise_plan internally with a minimal
+        patch and returns a Chinese summary naming what changed.
       - On empty submit → treats as user acknowledgement, no write.
       - On reject / skip → returns the plain-text reason for Coach to pick up.
 
     Args:
-        chapter_index: 1-based chapter index to open for editing. When None, opens the
-            first chapter (most common case: the currently active chapter is the one
-            the user wants to micro-adjust).
+        chapter_index: 1-based chapter index to open. When None, opens the first
+            chapter (most common: the currently active chapter).
+        editable_fields: Optional list of numeric field specs. Default None means
+            text-only editing.
     """
-    from voliti.a2ui import A2UIPayload
-    from voliti.tools.fan_out import _fan_out_core
+    from voliti.a2ui import (
+        A2UIPayload,
+        A2UIResponse,
+        current_interrupt_id,
+        validate_a2ui_response,
+    )
+    from langgraph.types import interrupt
 
     now = datetime.now(timezone.utc)
     user_namespace = resolve_user_namespace(config)
@@ -648,7 +877,7 @@ def fan_out_plan_builder(
         )
 
     resolved_index = chapter_index if chapter_index is not None else plan.chapters[0].chapter_index
-    components = _build_plan_builder_components(plan, resolved_index)
+    components = _build_plan_builder_components(plan, resolved_index, editable_fields)
     if components is None:
         available = sorted(c.chapter_index for c in plan.chapters)
         return (
@@ -672,37 +901,37 @@ def fan_out_plan_builder(
             "请改走对话方式与用户确认方案。"
         )
 
-    # interrupt → 等待用户响应（同步返回摘要/数据）
-    raw_response_summary = _fan_out_core(payload)
+    # 直接 interrupt 拿原始 A2UIResponse（绕过 _fan_out_core 的字符串摘要，
+    # 让 slider 数值保持整数类型、text 字段里的逗号不被误分隔）
+    raw_response = interrupt(payload.model_dump())
+    try:
+        response = A2UIResponse.model_validate(raw_response)
+    except ValidationError:
+        return "User response could not be parsed. Ask the user to repeat their answer verbally."
+    try:
+        validate_a2ui_response(
+            payload, response, expected_interrupt_id=current_interrupt_id()
+        )
+    except ValueError:
+        return "User response no longer matches the active panel. Ask the user to try again."
 
-    # _fan_out_core 对 submit 返回 "User responded: k=v, k=v"；
-    # reject / skip / empty 有独立分支文案；解析用户编辑的最稳妥方式是
-    # 重新打开 payload 的 raw interrupt response。这里为保持最小改动，
-    # 借助摘要字符串前缀判断——非 "User responded:" 前缀的情况直接透传。
-    if not raw_response_summary.startswith("User responded:"):
-        return raw_response_summary
+    if response.action == "reject":
+        if response.reason:
+            return f"User rejected: {response.reason}"
+        return "User closed the panel without responding."
+    if response.action == "skip":
+        return "User acknowledged but chose to skip."
 
-    # 重新进入 Store 读取最新 Plan（_fan_out_core 期间 Coach 可能已变更），
-    # 以最新 Plan 为基线做 submission → patch 翻译
+    if not response.data:
+        return "User acknowledged the plan as is."
+
+    # 重新读取最新 Plan（panel 期间状态可能已变）作为 submission → patch 的基线
     latest_plan = read_current_plan_with_self_heal(store, user_namespace, archive_namespace)
     if latest_plan is None:
         return "Plan Builder 响应期间 Plan 被清空，未写入。"
 
-    # 从摘要字符串解析 key=value（摘要格式由 _fan_out_core 控制）
-    body = raw_response_summary[len("User responded:"):].strip()
-    if not body or body == "(acknowledged the observation)":
-        return "User acknowledged the plan as is."
-
-    submission: dict[str, Any] = {}
-    for pair in body.split(","):
-        pair = pair.strip()
-        if not pair or "=" not in pair:
-            continue
-        k, v = pair.split("=", 1)
-        submission[k.strip()] = v.strip()
-
     patch_dict, changes = _apply_plan_builder_submission(
-        latest_plan, resolved_index, submission
+        latest_plan, resolved_index, response.data
     )
     if not patch_dict or not changes:
         return "User submitted the plan panel without changes."
