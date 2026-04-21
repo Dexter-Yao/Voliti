@@ -33,12 +33,14 @@ logger = logging.getLogger(__name__)
 
 
 def _load_skill_tools() -> list[Any]:
-    """扫描 backend/skills/coach/*/tool.py，加载每个 skill 目录导出的 TOOL 工具。
+    """扫描 backend/skills/coach/*/tool.py，加载每个 skill 目录导出的工具。
 
-    约定：每个 coach skill 在其目录内提供 tool.py，末尾以 `TOOL = <tool>`
-    暴露 langchain `@tool` 实例。本函数按目录名排序加载以保证工具列表稳定。
+    约定：每个 coach skill 在其目录内提供 tool.py，通过以下任一方式导出工具：
+    - `TOOLS = [<tool>, ...]`：一个 skill 暴露多个 tool（Plan skill 等）
+    - `TOOL = <tool>`：单工具 skill（intervention / witness-card）
 
-    发现但加载失败的 tool.py 以 warning 记录并跳过，不阻断 Coach 启动。
+    本函数按目录名排序加载以保证工具列表稳定。发现但加载失败的 tool.py 以
+    warning 记录并跳过，不阻断 Coach 启动。
     """
     tools: list[Any] = []
     if not COACH_SKILLS_ROOT.is_dir():
@@ -62,10 +64,15 @@ def _load_skill_tools() -> list[Any]:
             logger.exception("skill tool loader: failed to import %s", tool_path)
             continue
 
+        tools_list = getattr(module, "TOOLS", None)
+        if isinstance(tools_list, list) and tools_list:
+            tools.extend(tools_list)
+            continue
+
         tool_obj = getattr(module, "TOOL", None)
         if tool_obj is None:
             logger.warning(
-                "skill tool loader: %s does not export a TOOL constant", tool_path
+                "skill tool loader: %s does not export a TOOL or TOOLS", tool_path
             )
             continue
         tools.append(tool_obj)

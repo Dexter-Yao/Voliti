@@ -20,9 +20,11 @@ from voliti.store_contract import (
 )
 from voliti.tools.plan_tools import (
     _execute_plan_tool,
+    _merge_create_plan,
     _merge_revise_plan,
     _merge_set_goal_status,
     _merge_update_week_narrative,
+    create_plan,
     read_current_plan_with_self_heal,
     revise_plan,
     set_goal_status,
@@ -548,3 +550,91 @@ class TestToolEndToEnd:
         )
         # 错误消息应包含字段路径
         assert "rate_kg_per_week" in result
+
+
+# ── create_plan 首次创建 ───────────────────────────────────────────────────
+
+
+class TestMergeCreatePlan:
+    def test_rejects_when_plan_already_exists(
+        self, baseline_plan: PlanDocument, fixed_now: datetime
+    ) -> None:
+        with pytest.raises(Exception) as exc_info:
+            _merge_create_plan(
+                baseline_plan,
+                document=_baseline_plan_dict(),
+                now=fixed_now,
+            )
+        assert "Plan 已存在" in str(exc_info.value)
+
+    def test_creates_when_no_current_plan(self, fixed_now: datetime) -> None:
+        document = _baseline_plan_dict()
+        plan = _merge_create_plan(None, document=document, now=fixed_now)
+        assert plan.version == 1
+        assert plan.predecessor_version is None
+        assert plan.status == "active"
+        assert plan.created_at == fixed_now
+        assert plan.revised_at == fixed_now
+
+    def test_overrides_coach_supplied_version(self, fixed_now: datetime) -> None:
+        """即使 Coach 传入 version=5，系统也强制 version=1。"""
+        document = _baseline_plan_dict() | {"version": 5, "predecessor_version": 4}
+        plan = _merge_create_plan(None, document=document, now=fixed_now)
+        assert plan.version == 1
+        assert plan.predecessor_version is None
+
+    def test_validation_error_surfaces_as_rejection(
+        self, fixed_now: datetime
+    ) -> None:
+        from voliti.tools.plan_tools import PlanToolRejected
+
+        bad_doc = _baseline_plan_dict()
+        # 让第二章 start_date 不等于第一章 end_date，触发 chapter timeline 校验
+        bad_doc["chapters"][1]["start_date"] = "2026-03-10"
+        with pytest.raises(PlanToolRejected) as exc_info:
+            _merge_create_plan(None, document=bad_doc, now=fixed_now)
+        assert "Chapter 1" in exc_info.value.message
+        assert "不连续" in exc_info.value.message
+
+
+class TestCreatePlanEndToEnd:
+    def test_create_plan_happy_path(self, empty_store: InMemoryStore) -> None:
+        """新用户场景：current 与 archive 皆空，create_plan 应 archive-first 写 v1。"""
+        document = _baseline_plan_dict()
+        result = create_plan.func(
+            document=document, store=empty_store, config=CONFIG
+        )
+        assert "写入成功" in result
+        assert "version 1" in result
+
+        current_item = empty_store.get(USER_NS, PLAN_CURRENT_KEY)
+        assert current_item is not None
+        doc = PlanDocument.model_validate_json(unwrap_file_value(current_item.value))
+        assert doc.plan_id == "plan_a"
+        assert doc.version == 1
+
+        archive_items = list(empty_store.search(ARCHIVE_NS, limit=10))
+        assert len(archive_items) == 1
+        assert archive_items[0].key == "plan_a_v1.json"
+
+    def test_create_plan_rejects_when_plan_exists(
+        self, store_with_plan: InMemoryStore
+    ) -> None:
+        document = _baseline_plan_dict()
+        result = create_plan.func(
+            document=document, store=store_with_plan, config=CONFIG
+        )
+        assert "Plan 已存在" in result
+
+    def test_create_plan_validation_error_fail_closed(
+        self, empty_store: InMemoryStore
+    ) -> None:
+        bad_doc = _baseline_plan_dict()
+        bad_doc["target"]["rate_kg_per_week"] = 2.5   # 超健康阈值
+        result = create_plan.func(
+            document=bad_doc, store=empty_store, config=CONFIG
+        )
+        assert "rate_kg_per_week" in result
+        # 失败时 current 与 archive 都不应被写入
+        assert empty_store.get(USER_NS, PLAN_CURRENT_KEY) is None
+        assert list(empty_store.search(ARCHIVE_NS, limit=10)) == []

@@ -24,6 +24,10 @@ _EXPECTED_SKILL_TOOL_NAMES = {
     "fan_out_metaphor_collaboration",
     "fan_out_cognitive_reframing",
     "issue_witness_card",
+    "create_plan",
+    "set_goal_status",
+    "update_week_narrative",
+    "revise_plan",
 }
 
 
@@ -54,10 +58,10 @@ def _intervention_tools() -> dict[str, Any]:
 class TestDynamicLoading:
     """_load_skill_tools 动态加载行为。"""
 
-    def test_finds_five_skill_tools(self) -> None:
-        """应发现四个 intervention 与一个 witness-card skill 的 tool.py。"""
+    def test_finds_all_registered_skill_tools(self) -> None:
+        """应发现 4 个 intervention + witness-card + Plan 的 4 个 tool，共 9 个。"""
         tools = _load_skill_tools()
-        assert len(tools) == 5
+        assert len(tools) == len(_EXPECTED_SKILL_TOOL_NAMES)
 
     def test_skill_tool_names_match_contract(self) -> None:
         """技能工具名应满足统一装载契约。"""

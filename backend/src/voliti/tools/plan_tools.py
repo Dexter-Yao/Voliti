@@ -369,6 +369,37 @@ def _merge_chapters(
     return merged
 
 
+def _merge_create_plan(
+    current: PlanDocument | None,
+    *,
+    document: dict[str, Any],
+    now: datetime,
+) -> PlanDocument:
+    """首次创建 Plan 的合并函数。current 已存在时拒绝；系统强制版本与时间字段。"""
+    if current is not None:
+        raise PlanToolRejected(
+            f"Plan 已存在（plan_id={current.plan_id}，version={current.version}）。"
+            "如需修订当前 Plan，请调用 revise_plan；"
+            "如需用新 Plan 替换（例如阶段性目标完成后开启新方案），"
+            "请在 revise_plan 的 patch 中提供 supersedes_plan_id 与新的 target / chapters。"
+        )
+
+    try:
+        candidate = PlanDocument.model_validate(document)
+    except ValidationError as exc:
+        raise PlanToolRejected(format_plan_write_error(exc)) from exc
+
+    return candidate.model_copy(
+        update={
+            "version": 1,
+            "predecessor_version": None,
+            "status": "active",
+            "created_at": now,
+            "revised_at": now,
+        }
+    )
+
+
 def _merge_revise_plan(
     current: PlanDocument | None,
     *,
@@ -376,10 +407,9 @@ def _merge_revise_plan(
     now: datetime,
 ) -> PlanDocument:
     if current is None:
-        # 首次创建：patch 必须提供完整 plan 所需的字段
         raise PlanToolRejected(
-            "Plan 尚未创建。首次创建 Plan 需要通过 replace_plan 入口提供完整 PlanDocument，"
-            "revise_plan 只处理对已存在 Plan 的修订（本工具后续迭代会合并 create 能力）。"
+            "Plan 尚未创建。首次创建请调用 create_plan，并传入包含完整 target / chapters / "
+            "target_summary / overall_narrative / started_at / planned_end_at 等字段的 PlanDocument。"
         )
 
     dumped = patch.model_dump(exclude_none=True)
@@ -426,6 +456,40 @@ def _merge_revise_plan(
 # ────────────────────────────────────────────────────────────────────────
 #  Tool 定义
 # ────────────────────────────────────────────────────────────────────────
+
+
+@tool
+def create_plan(
+    document: dict[str, Any],
+    *,
+    store: Annotated[BaseStore, InjectedToolArg],
+    config: Annotated[dict[str, Any], InjectedToolArg],
+) -> str:
+    """Create the user's first Plan from a complete PlanDocument.
+
+    Structural write: archives /plan/archive/{plan_id}_v1.json and points /plan/current.json at it.
+    Rejected when a Plan already exists — use revise_plan for subsequent changes, or revise_plan with
+    supersedes_plan_id when replacing one Plan with a new one.
+
+    System overrides four fields regardless of input: version=1, predecessor_version=null,
+    status="active", created_at=revised_at=now (UTC). Other fields must be provided by the caller
+    and are validated against PlanDocument's cross-field constraints (chapter timeline continuity,
+    chapter_index monotonicity, planned_end_at coverage, process_goal name references, linked
+    chapter references).
+
+    Args:
+        document: Full PlanDocument as a dict. Must include plan_id, target_summary,
+            overall_narrative, started_at, planned_end_at, target, chapters (≥1). Optional:
+            linked_lifesigns, linked_markers, current_week, change_summary, supersedes_plan_id.
+    """
+    now = datetime.now(timezone.utc)
+
+    def merge(current: PlanDocument | None) -> PlanDocument:
+        return _merge_create_plan(current, document=document, now=now)
+
+    return _execute_plan_tool(
+        store=store, config=config, merge_fn=merge, is_structural=True, now=now
+    )
 
 
 @tool
