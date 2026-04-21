@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { fetchCoachContext, type CoachContextData, type WitnessCard, type ForwardMarkerSummary } from "@/lib/store-sync";
 import { derivePlanPhaseCopy, formatFreshnessLabel } from "@/lib/plan-freshness";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 function EmptyState() {
   return (
@@ -223,6 +224,15 @@ export function MirrorPanel() {
   const { chapter, copingPlans, dashboardConfig, identity_statement, goal } =
     data.mirrorData;
   const freshnessLabel = formatFreshnessLabel(data?.planView?.week_freshness);
+
+  // 直接从 data.plan 取 active chapter 的叙事字段（why_this_chapter / why_this_goal），
+  // 绕过 adapter 丢失的这些字段——C.2 重构时再把 adapter 移除
+  const activePlanChapter =
+    data?.plan && data?.planView?.active_chapter_index != null
+      ? data.plan.chapters.find(
+          (c) => c.chapter_index === data.planView!.active_chapter_index,
+        ) ?? null
+      : null;
   const processGoalTargets = new Map(
     chapter?.process_goals.map((processGoal) => [processGoal.metric_key, processGoal.target]) ?? [],
   );
@@ -249,6 +259,11 @@ export function MirrorPanel() {
             <span className="font-mono-system text-[10px] uppercase tracking-[2px] text-[#B87333]">
               Chapter {chapter.chapter_number}
             </span>
+            {activePlanChapter?.why_this_chapter && (
+              <InfoTooltip label={`第 ${chapter.chapter_number} 章的来由`}>
+                {activePlanChapter.why_this_chapter}
+              </InfoTooltip>
+            )}
             {chapter.start_date && (
               <span className="text-xs text-[#1A1816]/30">
                 自 {chapter.start_date}
@@ -333,19 +348,34 @@ export function MirrorPanel() {
         {supportMetrics.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <div className="grid grid-cols-3 text-center">
-              {supportMetrics.map((metric, idx) => (
-                <div
-                  key={metric.key}
-                  className={idx > 0 ? "border-l border-[#1A1816]/10" : ""}
-                >
-                  <div className="font-serif-coach text-xl font-medium text-[#1A1816]">
-                    {processGoalTargets.get(metric.key) ?? "—"}
+              {supportMetrics.map((metric, idx) => {
+                const whyThisGoal =
+                  activePlanChapter?.process_goals[idx]?.why_this_goal ?? null;
+                return (
+                  <div
+                    key={metric.key}
+                    className={idx > 0 ? "border-l border-[#1A1816]/10" : ""}
+                  >
+                    <div className="font-serif-coach text-xl font-medium text-[#1A1816]">
+                      {processGoalTargets.get(metric.key) ?? "—"}
+                    </div>
+                    <div className="inline-flex items-center justify-center gap-1">
+                      <span className="font-mono-system text-[9px] uppercase tracking-[1px] text-[#1A1816]/40">
+                        {metric.label}
+                      </span>
+                      {whyThisGoal && (
+                        <InfoTooltip
+                          label={`${metric.label} 的来由`}
+                          iconSize={10}
+                          align={idx === supportMetrics.length - 1 ? "right" : "left"}
+                        >
+                          {whyThisGoal}
+                        </InfoTooltip>
+                      )}
+                    </div>
                   </div>
-                  <div className="font-mono-system text-[9px] uppercase tracking-[1px] text-[#1A1816]/40">
-                    {metric.label}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
