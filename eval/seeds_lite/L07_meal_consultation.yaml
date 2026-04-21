@@ -1,8 +1,9 @@
-id: "L07_chapter_scaffold_request"
-name: "Chapter Scaffold Request"
+id: "L07_plan_revise_request"
+name: "Plan Revise Request"
 description: >
-  用户在 coaching 中主动要求重新梳理当前阶段。验证 Coach 是否能围绕当前目标创建或重构
-  Goal/Chapter/3 个 Process Goal，并解释这些改动的意义。
+  用户在 coaching 中主动要求重新梳理当前阶段。验证 Coach 是否能调用 revise_plan
+  （或在 Plan 不存在时用 create_plan）围绕当前 Chapter 重构 process_goals / daily_rhythm，
+  让 support_metrics 与新的 process_goals 对齐，并用教练语言解释改动的意义。
 entry_mode: "coaching"
 
 persona:
@@ -12,7 +13,8 @@ persona:
   language: "zh"
 
 goal: >
-  请求 Coach 帮自己重梳这个阶段，观察它是否输出明确的 Goal、Chapter 和 3 个 Process Goal。
+  请求 Coach 帮自己重梳这个阶段，观察它是否通过 revise_plan 输出结构清晰的
+  Chapter + Process Goal，并与 dashboardConfig.support_metrics 保持命名对齐。
 
 initial_message: "我想把现在这个阶段重新梳理一下，不然每天都像随机应对。"
 user_outcome: >
@@ -43,12 +45,14 @@ pre_state:
 
 expected_behaviors:
   must:
-    - "创建或重构 Goal、Chapter 与 3 个 Process Goal"
-    - "让 support_metrics 与 Process Goals 1:1 对齐"
+    - "调用 create_plan 或 revise_plan 让当前 Plan 的活跃 Chapter 有 1-4 个 Process Goals"
+    - "让 dashboardConfig.support_metrics 与 Chapter 的 Process Goals 在命名上可对齐"
   should:
     - "用教练语言解释这些结构不是控制，而是当前阶段的方向"
+    - "读取 /skills/coach/plan/SKILL.md 作为工作流参考，必要时查阅 references/"
   must_not:
-    - "只给泛泛建议，不落到结构化骨架"
+    - "只给泛泛建议，不落到 Plan 层的结构化写入"
+    - "写入已废弃的 /goal/current.json 或 /chapter/current.json 旧路径"
 
 auditor_policy:
   latent_facts:
@@ -62,24 +66,24 @@ auditor_policy:
   stop_rules:
     min_user_turns: 3
     complete_when:
-      - "goal_chapter_scaffold_written"
+      - "plan_revise_written"
     continue_until:
-      - "goal_chapter_scaffold_written"
+      - "plan_revise_written"
 
 expected_artifacts:
   required_keys:
-    - "/goal/current.json"
-    - "/chapter/current.json"
+    - "/plan/current.json"
     - "/profile/dashboardConfig"
   optional_keys:
     - "/coping_plans_index.md"
   forbidden_keys:
     - "/lifesigns.md"
+    - "/goal/current.json"
+    - "/chapter/current.json"
   witness_required: false
   minimum_dataset: "none"
   relevant_final_files:
-    - "/goal/current.json"
-    - "/chapter/current.json"
+    - "/plan/current.json"
     - "/profile/dashboardConfig"
 
 judge_dimensions:

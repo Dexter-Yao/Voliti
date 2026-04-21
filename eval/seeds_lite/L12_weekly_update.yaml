@@ -1,0 +1,212 @@
+id: "L12_weekly_update"
+name: "Weekly Goal Status Update"
+description: >
+  用户在周末 coaching 会话中总结过去一周的执行情况。验证 Coach 是否能在对话中自然采集信号，
+  区分状态性更新（set_goal_status / update_week_narrative）与结构性修订（revise_plan），
+  并只在状态层面提交写入——不在用户没提议的情况下擅自重构 Plan。
+entry_mode: "coaching"
+
+persona:
+  name: "小兰"
+  background: "29 岁设计师，Plan 已运行 3 周，处于 Chapter 2 中段"
+  personality: "反思型，讲话会自己纠正自己；不喜欢被贴标签"
+  language: "zh"
+
+goal: >
+  向 Coach 复盘这一周，让它听完再做总结。不主动要求改 Plan，但如果 Coach 提出能改也可以讨论。
+
+initial_message: "这周过完了，我自己看下来其实三顿吃得比上周好，训练只做了两次但都达到了我自己满意的强度。就是周六深夜还是没扛住，又吃了一顿夜宵。"
+
+user_outcome: >
+  用户感到这一周的尝试被 Coach 听见了——不是以一个"3 个成功 + 1 个失败"的打分被登记，
+  而是被作为一个有起伏的真实一周被理解。
+allowed_good_variants:
+  - "Coach 可以先确认用户对'两次都到强度算作达成'的判断，再决定 days_met 的数值。"
+  - "Coach 可以只调 set_goal_status，不动 narrative；或只调 update_week_narrative 反映情绪；或两者都调。"
+  - "Coach 可以把'周六夜宵'反映到 concerns 里，不一定要触发 LifeSign 重评。"
+
+manual_review_checks:
+  - "检查 set_goal_status 的 days_met 判断是否反映 Coach 对用户叙述的综合理解，而不是机械计数。"
+  - "检查 Coach 是否在没必要时触发 revise_plan（这是状态性修订的周末，Plan 结构通常不需要改）。"
+
+max_turns: 12
+
+pre_state:
+  profile: |
+    # User Profile
+
+    ## Identity
+    - name: 小兰
+    - identity_statement: 一个在忙碌里也能稳住自己节奏的人
+    - onboarding_complete: true
+
+    ## Life Context
+    - work_rhythm: 朝十晚七，周末双休
+    - primary_meal_source: 自炊 / 外卖混合
+
+    ## Risk Landscape
+    - emotional_triggers: 周末无结构时容易散
+    - post_lapse_pattern: often
+  coach_memory: |
+    # Coach Memory
+
+    ## Verified Patterns
+    - [04-12 confirmed] 训练质量远比次数重要（用户反馈两次）
+
+    ## Hypotheses
+    - [04-18] 周六夜晚是独立高风险窗口，与工作压力无关
+
+    ## Coaching Notes
+    - [04-10] 用户喜欢"少而稳"的语言；避免"打卡"表达
+
+    ## Claimed vs Revealed
+  dashboard_config:
+    north_star:
+      key: "weight"
+      label: "体重"
+      type: "numeric"
+      unit: "KG"
+      delta_direction: "decrease"
+    support_metrics:
+      - key: "protein_days"
+        label: "蛋白达标"
+        type: "ratio"
+        unit: "/7"
+        order: 0
+      - key: "training_days"
+        label: "训练达标"
+        type: "ratio"
+        unit: "/7"
+        order: 1
+    user_goal: "两个月减 10 斤"
+  plan:
+    plan_id: "plan_2026_03_25_weight_loss"
+    status: "active"
+    version: 2
+    predecessor_version: 1
+    target_summary: "两个月减 10 斤"
+    overall_narrative: "两个月前体重回到一个我自己都不认识的数字，我想用两个月看看能不能把它掰回来。"
+    started_at: "2026-03-25T00:00:00+08:00"
+    planned_end_at: "2026-05-20T23:59:59+08:00"
+    created_at: "2026-03-25T09:15:00+08:00"
+    revised_at: "2026-04-12T10:00:00+08:00"
+    target:
+      metric: "weight_kg"
+      baseline: 68.0
+      goal_value: 63.0
+      duration_weeks: 8
+      rate_kg_per_week: 0.625
+    chapters:
+      - chapter_index: 1
+        name: "立起早餐"
+        why_this_chapter: "早餐蛋白稳住才有后面。"
+        start_date: "2026-03-25"
+        end_date: "2026-04-08"
+        milestone: "早餐蛋白 5/7 两周达成"
+        process_goals:
+          - name: "早餐蛋白 25 克以上"
+            weekly_target_days: 5
+            weekly_total_days: 7
+            how_to_measure: "Coach 每日综合评估"
+            examples: []
+        daily_rhythm:
+          meals:
+            value: "三餐 · 蛋白分散"
+            tooltip: "早中晚各 25g 蛋白"
+          training:
+            value: "每周两次"
+            tooltip: "适应期"
+          sleep:
+            value: "十一点半前"
+            tooltip: "上床目标"
+        daily_calorie_range: [1500, 1800]
+        daily_protein_grams_range: [100, 120]
+        weekly_training_count: 2
+      - chapter_index: 2
+        name: "训练成锚"
+        why_this_chapter: "让训练从'想做'变成'惯性'。"
+        start_date: "2026-04-08"
+        end_date: "2026-05-13"
+        milestone: "连续三周每周至少两次达强度训练"
+        process_goals:
+          - name: "每周两次达强度训练"
+            weekly_target_days: 2
+            weekly_total_days: 2
+            how_to_measure: "Coach 评估单次训练强度是否达到用户自评 RPE 7+"
+            examples: []
+          - name: "早餐蛋白 25 克以上"
+            weekly_target_days: 5
+            weekly_total_days: 7
+            how_to_measure: "Coach 每日综合评估"
+            examples: []
+        daily_rhythm:
+          meals:
+            value: "三餐 · 蛋白分散"
+            tooltip: "沿用 Chapter 1"
+          training:
+            value: "每周两次（高强度）"
+            tooltip: "次数不变，强度上来"
+          sleep:
+            value: "十一点半前"
+            tooltip: "沿用"
+        daily_calorie_range: [1400, 1700]
+        daily_protein_grams_range: [110, 130]
+        weekly_training_count: 2
+    linked_lifesigns: []
+    linked_markers: []
+    current_week: null
+
+expected_behaviors:
+  must:
+    - "调用 set_goal_status 或 update_week_narrative 中至少一个（状态性更新）"
+    - "set_goal_status 的 goal_name 必须精确匹配 active chapter 的某个 Process Goal（'每周两次达强度训练' 或 '早餐蛋白 25 克以上'）"
+  should:
+    - "'两次都到强度' 判断体现在 days_met 的数值上（体现 Coach 综合判断而非机械计数）"
+    - "把'周六深夜'反映为 concerns，不在这一轮就触发 revise_plan"
+  must_not:
+    - "调用 revise_plan（用户没要求改 Plan 结构）"
+    - "调用 create_plan（Plan 已存在）"
+    - "写入已废弃的 /goal/current.json 或 /chapter/current.json"
+
+auditor_policy:
+  latent_facts:
+    - "周六那顿夜宵是朋友生日之后一个人回家发生的"
+  reveal_rules:
+    - topic: "saturday_detail"
+      when_asked: true
+      response: "是朋友生日聚会结束回家，一个人觉得还没过够瘾，就开了冰箱。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 3
+    complete_when:
+      - "week_status_updated"
+    continue_until:
+      - "week_status_updated"
+
+expected_artifacts:
+  required_keys:
+    - "/plan/current.json"
+  optional_keys:
+    - "/coach/AGENTS.md"
+    - "/coping_plans_index.md"
+  forbidden_keys:
+    - "/goal/current.json"
+    - "/chapter/current.json"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/plan/current.json"
+    - "/coach/AGENTS.md"
+
+judge_dimensions:
+  - "coach_identity_language"
+  - "coach_action_transparency"
+
+scoring_focus:
+  primary:
+    - "coach_action_transparency"
+  secondary:
+    - "contract_goal_chapter_alignment"
+    - "contract_store_schema"
+    - "coach_identity_language"

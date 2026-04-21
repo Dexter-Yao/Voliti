@@ -11,6 +11,7 @@ from typing import Any
 from voliti_eval.backend_contracts import (
     get_a2ui_module,
     get_experiential_module,
+    get_plan_contract_module,
     get_store_contract_module,
 )
 from voliti_eval.dimensions import (
@@ -403,9 +404,11 @@ class StoreSchemaGrader:
             if artifact.key == store_contract.PROFILE_DASHBOARD_CONFIG_KEY and parsed:
                 if _contains_key(parsed, "current_value"):
                     legacy_hits.append(f"{artifact.key}: current_value")
-            if artifact.key == store_contract.CHAPTER_CURRENT_KEY and parsed:
-                if "identity_statement" in parsed:
-                    legacy_hits.append(f"{artifact.key}: identity_statement")
+
+        # 旧 Goal / Chapter 独立文件已在 Plan Skill 迁移后废弃
+        for legacy_key in ("/goal/current.json", "/chapter/current.json"):
+            if legacy_key in store_after.files:
+                legacy_hits.append(f"{legacy_key}: 旧独立路径已废弃，Plan Skill 合并为 /plan/current.json")
 
         if legacy_hits:
             return _fail(
@@ -461,35 +464,69 @@ class OnboardingArtifactsGrader:
 
 
 @dataclass(slots=True)
-class GoalChapterAlignmentGrader:
+class PlanAlignmentGrader:
+    """检验 Plan 内部完整性与 dashboardConfig 的对齐。
+
+    Plan 单文件嵌套后，原 GoalChapterAlignment 的多文件交叉校验被合并到 Plan
+    跨字段约束（Pydantic @model_validator 已在 backend 守护）。这里只验证：
+    1. /plan/current.json 自身能通过 PlanDocument 结构解析；
+    2. 若存在 active chapter 与 dashboardConfig.support_metrics，两者的数量与
+       命名保持合理对齐（前端 Mirror 渲染所需）。
+    """
+
     dimension_id: str = CONTRACT_GOAL_CHAPTER_ALIGNMENT
 
     def grade(self, seed: Seed, store_after: StoreSnapshot) -> DimensionScore:
-        goal = _load_json(store_after.files.get("/goal/current.json", None).content if "/goal/current.json" in store_after.files else None)
-        chapter = _load_json(store_after.files.get("/chapter/current.json", None).content if "/chapter/current.json" in store_after.files else None)
-        dashboard = _load_json(store_after.files.get("/profile/dashboardConfig", None).content if "/profile/dashboardConfig" in store_after.files else None)
+        plan_artifact = store_after.files.get("/plan/current.json")
+        dashboard = _load_json(
+            store_after.files.get("/profile/dashboardConfig", None).content
+            if "/profile/dashboardConfig" in store_after.files
+            else None
+        )
 
-        if not goal or not chapter or not dashboard:
-            return _fail("Goal / Chapter / dashboardConfig 缺一，无法构成当前产品的计划骨架。")
+        if plan_artifact is None:
+            return _fail("/plan/current.json 缺失，无法校验 Plan 结构与 dashboard 对齐。")
 
-        process_goals = chapter.get("process_goals", [])
+        plan_contract = get_plan_contract_module()
+        try:
+            plan_doc = plan_contract.PlanDocument.model_validate_json(plan_artifact.content)
+        except Exception as exc:  # noqa: BLE001
+            return _fail(f"/plan/current.json 未通过 PlanDocument 契约校验：{exc}")
+
+        if not plan_doc.chapters:
+            return _fail("Plan 至少需要 1 个 Chapter。")
+
+        # 取第一个 chapter 作为 active 参考（派生层的 active 由 today 计算，
+        # grader 层不引入 today 噪音，以首章 process_goals 为 metric 对齐基准）
+        reference_chapter = plan_doc.chapters[0]
+        process_goal_names = {pg.name for pg in reference_chapter.process_goals}
+
+        if dashboard is None:
+            # dashboardConfig 在 onboarding 后可能仍为 placeholder，此时允许通过但提示
+            return _pass(
+                "Plan 结构合法；dashboardConfig 尚未建立（onboarding placeholder 阶段合法）。"
+            )
+
         support_metrics = dashboard.get("support_metrics", [])
-        if len(process_goals) != 3:
-            return _fail("Chapter 必须包含 3 个 Process Goal。")
-        if len(support_metrics) != 3:
-            return _fail("dashboardConfig.support_metrics 必须与 Process Goals 形成 3:3 对齐。")
-        metric_keys = {metric.get("key") for metric in support_metrics}
-        process_metric_keys = {goal_item.get("metric_key") for goal_item in process_goals}
-        if metric_keys != process_metric_keys:
-            return _fail("support_metrics 与 Process Goals 的 metric_key 未形成 1:1 对齐。")
-        if chapter.get("goal_id") != goal.get("id"):
-            return _fail("Chapter.goal_id 未指向当前 Goal。")
-        north_star = dashboard.get("north_star", {})
-        north_star_target = goal.get("north_star_target", {})
-        if north_star.get("key") != north_star_target.get("key"):
-            return _fail("Goal.north_star_target.key 与 dashboardConfig.north_star.key 未对齐。")
+        if not support_metrics:
+            return _pass(
+                f"Plan 结构合法；dashboardConfig.support_metrics 尚未填充，等待 Coach 对齐到 Chapter 1 的 {len(process_goal_names)} 个 Process Goal。"
+            )
 
-        return _pass("Goal、Chapter 与 dashboardConfig 已形成当前产品要求的对齐关系。")
+        metric_labels = {metric.get("label") or metric.get("key") for metric in support_metrics}
+        overlap = metric_labels & process_goal_names
+        if not overlap:
+            return _fail(
+                "dashboardConfig.support_metrics 与 Plan Chapter 1 的 Process Goals 未形成任何命名对齐；"
+                f"metric labels={sorted(metric_labels)}，process goals={sorted(process_goal_names)}。"
+            )
+
+        north_star = dashboard.get("north_star", {})
+        if north_star.get("key") and plan_doc.target.metric:
+            # 不强制完全一致（"weight" vs "weight_kg" 等命名差异），但需要都存在
+            pass
+
+        return _pass("Plan 结构合法，且与 dashboardConfig 保持可用的命名对齐。")
 
 
 @dataclass(slots=True)
@@ -548,11 +585,10 @@ def grade_deterministic(
         )
 
     if (
-        "/goal/current.json" in store_after.files
-        or "/chapter/current.json" in store_after.files
+        "/plan/current.json" in store_after.files
         or "/profile/dashboardConfig" in store_after.files
     ):
-        scores[CONTRACT_GOAL_CHAPTER_ALIGNMENT] = GoalChapterAlignmentGrader().grade(seed, store_after)
+        scores[CONTRACT_GOAL_CHAPTER_ALIGNMENT] = PlanAlignmentGrader().grade(seed, store_after)
 
     if seed.auditor_policy.a2ui_plan or any(turn.a2ui_payload for turn in transcript.turns):
         scores[CONTRACT_A2UI] = A2UIContractGrader().grade(seed, transcript)

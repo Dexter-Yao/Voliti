@@ -62,8 +62,6 @@ def test_seed_requires_new_eval_schema_fields() -> None:
             "expected_artifacts": {
                 "required_keys": [
                     "/profile/context.md",
-                    "/goal/current.json",
-                    "/chapter/current.json",
                     "/profile/dashboardConfig",
                 ],
                 "optional_keys": ["/coping_plans_index.md"],

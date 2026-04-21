@@ -53,11 +53,13 @@ def test_make_file_value_wraps_content_lines() -> None:
     assert unwrap_file_value(value) == '{"hello":"world"}'
 
 
-def test_shared_chapter_fixture_round_trip() -> None:
-    fixture = FIXTURES_DIR / "chapter_current.value.json"
+def test_shared_plan_fixture_round_trip() -> None:
+    fixture = FIXTURES_DIR / "plan_current.value.json"
     value = json.loads(fixture.read_text(encoding="utf-8"))
     parsed = json.loads(unwrap_file_value(value))
-    assert parsed["fixture_type"] == "chapter_current"
+    assert parsed["plan_id"].startswith("plan_")
+    assert isinstance(parsed["chapters"], list) and parsed["chapters"]
+    assert parsed["target"]["metric"] == "weight_kg"
 
 
 @pytest.mark.asyncio
@@ -84,14 +86,14 @@ async def test_snapshot_store_reads_unwrapped_file_content() -> None:
                 "value": make_file_value("# User Profile\n- onboarding_complete: true"),
             },
             {
-                "key": "/goal/current.json",
-                "value": make_file_value('{"id":"goal_001"}'),
+                "key": "/plan/current.json",
+                "value": make_file_value('{"plan_id":"plan_test"}'),
             },
         ]
     )
 
     snapshot = await snapshot_store(client, user_id="eval_0001")
 
-    assert sorted(snapshot.files) == ["/goal/current.json", "/profile/context.md"]
+    assert sorted(snapshot.files) == ["/plan/current.json", "/profile/context.md"]
     assert snapshot.files["/profile/context.md"].content == "# User Profile\n- onboarding_complete: true"
-    assert snapshot.files["/goal/current.json"].raw_value is not None
+    assert snapshot.files["/plan/current.json"].raw_value is not None

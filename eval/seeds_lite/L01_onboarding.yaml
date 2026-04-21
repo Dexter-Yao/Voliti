@@ -32,13 +32,14 @@ expected_behaviors:
   must:
     - "通过 A2UI select 提供 quick/full 深度选择"
     - "完成最小数据集写入并将 onboarding_complete 收口为 true"
-    - "创建 Goal、Chapter 与 3 个 Process Goal"
+    - "写入 dashboardConfig placeholder，并承诺 Plan 在首次 coaching 中共建"
   should:
     - "使用推断授权而不是继续追问过多细节"
     - "用自然语言解释正在为用户建立起点"
   must_not:
     - "把 quick path 当作不完整 onboarding"
     - "要求 quick path 必须先创建 LifeSign 才算完成"
+    - "在 onboarding 期间调用 create_plan（Plan 共建属于首次 coaching，不在 onboarding 流内）"
 
 auditor_policy:
   latent_facts:
@@ -77,19 +78,16 @@ auditor_policy:
 expected_artifacts:
   required_keys:
     - "/profile/context.md"
-    - "/goal/current.json"
-    - "/chapter/current.json"
     - "/profile/dashboardConfig"
   optional_keys:
     - "/coping_plans_index.md"
   forbidden_keys:
     - "/lifesigns.md"
+    - "/plan/current.json"  # onboarding 不应创建 Plan
   witness_required: false
   minimum_dataset: "quick"
   relevant_final_files:
     - "/profile/context.md"
-    - "/goal/current.json"
-    - "/chapter/current.json"
     - "/profile/dashboardConfig"
 
 judge_dimensions:
@@ -104,5 +102,4 @@ scoring_focus:
     - "coach_action_transparency"
   secondary:
     - "contract_store_schema"
-    - "contract_goal_chapter_alignment"
     - "coach_identity_language"

@@ -7,12 +7,16 @@ import json
 import logging
 from typing import Any
 
-from voliti_eval.backend_contracts import get_store_contract_module
+from voliti_eval.backend_contracts import (
+    get_plan_contract_module,
+    get_store_contract_module,
+)
 from voliti_eval.models import PreState, StoreFileArtifact, StoreSnapshot
 
 logger = logging.getLogger(__name__)
 
 _STORE_CONTRACT = get_store_contract_module()
+_PLAN_CONTRACT = get_plan_contract_module()
 
 STORE_NAMESPACE_PREFIX = _STORE_CONTRACT.STORE_NAMESPACE_PREFIX
 
@@ -106,23 +110,15 @@ async def populate_store(
         )
         logger.info("[%s] Populated %s", user_id, _STORE_CONTRACT.PROFILE_DASHBOARD_CONFIG_KEY)
 
-    if pre_state.goal:
-        goal_json = json.dumps(pre_state.goal.model_dump(), ensure_ascii=False, indent=2)
+    if pre_state.plan is not None:
+        # fail-fast：seed 里的 plan dict 必须通过 PlanDocument 跨字段校验
+        plan_doc = _PLAN_CONTRACT.PlanDocument.model_validate(pre_state.plan)
         await store_client.put_item(
             ns,
-            key=_STORE_CONTRACT.GOAL_CURRENT_KEY,
-            value=make_file_value(goal_json),
+            key=_STORE_CONTRACT.PLAN_CURRENT_KEY,
+            value=make_file_value(plan_doc.model_dump_json()),
         )
-        logger.info("[%s] Populated %s", user_id, _STORE_CONTRACT.GOAL_CURRENT_KEY)
-
-    if pre_state.chapter:
-        chapter_json = json.dumps(pre_state.chapter.model_dump(), ensure_ascii=False, indent=2)
-        await store_client.put_item(
-            ns,
-            key=_STORE_CONTRACT.CHAPTER_CURRENT_KEY,
-            value=make_file_value(chapter_json),
-        )
-        logger.info("[%s] Populated %s", user_id, _STORE_CONTRACT.CHAPTER_CURRENT_KEY)
+        logger.info("[%s] Populated %s", user_id, _STORE_CONTRACT.PLAN_CURRENT_KEY)
 
     if pre_state.forward_markers:
         markers_json = json.dumps(

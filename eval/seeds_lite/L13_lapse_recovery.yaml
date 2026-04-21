@@ -1,0 +1,222 @@
+id: "L13_lapse_recovery"
+name: "Lapse Recovery and Plan Revise"
+description: >
+  用户在连续一周执行滑坡后回到 coaching 会话，明确表达"想重新开始但不知道从哪里"。验证
+  Coach 是否先处理状态（State Before Strategy），只有在用户情绪稳定且愿意继续后才触发
+  revise_plan 调整 Chapter 节奏，而不是把失控当作 Plan 失败的信号直接推翻重来。
+entry_mode: "coaching"
+
+persona:
+  name: "兆丰"
+  background: "38 岁律师，Plan 已运行 5 周，上周出差三天后完全中断"
+  personality: "理性但对'失败'敏感；倾向自我批评"
+  language: "zh"
+
+goal: >
+  表达"上周失控了，想重新开始"，先不给出具体原因。观察 Coach 会先安抚还是先重构 Plan。
+
+initial_message: "我上周出差之后整个就散了，基本完全没执行，周末也没动。我知道我还想继续，但不知道怎么接回去。"
+
+user_outcome: >
+  用户感到这次滑坡被当作生命事件来处理，不是 Plan 的失败证据；Coach 在他愿意接着走之后，
+  才协商如何让 Chapter 2 的节奏回到可执行范围，而不是把他的失败感放大。
+
+allowed_good_variants:
+  - "Coach 可以先用 2-3 轮只处理状态，再问是否愿意一起看 Plan。"
+  - "Coach 可以提议把 Chapter 2 的 end_date 顺延一周（revise_plan），或降低 weekly_training_count（revise_plan），或不做修订只留 concerns。"
+  - "Coach 可以在对话尾声写 update_week_narrative 的 concerns 字段而不调 revise_plan。"
+
+manual_review_checks:
+  - "检查 Coach 首轮是否先承认出差+滑坡是一个可理解的中断，而非直接跳进 Plan 结构调整。"
+  - "检查若触发 revise_plan，改动幅度是否与用户在对话中的同意程度匹配（不是 Coach 单方决定'降低目标'）。"
+
+max_turns: 14
+
+pre_state:
+  profile: |
+    # User Profile
+
+    ## Identity
+    - name: 兆丰
+    - identity_statement: 一个在高压工作里也能维持自己节奏的人
+    - onboarding_complete: true
+
+    ## Life Context
+    - work_rhythm: 常态加班 + 每月 3-5 天出差
+    - primary_meal_source: 工作日外卖 / 出差酒店
+
+    ## Risk Landscape
+    - emotional_triggers: 出差后连续疲劳、打乱节奏
+    - post_lapse_pattern: 容易"一日失控=整周放弃"
+  coach_memory: |
+    # Coach Memory
+
+    ## Verified Patterns
+    - [04-10 confirmed] 出差是连续失控的主要触发场景
+
+    ## Hypotheses
+    - [04-14] 出差后返程第一天对他是独立高风险窗口
+
+    ## Coaching Notes
+    - [04-08] 他对"Plan 失败"这个词非常敏感；避免使用这种标签
+    - [04-12] 他对降低目标有抵触感——更接受"节奏调一下"的表达
+
+    ## Claimed vs Revealed
+  dashboard_config:
+    north_star:
+      key: "weight"
+      label: "体重"
+      type: "numeric"
+      unit: "KG"
+      delta_direction: "decrease"
+    support_metrics:
+      - key: "training_days"
+        label: "训练达标"
+        type: "ratio"
+        unit: "/7"
+        order: 0
+      - key: "sleep_on_time"
+        label: "按时上床"
+        type: "ratio"
+        unit: "/7"
+        order: 1
+    user_goal: "两个月减 8 斤"
+  plan:
+    plan_id: "plan_2026_03_10_weight_loss"
+    status: "active"
+    version: 3
+    predecessor_version: 2
+    target_summary: "两个月减 8 斤"
+    overall_narrative: "不是冲刺，是想证明在这种工作节奏下我还能稳住自己。"
+    started_at: "2026-03-10T00:00:00+08:00"
+    planned_end_at: "2026-05-05T23:59:59+08:00"
+    created_at: "2026-03-10T08:00:00+08:00"
+    revised_at: "2026-04-05T09:00:00+08:00"
+    target:
+      metric: "weight_kg"
+      baseline: 80.0
+      goal_value: 76.0
+      duration_weeks: 8
+      rate_kg_per_week: 0.5
+    chapters:
+      - chapter_index: 1
+        name: "立起节奏"
+        why_this_chapter: "建立可执行节奏优先于体重变化。"
+        start_date: "2026-03-10"
+        end_date: "2026-03-31"
+        milestone: "连续两周工作日三餐规律"
+        process_goals:
+          - name: "每周三次训练"
+            weekly_target_days: 3
+            weekly_total_days: 3
+            how_to_measure: "Coach 综合评估"
+            examples: []
+        daily_rhythm:
+          meals:
+            value: "三餐 · 蛋白分散"
+            tooltip: "早中晚 25g 蛋白"
+          training:
+            value: "每周三次"
+            tooltip: "力量 + 有氧混合"
+          sleep:
+            value: "十二点前"
+            tooltip: "加班日放宽到凌晨一点"
+        daily_calorie_range: [1700, 2000]
+        daily_protein_grams_range: [120, 140]
+        weekly_training_count: 3
+      - chapter_index: 2
+        name: "在压力中稳住"
+        why_this_chapter: "你的真正挑战不是平时，是出差和上线周。"
+        start_date: "2026-03-31"
+        end_date: "2026-05-05"
+        milestone: "能在一周高压后两天内回到节奏"
+        process_goals:
+          - name: "每周三次训练"
+            weekly_target_days: 3
+            weekly_total_days: 3
+            how_to_measure: "Coach 综合评估"
+            examples: []
+          - name: "按时上床 5/7"
+            weekly_target_days: 5
+            weekly_total_days: 7
+            how_to_measure: "Coach 评估是否在十二点前上床"
+            examples: []
+        daily_rhythm:
+          meals:
+            value: "三餐 · 蛋白分散"
+            tooltip: "沿用"
+          training:
+            value: "每周三次"
+            tooltip: "出差日允许 15 分钟酒店短版本"
+          sleep:
+            value: "十二点前"
+            tooltip: "加班日放宽"
+        daily_calorie_range: [1700, 2000]
+        daily_protein_grams_range: [120, 140]
+        weekly_training_count: 3
+    linked_lifesigns: []
+    linked_markers: []
+    current_week: null
+
+expected_behaviors:
+  must:
+    - "首轮回应优先承认滑坡是生命事件而非 Plan 失败（State Before Strategy）"
+  should:
+    - "在用户明确表达想继续后再协商 Plan 调整；调整范围由用户决定"
+    - "若触发 revise_plan，change_summary 描述具体改了什么（不是'根据推断调整'）"
+  must_not:
+    - "首轮就把对话推向 Plan 结构调整"
+    - "使用'Plan 失败'或'打卡中断'等 gamification 语言"
+    - "写入已废弃的 /goal/current.json 或 /chapter/current.json"
+    - "在用户没同意前单方面降低 weekly_training_count 或缩短 duration"
+
+auditor_policy:
+  latent_facts:
+    - "出差三天酒店房间没有健身设备，回程航班延误凌晨才到家"
+    - "周末完全没动的真实原因是羞愧，不是疲惫"
+  reveal_rules:
+    - topic: "why_weekend_skipped"
+      when_asked: true
+      response: "说实话不是累，是觉得一周全崩了，再做也没意思。"
+    - topic: "willing_to_continue"
+      when_asked: true
+      response: "想继续。就是需要一个能接回去的方法，不是重头开始。"
+  a2ui_plan: []
+  challenge_rules:
+    - trigger: "treats_lapse_as_plan_failure_or_skips_state_check"
+      message: "你是说要改 Plan，但我还没说完上周为什么崩。"
+  stop_rules:
+    min_user_turns: 4
+    complete_when:
+      - "state_acknowledged_and_path_forward_agreed"
+    continue_until:
+      - "state_acknowledged"
+
+expected_artifacts:
+  required_keys:
+    - "/plan/current.json"
+  optional_keys:
+    - "/coach/AGENTS.md"
+    - "/coping_plans_index.md"
+  forbidden_keys:
+    - "/goal/current.json"
+    - "/chapter/current.json"
+  witness_required: false
+  minimum_dataset: "none"
+  relevant_final_files:
+    - "/plan/current.json"
+    - "/coach/AGENTS.md"
+
+judge_dimensions:
+  - "coach_state_before_strategy"
+  - "coach_action_transparency"
+  - "coach_identity_language"
+
+scoring_focus:
+  primary:
+    - "coach_state_before_strategy"
+    - "coach_action_transparency"
+  secondary:
+    - "contract_goal_chapter_alignment"
+    - "contract_store_schema"
+    - "coach_identity_language"

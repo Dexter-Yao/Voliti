@@ -1,8 +1,9 @@
 id: "L02_onboarding_full_personal_system"
 name: "Full Onboarding Personal System"
 description: >
-  新用户选择完整 onboarding。验证 Coach 是否完成六维画像冷启动、Goal/Chapter/Process Goal、
-  首个个人系统雏形，以及 onboarding 仪式性的 Witness Card。
+  新用户选择完整 onboarding。验证 Coach 是否完成六维画像冷启动、dashboardConfig 占位与 onboarding
+  仪式性的 Witness Card，并把 Plan 共建承诺到下一次 coaching 会话（Plan Skill 决策 12 要求 Plan
+  不在 onboarding 流内创建）。
 entry_mode: "new"
 
 persona:
@@ -31,14 +32,15 @@ expected_behaviors:
   must:
     - "提供 full path 深度选择"
     - "建立六维画像的核心章节"
-    - "写入 Goal、Chapter、dashboardConfig 并保持 3:3 对齐"
+    - "写入 dashboardConfig placeholder 并承诺 Plan 在首次 coaching 中共建"
     - "完成 onboarding 仪式 Witness Card"
   should:
-    - "完整路径下显式共创第一个个人系统"
-    - "让用户感到被理解而不是在填表"
+    - "完整路径下让用户感到被深度理解"
+    - "在 hand-off 中明确下一次 coaching 会一起落地 Plan"
   must_not:
     - "把完整路径简化成 quick path 的推断版"
     - "在 Witness Card 前让用户决定要不要生成"
+    - "在 onboarding 期间调用 create_plan"
 
 auditor_policy:
   latent_facts:
@@ -83,19 +85,16 @@ auditor_policy:
 expected_artifacts:
   required_keys:
     - "/profile/context.md"
-    - "/goal/current.json"
-    - "/chapter/current.json"
     - "/profile/dashboardConfig"
   optional_keys:
     - "/coping_plans_index.md"
   forbidden_keys:
     - "/lifesigns.md"
+    - "/plan/current.json"
   witness_required: true
   minimum_dataset: "full"
   relevant_final_files:
     - "/profile/context.md"
-    - "/goal/current.json"
-    - "/chapter/current.json"
     - "/profile/dashboardConfig"
     - "/coping_plans_index.md"
 
@@ -110,6 +109,5 @@ scoring_focus:
     - "coach_action_transparency"
   secondary:
     - "contract_witness_card"
-    - "contract_goal_chapter_alignment"
     - "coach_identity_language"
     - "coach_intervention_dosage"

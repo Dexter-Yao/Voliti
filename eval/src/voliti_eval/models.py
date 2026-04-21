@@ -71,40 +71,6 @@ class DashboardConfigData(BaseModel):
     user_goal: str | None = None
 
 
-class ProcessGoalData(BaseModel):
-    """Chapter 内的 Process Goal。"""
-
-    key: str
-    description: str
-    target: str
-    metric_key: str
-
-
-class ChapterData(BaseModel):
-    """预填充的 Chapter。"""
-
-    id: str
-    goal_id: str
-    chapter_number: int
-    title: str
-    milestone: str
-    process_goals: list[ProcessGoalData] = Field(default_factory=list)
-    start_date: str
-    planned_end_date: str
-    status: str = "active"
-
-
-class GoalData(BaseModel):
-    """预填充的 Goal。"""
-
-    id: str
-    description: str
-    north_star_target: dict[str, Any]
-    start_date: str
-    target_date: str
-    status: str = "active"
-
-
 class ForwardMarker(BaseModel):
     """前瞻标记。"""
 
@@ -119,7 +85,12 @@ class ForwardMarker(BaseModel):
 
 
 class PreState(BaseModel):
-    """Seed 运行前预填充的 Store 状态。"""
+    """Seed 运行前预填充的 Store 状态。
+
+    ``plan`` 字段接受与 backend ``PlanDocument`` 完全同构的 dict；写入时由 store 层
+    调用 ``PlanDocument.model_validate`` 做 fail-fast 校验，seed 格式错误会在
+    populate 阶段就暴露出来，不等到 Coach 运行期。
+    """
 
     profile: str | None = None
     coping_plans: list[CopingPlan] = Field(default_factory=list)
@@ -128,8 +99,7 @@ class PreState(BaseModel):
     day_summaries: dict[str, str] = Field(default_factory=dict)
     conversation_archives: dict[str, str] = Field(default_factory=dict)
     dashboard_config: DashboardConfigData | None = None
-    goal: GoalData | None = None
-    chapter: ChapterData | None = None
+    plan: dict[str, Any] | None = None
     forward_markers: list[ForwardMarker] = Field(default_factory=list)
 
 

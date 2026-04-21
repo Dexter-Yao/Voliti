@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from voliti_eval.graders import (
     A2UIContractGrader,
-    GoalChapterAlignmentGrader,
     InterventionContractGrader,
     MemoryProtocolGrader,
+    PlanAlignmentGrader,
     StoreSchemaGrader,
     build_store_diff,
 )
@@ -60,8 +60,7 @@ def _make_seed() -> Seed:
             },
             "expected_artifacts": {
                 "required_keys": [
-                    "/goal/current.json",
-                    "/chapter/current.json",
+                    "/plan/current.json",
                     "/profile/dashboardConfig",
                 ],
                 "optional_keys": [],
@@ -90,6 +89,73 @@ def _make_snapshot(files: dict[str, str]) -> StoreSnapshot:
     )
 
 
+def _plan_document_json(
+    *,
+    plan_id: str = "plan_2026_03_21_weight_loss",
+    chapter_process_goal_names: tuple[str, ...] = (
+        "记录饮食",
+        "蛋白达标",
+        "状态自评",
+    ),
+) -> str:
+    """构造一份通过 backend PlanDocument 跨字段校验的最小合法 JSON。"""
+    import json as _json
+
+    process_goals = [
+        {
+            "name": name,
+            "weekly_target_days": 5,
+            "weekly_total_days": 7,
+            "how_to_measure": "每日对话结束后 Coach 评估",
+            "examples": [],
+        }
+        for name in chapter_process_goal_names
+    ]
+
+    doc = {
+        "plan_id": plan_id,
+        "status": "active",
+        "version": 1,
+        "predecessor_version": None,
+        "target_summary": "12 周内从 75kg 降至 70kg",
+        "overall_narrative": "想重新把节奏立起来，不是为了数字，是为了不再背叛自己。",
+        "started_at": "2026-04-06T00:00:00+08:00",
+        "planned_end_at": "2026-06-28T23:59:59+08:00",
+        "created_at": "2026-04-06T09:00:00+08:00",
+        "revised_at": "2026-04-06T09:00:00+08:00",
+        "target": {
+            "metric": "weight_kg",
+            "baseline": 75.0,
+            "goal_value": 70.0,
+            "duration_weeks": 12,
+            "rate_kg_per_week": 0.417,
+        },
+        "chapters": [
+            {
+                "chapter_index": 1,
+                "name": "建立工作日节奏",
+                "why_this_chapter": "工作日的节奏先稳住，周末的波动才能有参照。",
+                "start_date": "2026-04-06",
+                "end_date": "2026-04-27",
+                "milestone": "连续两周工作日记录完整",
+                "process_goals": process_goals,
+                "daily_rhythm": {
+                    "meals": {"value": "三餐 · 蛋白分散", "tooltip": "早中晚各 25-30g 蛋白"},
+                    "training": {"value": "每周两次", "tooltip": "适应期量小，建立节奏"},
+                    "sleep": {"value": "十一点半前", "tooltip": "上床时间目标"},
+                },
+                "daily_calorie_range": [1500, 1800],
+                "daily_protein_grams_range": [100, 120],
+                "weekly_training_count": 2,
+            }
+        ],
+        "linked_lifesigns": [],
+        "linked_markers": [],
+        "current_week": None,
+    }
+    return _json.dumps(doc, ensure_ascii=False)
+
+
 def test_build_store_diff_tracks_created_updated_deleted_keys() -> None:
     before = _make_snapshot(
         {
@@ -100,56 +166,30 @@ def test_build_store_diff_tracks_created_updated_deleted_keys() -> None:
     after = _make_snapshot(
         {
             "/profile/context.md": "# User Profile\n- onboarding_complete: true",
-            "/goal/current.json": '{"id":"goal_001"}',
+            "/plan/current.json": _plan_document_json(),
         }
     )
 
     diff = build_store_diff(before, after)
 
-    assert diff.created_keys == ["/goal/current.json"]
+    assert diff.created_keys == ["/plan/current.json"]
     assert diff.updated_keys == ["/profile/context.md"]
     assert diff.deleted_keys == ["/obsolete.md"]
 
 
-def test_goal_chapter_alignment_grader_requires_three_metric_links() -> None:
+def test_plan_alignment_grader_passes_when_plan_and_dashboard_align() -> None:
     seed = _make_seed()
-    grader = GoalChapterAlignmentGrader()
+    grader = PlanAlignmentGrader()
     after = _make_snapshot(
         {
-            "/goal/current.json": """
-{
-  "id": "goal_001",
-  "description": "12 周内从 75kg 降至 70kg",
-  "north_star_target": {"key": "weight", "baseline": 75, "target": 70, "unit": "kg"},
-  "start_date": "2026-04-06T00:00:00Z",
-  "target_date": "2026-06-28T00:00:00Z",
-  "status": "active"
-}
-""".strip(),
-            "/chapter/current.json": """
-{
-  "id": "ch_001",
-  "goal_id": "goal_001",
-  "chapter_number": 1,
-  "title": "建立工作日节奏",
-  "milestone": "连续两周工作日记录完整",
-  "process_goals": [
-    {"key": "logging_consistency", "description": "记录饮食", "target": "5/7 天", "metric_key": "logging_days"},
-    {"key": "protein_adherence", "description": "蛋白达标", "target": "≥100g/天", "metric_key": "protein_days"},
-    {"key": "state_awareness", "description": "状态自评", "target": "每天", "metric_key": "state"}
-  ],
-  "start_date": "2026-04-06T00:00:00Z",
-  "planned_end_date": "2026-04-27T00:00:00Z",
-  "status": "active"
-}
-""".strip(),
+            "/plan/current.json": _plan_document_json(),
             "/profile/dashboardConfig": """
 {
   "north_star": {"key": "weight", "label": "体重", "type": "numeric", "unit": "KG", "delta_direction": "decrease"},
   "support_metrics": [
-    {"key": "logging_days", "label": "记录天数", "type": "ratio", "unit": "/7", "order": 0},
+    {"key": "logging_days", "label": "记录饮食", "type": "ratio", "unit": "/7", "order": 0},
     {"key": "protein_days", "label": "蛋白达标", "type": "ratio", "unit": "/7", "order": 1},
-    {"key": "state", "label": "今日状态", "type": "scale", "unit": "/10", "order": 2}
+    {"key": "state", "label": "状态自评", "type": "scale", "unit": "/10", "order": 2}
   ],
   "user_goal": "12 周 75kg → 70kg"
 }
@@ -163,7 +203,44 @@ def test_goal_chapter_alignment_grader_requires_three_metric_links() -> None:
     assert score.score_source == "deterministic"
 
 
-def test_store_schema_grader_rejects_legacy_fields() -> None:
+def test_plan_alignment_grader_allows_dashboard_placeholder_without_support_metrics() -> None:
+    """onboarding 后 dashboardConfig 先是 placeholder（support_metrics 空），Plan 尚未建立。"""
+    seed = _make_seed()
+    grader = PlanAlignmentGrader()
+    after = _make_snapshot(
+        {
+            "/plan/current.json": _plan_document_json(),
+            "/profile/dashboardConfig": """
+{
+  "north_star": {"key": "weight", "label": "体重", "type": "numeric", "unit": "KG", "delta_direction": "decrease"},
+  "support_metrics": [],
+  "user_goal": "减脂起点，方案尚未落地"
+}
+""".strip(),
+        }
+    )
+
+    score = grader.grade(seed, after)
+
+    assert score.passed is True
+
+
+def test_plan_alignment_grader_fails_when_plan_missing() -> None:
+    seed = _make_seed()
+    grader = PlanAlignmentGrader()
+    after = _make_snapshot(
+        {
+            "/profile/dashboardConfig": '{"north_star": {"key": "weight", "label": "体重", "type": "numeric"}, "support_metrics": []}',
+        }
+    )
+
+    score = grader.grade(seed, after)
+
+    assert score.passed is False
+    assert "plan/current.json" in score.justification.lower()
+
+
+def test_store_schema_grader_rejects_legacy_dashboard_current_value() -> None:
     grader = StoreSchemaGrader()
     seed = _make_seed()
     after = _make_snapshot(
@@ -181,20 +258,6 @@ def test_store_schema_grader_rejects_legacy_fields() -> None:
   "user_goal": "减重"
 }
 """.strip(),
-            "/chapter/current.json": """
-{
-  "id": "ch_001",
-  "goal_id": "goal_001",
-  "chapter_number": 1,
-  "title": "建立节奏",
-  "identity_statement": "减重10斤",
-  "milestone": "记录完成",
-  "process_goals": [],
-  "start_date": "2026-04-06T00:00:00Z",
-  "planned_end_date": "2026-04-27T00:00:00Z",
-  "status": "active"
-}
-""".strip(),
         }
     )
 
@@ -203,6 +266,22 @@ def test_store_schema_grader_rejects_legacy_fields() -> None:
     assert score.passed is False
     assert score.failure_severity == "critical"
     assert "current_value" in score.justification
+
+
+def test_store_schema_grader_rejects_legacy_goal_chapter_paths() -> None:
+    """旧 /goal/current.json 和 /chapter/current.json 在 Plan Skill 迁移后已废弃。"""
+    grader = StoreSchemaGrader()
+    seed = _make_seed()
+    after = _make_snapshot(
+        {
+            "/goal/current.json": '{"id": "goal_001"}',
+        }
+    )
+
+    score = grader.grade(seed, after, StoreDiff())
+
+    assert score.passed is False
+    assert "/goal/current.json" in score.justification
 
 
 def test_memory_protocol_grader_blocks_claimed_vs_revealed_in_profile() -> None:

@@ -30,3 +30,8 @@ def get_a2ui_module():
 def get_experiential_module():
     _ensure_backend_on_path()
     return importlib.import_module("voliti.tools.experiential")
+
+
+def get_plan_contract_module():
+    _ensure_backend_on_path()
+    return importlib.import_module("voliti.contracts.plan")

@@ -130,16 +130,18 @@ auditor_policy:
 
 expected_artifacts:
   required_keys:
-    - "/chapter/current.json"
+    - "/plan/current.json"
     - "/profile/dashboardConfig"
   optional_keys:
     - "/coach/AGENTS.md"
   forbidden_keys:
     - "/lifesigns.md"
+    - "/goal/current.json"
+    - "/chapter/current.json"
   witness_required: false
   minimum_dataset: "none"
   relevant_final_files:
-    - "/chapter/current.json"
+    - "/plan/current.json"
     - "/profile/dashboardConfig"
     - "/profile/context.md"
 
