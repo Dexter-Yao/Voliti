@@ -1,0 +1,68 @@
+id: "S01_text_roundtrip_sanity"
+name: "Text Roundtrip Sanity"
+description: >
+  超轻量文本链路检查。验证 Auditor、CoachClient、Judge、Transcript 与单模型 HTML 报告
+  能在不依赖工具、A2UI 与持久化写入的前提下完整走通。
+entry_mode: "coaching"
+
+persona:
+  name: "烟岚"
+  background: "连续开会后有些散，但愿意先说清自己现在的状态"
+  personality: "直接、克制"
+  language: "zh"
+
+goal: >
+  明确请求 Coach 先帮助自己看清当下状态，而不是直接给建议。
+  观察它是否先理解状态，再进入任何下一步。
+
+initial_message: "今天下午连着开完会以后整个人有点散。我先不想听方案，你先帮我看一下我现在是什么状态。"
+user_outcome: >
+  用户感到当前状态被先接住，而不是一上来就被推进策略或任务。
+
+allowed_good_variants:
+  - "Coach 可以先镜像状态，再问一个很轻的澄清问题。"
+  - "Coach 可以在接住状态后给出一条很轻的下一步，但不能跳过状态理解。"
+
+manual_review_checks:
+  - "人工检查语气是否自然，不要像在背 rubric。"
+
+max_turns: 6
+
+expected_behaviors:
+  must:
+    - "先理解当下状态，再进入任何建议"
+  should:
+    - "保持回答简洁，不把轻量 smoke 场景拖成长对话"
+  must_not:
+    - "一上来就推进策略或计划"
+
+auditor_policy:
+  latent_facts:
+    - "真正卡住的不是任务量，而是开完会后脑子发麻。"
+  reveal_rules:
+    - topic: "after_meeting_feeling"
+      when_asked: true
+      response: "更像是脑子发麻，不是单纯忙。"
+  a2ui_plan: []
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 4
+    complete_when:
+      - "coach_understands_state_before_strategy"
+    continue_until:
+      - "coach_understands_state_before_strategy"
+
+expected_artifacts:
+  required_keys: []
+  optional_keys: []
+  forbidden_keys: []
+  witness_required: false
+  minimum_dataset: "none"
+
+judge_dimensions:
+  - "coach_state_before_strategy"
+
+scoring_focus:
+  primary:
+    - "coach_state_before_strategy"
+  secondary: []

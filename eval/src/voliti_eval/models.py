@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from voliti_eval.dimensions import (
     CONTRACT_ONBOARDING_ARTIFACTS,
@@ -48,6 +48,8 @@ def _is_dimension_applicable_to_seed(seed_id: str, entry_mode: str, dimension_id
 class Persona(BaseModel):
     """模拟用户的角色设定。"""
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str
     background: str
     personality: str
@@ -56,6 +58,8 @@ class Persona(BaseModel):
 
 class CopingPlan(BaseModel):
     """预填充的 LifeSign 预案。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: str
     trigger: dict[str, Any]
@@ -66,6 +70,8 @@ class CopingPlan(BaseModel):
 class DashboardConfigData(BaseModel):
     """预填充的 dashboardConfig 定义。"""
 
+    model_config = ConfigDict(extra="forbid")
+
     north_star: dict[str, Any] | None = None
     support_metrics: list[dict[str, Any]] = Field(default_factory=list)
     user_goal: str | None = None
@@ -73,6 +79,8 @@ class DashboardConfigData(BaseModel):
 
 class ForwardMarker(BaseModel):
     """前瞻标记。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: str
     date: str
@@ -92,6 +100,8 @@ class PreState(BaseModel):
     populate 阶段就暴露出来，不等到 Coach 运行期。
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     profile: str | None = None
     coping_plans: list[CopingPlan] = Field(default_factory=list)
     coach_memory: str | None = None
@@ -106,6 +116,8 @@ class PreState(BaseModel):
 class ExpectedBehaviors(BaseModel):
     """Coach 预期行为约束。"""
 
+    model_config = ConfigDict(extra="forbid")
+
     must: list[str] = Field(default_factory=list)
     should: list[str] = Field(default_factory=list)
     must_not: list[str] = Field(default_factory=list)
@@ -114,12 +126,16 @@ class ExpectedBehaviors(BaseModel):
 class ScoringFocus(BaseModel):
     """Must-Pass / Stretch 维度分组。"""
 
+    model_config = ConfigDict(extra="forbid")
+
     primary: list[str] = Field(default_factory=list)
     secondary: list[str] = Field(default_factory=list)
 
 
 class RevealRule(BaseModel):
     """用户仅在特定条件下透露信息的规则。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     topic: str
     when_asked: bool = True
@@ -128,6 +144,8 @@ class RevealRule(BaseModel):
 
 class A2UIPlanStep(BaseModel):
     """A2UI 组件的预期交互计划。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     key: str
     action: Literal["submit", "reject", "skip"] = "submit"
@@ -138,12 +156,16 @@ class A2UIPlanStep(BaseModel):
 class ChallengeRule(BaseModel):
     """在特定触发条件下向 Coach 施压的规则。"""
 
+    model_config = ConfigDict(extra="forbid")
+
     trigger: str
     message: str
 
 
 class StopRules(BaseModel):
     """Auditor 的结束与继续条件。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     min_user_turns: int = 4
     complete_when: list[str] = Field(default_factory=list)
@@ -152,6 +174,8 @@ class StopRules(BaseModel):
 
 class AuditorPolicy(BaseModel):
     """受约束的场景执行策略。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     latent_facts: list[str] = Field(default_factory=list)
     reveal_rules: list[RevealRule] = Field(default_factory=list)
@@ -163,6 +187,8 @@ class AuditorPolicy(BaseModel):
 class ExpectedArtifacts(BaseModel):
     """Seed 对持久化与工具产物的预期。"""
 
+    model_config = ConfigDict(extra="forbid")
+
     required_keys: list[str] = Field(default_factory=list)
     optional_keys: list[str] = Field(default_factory=list)
     forbidden_keys: list[str] = Field(default_factory=list)
@@ -173,6 +199,8 @@ class ExpectedArtifacts(BaseModel):
 
 class Seed(BaseModel):
     """评估场景完整定义。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     id: str
     name: str

@@ -1,9 +1,21 @@
 # ABOUTME: A2UI resume 构造测试
 # ABOUTME: 保证评估入口会将 interrupt_id 原样带回 backend
 
-from voliti_eval.models import DimensionScore, ScoreCard
+from voliti_eval.models import (
+    AuditorPolicy,
+    DimensionScore,
+    ExpectedArtifacts,
+    Persona,
+    ScoreCard,
+    Seed,
+    StopRules,
+    StoreFileArtifact,
+    StoreSnapshot,
+)
 from voliti_eval.runner import (
+    _blocking_auditor_end_reasons,
     _format_blocking_reason,
+    _guardrail_user_message,
     assemble_score_card,
     build_a2ui_resume_response,
 )
@@ -30,6 +42,43 @@ def test_build_a2ui_resume_response_copies_interrupt_id_from_payload() -> None:
         "interrupt_id": "interrupt_123",
         "data": {"energy": 7},
     }
+
+
+def _make_seed() -> Seed:
+    return Seed(
+        id="S02_a2ui_store_roundtrip_sanity",
+        name="A2UI Store Roundtrip Sanity",
+        description="Smoke seed",
+        entry_mode="new",
+        persona=Persona(
+            name="初晴",
+            background="刚注册",
+            personality="配合",
+            language="zh",
+        ),
+        goal="完成最小 onboarding",
+        initial_message="你好，我刚注册，想先快速开始。",
+        user_outcome="完成最小 onboarding。",
+        allowed_good_variants=["Coach 可以低摩擦补最小信息。"],
+        manual_review_checks=["人工检查节奏。"],
+        auditor_policy=AuditorPolicy(
+            latent_facts=[],
+            reveal_rules=[],
+            a2ui_plan=[],
+            challenge_rules=[],
+            stop_rules=StopRules(
+                min_user_turns=4,
+                complete_when=["minimum_dataset_written", "onboarding_complete_written"],
+                continue_until=["minimum_dataset_written", "onboarding_complete_written"],
+            ),
+        ),
+        expected_artifacts=ExpectedArtifacts(
+            required_keys=["/profile/context.md", "/profile/dashboardConfig"],
+            forbidden_keys=["/plan/current.json"],
+            minimum_dataset="quick",
+        ),
+        judge_dimensions=[],
+    )
 
 
 def test_assemble_score_card_merges_deterministic_and_llm_scores() -> None:
@@ -72,6 +121,43 @@ def test_assemble_score_card_merges_deterministic_and_llm_scores() -> None:
     assert score_card.diagnostic_pass_rate == 1.0
     assert score_card.execution_status == "completed"
     assert score_card.assessed_dimension_count == 2
+
+
+def test_blocking_auditor_end_reasons_require_min_turns_and_onboarding_completion() -> None:
+    seed = _make_seed()
+    store_snapshot = StoreSnapshot(
+        files={
+            "/profile/context.md": StoreFileArtifact(
+                key="/profile/context.md",
+                content="# User Profile\n- onboarding_complete: false",
+            ),
+            "/profile/dashboardConfig": StoreFileArtifact(
+                key="/profile/dashboardConfig",
+                content='{"support_metrics": []}',
+            ),
+        }
+    )
+
+    reasons = _blocking_auditor_end_reasons(
+        seed,
+        user_turn_count=3,
+        store_snapshot=store_snapshot,
+    )
+
+    assert "min_user_turns:3/4" in reasons
+    assert "continue_until:onboarding_complete_written" in reasons
+
+
+def test_guardrail_user_message_pushes_low_friction_onboarding_completion() -> None:
+    seed = _make_seed()
+
+    message = _guardrail_user_message(
+        seed,
+        ["continue_until:minimum_dataset_written,onboarding_complete_written"],
+    )
+
+    assert "最低摩擦" in message
+    assert "1-2 个" in message
 
 
 def test_assemble_score_card_fails_when_primary_dimension_is_missing() -> None:

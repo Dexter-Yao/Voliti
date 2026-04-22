@@ -131,9 +131,24 @@ Judge 负责：
 - `judge_dimensions` 只能放 Judge 负责的文本 / 行为维度
 - 任一冲突都必须在 `--dry-run` 阶段失败
 
-## 场景矩阵
+## Profile 真相源
 
-### Lite（10）
+profile 成员关系不再由目录约定隐式推断，唯一真相源为：
+
+- `eval/config/profiles.yaml`
+
+当前共有三档：
+
+### Smoke（2）
+
+用于快速确认链路畅通：
+
+1. `S01_text_roundtrip_sanity`
+2. `S02_a2ui_store_roundtrip_sanity`
+
+### Lite（14）
+
+用于日常开发的主线核心行为回归：
 
 1. `L01_onboarding_quick_minimum_dataset`
 2. `L02_onboarding_full_personal_system`
@@ -141,25 +156,31 @@ Judge 负责：
 4. `L04_work_stress_lifesign_match`
 5. `L05_return_after_absence_with_memory`
 6. `L06_forward_marker_prevention`
-7. `L07_chapter_scaffold_request`
+7. `L07_plan_revise_request`
 8. `L08_implicit_achievement_witness`
 9. `L09_boundary_mixed_case`
 10. `L10_grounded_daily_guidance`
+11. `L11_plan_first_creation`
+12. `L12_weekly_update`
+13. `L13_lapse_recovery`
+14. `L14_threshold_pressure`
 
-### Full（20）
+### Full（24）
 
-`full = lite 10 + 扩展 10`
+`full = lite 14 + 扩展 10`
 
-11. `11_onboarding_reentry_gap_fill`
-12. `12_claimed_vs_revealed_memory_write`
-13. `13_lifesign_revision_after_failure`
-14. `14_chapter_transition_and_identity_review`
-15. `15_holiday_restart_fatigue`
-16. `16_a2ui_reject_skip_resilience`
-17. `17_future_self_dialogue_trigger`
-18. `18_scenario_rehearsal_trigger`
-19. `19_metaphor_collaboration_trigger`
-20. `20_cognitive_reframing_trigger`
+扩展 10 个场景为：
+
+15. `11_onboarding_reentry_gap_fill`
+16. `12_claimed_vs_revealed_memory_write`
+17. `13_lifesign_revision_after_failure`
+18. `14_chapter_transition_and_identity_review`
+19. `15_holiday_restart_fatigue`
+20. `16_a2ui_reject_skip_resilience`
+21. `17_future_self_dialogue_trigger`
+22. `18_scenario_rehearsal_trigger`
+23. `19_metaphor_collaboration_trigger`
+24. `20_cognitive_reframing_trigger`
 
 ## 运行方式
 
@@ -171,11 +192,14 @@ cd backend && uv run langgraph dev --port 2025
 cd eval
 uv run python -m voliti_eval
 
+# smoke：快速检查链路是否通
+uv run python -m voliti_eval --profile smoke
+
 # 指定 seed
 uv run python -m voliti_eval --seeds L01
 uv run python -m voliti_eval --seeds L01,14
 
-# full = lite 10 + 扩展 10
+# full = lite 14 + 扩展 10
 uv run python -m voliti_eval --profile full
 
 # 单模型稳定性审计
@@ -218,6 +242,13 @@ uv run python -m voliti_eval --dry-run --profile full
 - Diagnostics 只看诊断，不阻断
 - Manual Appendix 只承接人工复核，不参与 pass/fail
 - `BLOCKED` 表示运行或评分过程中出现阻断，本次正式 gate 直接不通过
+
+对比报告统一使用以下命名：
+
+- `User Gate`
+- `Runtime Contract Gate`
+- `Diagnostics`
+- `Must-Pass`
 - `N/A` 表示该通道本次未被评估，不等于失败
 - `Manual Follow-up` 表示这部分刻意不做自动评估，需要人工复核
 

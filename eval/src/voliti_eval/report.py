@@ -176,6 +176,26 @@ def _mean_defined(values: list[float | None]) -> float | None:
     return round(mean(defined), 2)
 
 
+def _profile_context(config_snapshot: dict[str, Any], seed_count: int) -> dict[str, Any]:
+    seed_ids = config_snapshot.get("profile_seed_ids", [])
+    return {
+        "name": config_snapshot.get("profile_name", "unknown"),
+        "description": config_snapshot.get("profile_description", ""),
+        "seed_count": config_snapshot.get("profile_seed_count", seed_count),
+        "seed_ids": seed_ids if isinstance(seed_ids, list) else [],
+    }
+
+
+def _runtime_context(config_snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "server_url": config_snapshot.get("server_url", ""),
+        "assistant_id": config_snapshot.get("assistant_id", ""),
+        "auditor_model": config_snapshot.get("auditor_model", ""),
+        "judge_model": config_snapshot.get("judge_model", ""),
+        "max_concurrency": config_snapshot.get("max_concurrency"),
+    }
+
+
 def _run_output_paths(run: EvalResult, seed_id: str) -> tuple[str, str]:
     subdir = str(run.config_snapshot.get("report_output_subdir", "")).strip("/")
     prefix = f"{subdir}/" if subdir else ""
@@ -429,6 +449,8 @@ def build_report_context(eval_result: EvalResult, *, run_history: list[EvalResul
         ),
         "seed_count": len(eval_result.seed_results),
         "config": eval_result.config_snapshot,
+        "profile": _profile_context(eval_result.config_snapshot, len(eval_result.seed_results)),
+        "runtime": _runtime_context(eval_result.config_snapshot),
         "summary": {
             "overall_pass_rate": _pass_rate(all_scores),
             "user_gate_pass_rate": _pass_rate(user_gate_scores),
@@ -514,8 +536,6 @@ def build_comparison_summary(
                 "user_gate_pass_rate": _pass_rate(user_gate_scores),
                 "runtime_gate_pass_rate": _pass_rate(runtime_gate_scores),
                 "diagnostic_pass_rate": _pass_rate(diagnostic_scores),
-                "contract_pass_rate": _pass_rate(runtime_gate_scores),
-                "behavior_pass_rate": _pass_rate(user_gate_scores),
                 "blocked_count": len(blocked_seed_results),
                 "must_pass_rate": (
                     round(
@@ -575,8 +595,6 @@ def build_comparison_summary(
                     "user_gate_pass_rate": _pass_rate(user_gate_scores),
                     "runtime_gate_pass_rate": _pass_rate(runtime_gate_scores),
                     "diagnostic_pass_rate": _pass_rate(diagnostic_scores),
-                    "contract_pass_rate": _pass_rate(runtime_gate_scores),
-                    "behavior_pass_rate": _pass_rate(user_gate_scores),
                     "blocked_count": sum(
                         1
                         for _, seed_result in matching
@@ -647,6 +665,27 @@ def build_comparison_summary(
 
     return {
         "model_ids": model_ids,
+        "profile": _profile_context(
+            next(
+                (
+                    run.config_snapshot
+                    for model_runs in results.values()
+                    for run in model_runs
+                ),
+                {},
+            ),
+            len(seed_order),
+        ),
+        "runtime": _runtime_context(
+            next(
+                (
+                    run.config_snapshot
+                    for model_runs in results.values()
+                    for run in model_runs
+                ),
+                {},
+            )
+        ),
         "model_summaries": model_summaries,
         "seed_rows": seed_rows,
         "dimension_rows": dimension_rows,

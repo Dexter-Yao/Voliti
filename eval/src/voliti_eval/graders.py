@@ -584,10 +584,7 @@ def grade_deterministic(
             tool_calls,
         )
 
-    if (
-        "/plan/current.json" in store_after.files
-        or "/profile/dashboardConfig" in store_after.files
-    ):
+    if _should_grade_plan_alignment(seed, store_after):
         scores[CONTRACT_GOAL_CHAPTER_ALIGNMENT] = PlanAlignmentGrader().grade(seed, store_after)
 
     if seed.auditor_policy.a2ui_plan or any(turn.a2ui_payload for turn in transcript.turns):
@@ -597,6 +594,13 @@ def grade_deterministic(
         scores[CONTRACT_WITNESS_CARD] = WitnessCardContractGrader().grade(seed, tool_calls)
 
     return scores
+
+
+def _should_grade_plan_alignment(seed: Seed, store_after: StoreSnapshot) -> bool:
+    plan_key = "/plan/current.json"
+    if plan_key in store_after.files:
+        return True
+    return plan_key in seed.expected_artifacts.required_keys
 
 
 def _contains_key(value: Any, target_key: str) -> bool:

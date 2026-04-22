@@ -208,12 +208,67 @@ def _save_image_to_file(data_url: str, output_dir: str, filename: str) -> str | 
         return None
 
 
+def _evaluate_stop_condition(
+    condition: str,
+    *,
+    seed: Seed,
+    store_snapshot: StoreSnapshot,
+) -> bool | None:
+    if condition == "minimum_dataset_written":
+        required_keys = seed.expected_artifacts.required_keys
+        return bool(required_keys) and all(key in store_snapshot.files for key in required_keys)
+    if condition == "onboarding_complete_written":
+        profile = store_snapshot.files.get("/profile/context.md")
+        return profile is not None and "onboarding_complete: true" in profile.content
+    if condition == "plan_created":
+        return "/plan/current.json" in store_snapshot.files
+    return None
+
+
+def _blocking_auditor_end_reasons(
+    seed: Seed,
+    *,
+    user_turn_count: int,
+    store_snapshot: StoreSnapshot,
+) -> list[str]:
+    reasons: list[str] = []
+    min_user_turns = seed.auditor_policy.stop_rules.min_user_turns
+    if user_turn_count < min_user_turns:
+        reasons.append(f"min_user_turns:{user_turn_count}/{min_user_turns}")
+
+    unmet_conditions = [
+        condition
+        for condition in seed.auditor_policy.stop_rules.continue_until
+        if _evaluate_stop_condition(condition, seed=seed, store_snapshot=store_snapshot) is False
+    ]
+    if unmet_conditions:
+        reasons.append("continue_until:" + ",".join(unmet_conditions))
+
+    return reasons
+
+
+def _guardrail_user_message(seed: Seed, reasons: list[str]) -> str:
+    reason_text = " ".join(reasons)
+    is_chinese = seed.persona.language == "zh"
+    if "minimum_dataset_written" in reason_text or "onboarding_complete_written" in reason_text:
+        if is_chinese:
+            return "如果还差最少必要的信息，你一次问我 1-2 个就行；如果还没完成开始设置，就继续用最低摩擦方式带我完成。"
+        return (
+            "If we're not done with the minimum setup yet, ask me only for the smallest"
+            " remaining information and keep it low friction."
+        )
+    if is_chinese:
+        return "如果还没到可以结束的时候，你继续带我走下一步。"
+    return "If we're not ready to end yet, keep guiding me through the next smallest step."
+
+
 async def run_conversation(
     seed: Seed,
     thread_id: str,
     auditor: Auditor,
     client: CoachClient,
     max_turns: int,
+    user_id: str = "user",
     output_dir: str = "",
 ) -> Transcript:
     transcript = Transcript(
@@ -316,8 +371,21 @@ async def run_conversation(
         auditor_response = await auditor.respond_to_text(seed, turns, coach_text)
         decision = auditor_response.get("decision", "continue")
         if decision == "end":
-            transcript.end_reason = "auditor_ended" if user_turn_count >= 6 else "auditor_ended_early"
-            break
+            store_snapshot = await snapshot_store(client.store, user_id=user_id)
+            blocking_reasons = _blocking_auditor_end_reasons(
+                seed,
+                user_turn_count=user_turn_count,
+                store_snapshot=store_snapshot,
+            )
+            if not blocking_reasons:
+                transcript.end_reason = "auditor_ended" if user_turn_count >= 6 else "auditor_ended_early"
+                break
+            logger.info("Override auditor end for %s: %s", seed.id, ", ".join(blocking_reasons))
+            decision = "continue"
+            auditor_response = {
+                "decision": "continue",
+                "message": _guardrail_user_message(seed, blocking_reasons),
+            }
 
         user_message = auditor_response.get("message", "")
         if not user_message:
@@ -380,6 +448,7 @@ async def _run_single_seed(
             auditor,
             client,
             seed.max_turns or config.max_turns_default,
+            user_id=user_id,
             output_dir=output_dir,
         )
 
@@ -469,6 +538,7 @@ async def run_evaluation(
             "server_url": config.server_url,
             "assistant_id": config.assistant_id,
             "max_turns_default": config.max_turns_default,
+            "max_concurrency": config.max_concurrency,
             "auditor_model": config.auditor_model.deployment,
             "judge_model": config.judge_model.deployment,
         },

@@ -33,17 +33,97 @@ pre_state:
     - name: 志远
     - identity_statement: 一个在工作日能做出清醒选择的人
     - onboarding_complete: true
-  goal:
-    id: "goal_001"
-    description: "12 周内建立稳定减脂节奏"
-    north_star_target:
-      key: "weight"
-      baseline: 75
-      target: 70
-      unit: "kg"
-    start_date: "2026-03-01T00:00:00Z"
-    target_date: "2026-05-24T00:00:00Z"
+  plan:
+    plan_id: "plan_2026_03_01_transition_review"
     status: "active"
+    version: 2
+    predecessor_version: 1
+    target_summary: "12 周内建立稳定减脂节奏"
+    overall_narrative: "工作日已经逐步站稳，下一步要把真正容易失手的周末纳入结构。"
+    started_at: "2026-03-01T00:00:00+08:00"
+    planned_end_at: "2026-05-24T23:59:59+08:00"
+    created_at: "2026-03-01T09:00:00+08:00"
+    revised_at: "2026-04-11T09:00:00+08:00"
+    target:
+      metric: "weight_kg"
+      baseline: 75.0
+      goal_value: 70.0
+      duration_weeks: 12
+      rate_kg_per_week: 0.417
+    chapters:
+      - chapter_index: 1
+        name: "建立工作日节奏"
+        why_this_chapter: "先把工作日的基本盘站稳，后续周末调整才有参照。"
+        start_date: "2026-03-01"
+        end_date: "2026-03-24"
+        milestone: "连续三周工作日记录与蛋白达标稳定"
+        process_goals:
+          - name: "记录天数"
+            weekly_target_days: 5
+            weekly_total_days: 7
+            how_to_measure: "Coach 每日综合评估"
+            examples: []
+          - name: "工作日蛋白达标"
+            weekly_target_days: 5
+            weekly_total_days: 7
+            how_to_measure: "Coach 结合工作日饮食情况综合评估"
+            examples: []
+          - name: "今日状态"
+            weekly_target_days: 7
+            weekly_total_days: 7
+            how_to_measure: "Coach 每日收尾时做状态自评"
+            examples: []
+        daily_rhythm:
+          meals:
+            value: "工作日三餐尽量定点"
+            tooltip: "先稳定工作日节奏"
+          training:
+            value: "每周两次"
+            tooltip: "建立惯性"
+          sleep:
+            value: "十二点前"
+            tooltip: "避免第二天节奏被拖散"
+        daily_calorie_range: [1600, 1900]
+        daily_protein_grams_range: [105, 125]
+        weekly_training_count: 2
+      - chapter_index: 2
+        name: "巩固工作日并观察周末张力"
+        why_this_chapter: "工作日已稳住，但周末还没有真正被纳入结构。"
+        start_date: "2026-03-25"
+        end_date: "2026-04-18"
+        milestone: "用户能明确说出周末是当前主要边界"
+        process_goals:
+          - name: "记录天数"
+            weekly_target_days: 5
+            weekly_total_days: 7
+            how_to_measure: "Coach 每日综合评估"
+            examples: []
+          - name: "工作日蛋白达标"
+            weekly_target_days: 5
+            weekly_total_days: 7
+            how_to_measure: "Coach 结合工作日饮食情况综合评估"
+            examples: []
+          - name: "今日状态"
+            weekly_target_days: 7
+            weekly_total_days: 7
+            how_to_measure: "Coach 每日收尾时做状态自评"
+            examples: []
+        daily_rhythm:
+          meals:
+            value: "工作日稳定 / 周末观察"
+            tooltip: "为下一个阶段收集周末线索"
+          training:
+            value: "每周两次"
+            tooltip: "保持基本盘"
+          sleep:
+            value: "十二点前"
+            tooltip: "尽量避免周末作息反噬"
+        daily_calorie_range: [1600, 1900]
+        daily_protein_grams_range: [105, 125]
+        weekly_training_count: 2
+    linked_lifesigns: []
+    linked_markers: []
+    current_week: null
   dashboard_config:
     north_star:
       key: "weight"
@@ -68,28 +148,6 @@ pre_state:
         unit: "/10"
         order: 2
     user_goal: "12 周建立稳定减脂节奏"
-  chapter:
-    id: "ch_002"
-    goal_id: "goal_001"
-    chapter_number: 2
-    title: "建立工作日饮食节奏"
-    milestone: "连续三周工作日记录与蛋白达标稳定"
-    process_goals:
-      - key: "logging_consistency"
-        description: "工作日记录饮食"
-        target: "5/7 天"
-        metric_key: "logging_days"
-      - key: "weekday_protein"
-        description: "工作日蛋白达标"
-        target: "5/7 天"
-        metric_key: "weekday_protein_days"
-      - key: "state_awareness"
-        description: "每日状态自评"
-        target: "每天"
-        metric_key: "state"
-    start_date: "2026-03-25T00:00:00Z"
-    planned_end_date: "2026-04-18T00:00:00Z"
-    status: "active"
   coach_memory: |
     # Coach Memory — 志远
 

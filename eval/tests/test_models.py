@@ -167,6 +167,48 @@ def test_seed_rejects_missing_user_centered_review_fields() -> None:
         )
 
 
+def test_seed_rejects_unknown_pre_state_fields() -> None:
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        Seed.model_validate(
+            {
+                "id": "14_chapter_transition_and_identity_review",
+                "name": "Chapter transition",
+                "description": "Unknown pre_state fields must fail fast.",
+                "entry_mode": "coaching",
+                "persona": {
+                    "name": "志远",
+                    "background": "阶段切换",
+                    "personality": "直接",
+                    "language": "zh",
+                },
+                "goal": "Check schema.",
+                "initial_message": "我想切到下一个阶段。",
+                "user_outcome": "用户的阶段变化被看见。",
+                "allowed_good_variants": ["Coach 可以先确认阶段变化。"],
+                "manual_review_checks": ["人工检查语气是否自然。"],
+                "pre_state": {
+                    "goal": {"id": "goal_001"},
+                },
+                "auditor_policy": {
+                    "latent_facts": [],
+                    "reveal_rules": [],
+                    "a2ui_plan": [],
+                    "challenge_rules": [],
+                    "stop_rules": {
+                        "min_user_turns": 3,
+                        "complete_when": ["done"],
+                        "continue_until": ["done"],
+                    },
+                },
+                "judge_dimensions": ["coach_action_transparency"],
+                "scoring_focus": {
+                    "primary": ["coach_action_transparency"],
+                    "secondary": [],
+                },
+            }
+        )
+
+
 def test_seed_rejects_primary_dimensions_that_are_not_gate_dimensions() -> None:
     with pytest.raises(ValueError, match="Primary scoring_focus dimensions must be gate dimensions"):
         Seed.model_validate(

@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from voliti_eval.graders import (
     A2UIContractGrader,
     InterventionContractGrader,
@@ -10,6 +12,7 @@ from voliti_eval.graders import (
     PlanAlignmentGrader,
     StoreSchemaGrader,
     build_store_diff,
+    grade_deterministic,
 )
 from voliti_eval.models import (
     DimensionScore,
@@ -86,6 +89,20 @@ def _make_snapshot(files: dict[str, str]) -> StoreSnapshot:
             key: StoreFileArtifact(key=key, content=value)
             for key, value in files.items()
         }
+    )
+
+
+def _make_transcript(seed: Seed) -> Transcript:
+    now = datetime.now(timezone.utc)
+    return Transcript(
+        seed_id=seed.id,
+        seed_name=seed.name,
+        thread_id="thread_test",
+        started_at=now,
+        finished_at=now,
+        turn_count=0,
+        end_reason="auditor_ended_early",
+        turns=[],
     )
 
 
@@ -238,6 +255,74 @@ def test_plan_alignment_grader_fails_when_plan_missing() -> None:
 
     assert score.passed is False
     assert "plan/current.json" in score.justification.lower()
+
+
+def test_grade_deterministic_skips_plan_alignment_when_seed_forbids_plan() -> None:
+    seed = _make_seed().model_copy(
+        update={
+            "id": "S02_a2ui_store_roundtrip_sanity",
+            "entry_mode": "new",
+            "expected_artifacts": _make_seed().expected_artifacts.model_copy(
+                update={
+                    "required_keys": ["/profile/context.md", "/profile/dashboardConfig"],
+                    "forbidden_keys": ["/plan/current.json"],
+                    "minimum_dataset": "quick",
+                    "witness_required": False,
+                }
+            ),
+        }
+    )
+    transcript = _make_transcript(seed)
+    after = _make_snapshot(
+        {
+            "/profile/context.md": "# User Profile\n- onboarding_complete: true",
+            "/profile/dashboardConfig": '{"north_star": {"key": "weight", "label": "体重", "type": "numeric"}, "support_metrics": []}',
+        }
+    )
+
+    scores = grade_deterministic(
+        seed,
+        transcript,
+        [],
+        StoreSnapshot(),
+        after,
+        build_store_diff(StoreSnapshot(), after),
+    )
+
+    assert "contract_goal_chapter_alignment" not in scores
+
+
+def test_grade_deterministic_keeps_plan_alignment_when_seed_requires_plan() -> None:
+    seed = _make_seed().model_copy(
+        update={
+            "id": "L11_plan_first_creation",
+            "entry_mode": "coaching",
+            "expected_artifacts": _make_seed().expected_artifacts.model_copy(
+                update={
+                    "required_keys": ["/plan/current.json", "/profile/dashboardConfig"],
+                    "forbidden_keys": [],
+                }
+            ),
+        }
+    )
+    transcript = _make_transcript(seed)
+    after = _make_snapshot(
+        {
+            "/profile/dashboardConfig": '{"north_star": {"key": "weight", "label": "体重", "type": "numeric"}, "support_metrics": []}',
+        }
+    )
+
+    scores = grade_deterministic(
+        seed,
+        transcript,
+        [],
+        StoreSnapshot(),
+        after,
+        build_store_diff(StoreSnapshot(), after),
+    )
+
+    assert "contract_goal_chapter_alignment" in scores
+    assert scores["contract_goal_chapter_alignment"].passed is False
 
 
 def test_store_schema_grader_rejects_legacy_dashboard_current_value() -> None:

@@ -142,20 +142,23 @@ Auditor 必须：
 
 单模型报告的固定顺序为：
 
-1. `User Gate Summary`
-2. `Runtime Contract Summary`
-3. `Diagnostics Summary`
-4. `Seed Detail`
-5. `Manual Review Appendix`
+1. `Execution Blockers`
+2. `User Gate Summary`
+3. `Runtime Contract Summary`
+4. `Diagnostics Summary`
+5. `Seed Detail`
+6. `Manual Review Appendix`
 
 其中：
 
+- `Execution Blockers` 专门承接运行中断、Judge parse error、seed 配置错误等阻断项
 - 正式放行只看 User Gate 与 Runtime Contract Gate
 - Diagnostics 只提供诊断，不阻断
 - Manual Appendix 只承接人工复核，不参与 pass/fail
 - 无法完成评估或运行报错统一记为 `BLOCKED`
 - 未被当前 seed 评估的通道统一显示为 `N/A`
 - 刻意退出自动评估的内容统一显示为 `Manual Follow-up`
+- 对比报告必须沿用同一套通道命名：`User Gate`、`Runtime Contract Gate`、`Diagnostics`、`Must-Pass`
 
 每个 seed 的详情必须提供：
 

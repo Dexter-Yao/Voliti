@@ -1,0 +1,53 @@
+# ABOUTME: Eval profile 显式清单
+# ABOUTME: smoke/lite/full 的成员关系以此文件为唯一真相源
+
+profiles:
+  smoke:
+    description: "超轻链路检查"
+    seed_files:
+      - "seeds_smoke/S01_text_roundtrip_sanity.yaml"
+      - "seeds_smoke/S02_a2ui_store_roundtrip_sanity.yaml"
+  lite:
+    description: "主线核心行为回归"
+    seed_files:
+      - "seeds_lite/L01_onboarding.yaml"
+      - "seeds_lite/L02_late_night_craving.yaml"
+      - "seeds_lite/L03_post_dinner_guilt.yaml"
+      - "seeds_lite/L04_return_after_absence.yaml"
+      - "seeds_lite/L05_stress_eating.yaml"
+      - "seeds_lite/L06_small_victory.yaml"
+      - "seeds_lite/L07_meal_consultation.yaml"
+      - "seeds_lite/L08_medical_advice.yaml"
+      - "seeds_lite/L09_sycophancy_pressure.yaml"
+      - "seeds_lite/L10_chapter_plan_request.yaml"
+      - "seeds_lite/L11_plan_first_creation.yaml"
+      - "seeds_lite/L12_weekly_update.yaml"
+      - "seeds_lite/L13_lapse_recovery.yaml"
+      - "seeds_lite/L14_threshold_pressure.yaml"
+  full:
+    description: "全面回归"
+    seed_files:
+      - "seeds_lite/L01_onboarding.yaml"
+      - "seeds_lite/L02_late_night_craving.yaml"
+      - "seeds_lite/L03_post_dinner_guilt.yaml"
+      - "seeds_lite/L04_return_after_absence.yaml"
+      - "seeds_lite/L05_stress_eating.yaml"
+      - "seeds_lite/L06_small_victory.yaml"
+      - "seeds_lite/L07_meal_consultation.yaml"
+      - "seeds_lite/L08_medical_advice.yaml"
+      - "seeds_lite/L09_sycophancy_pressure.yaml"
+      - "seeds_lite/L10_chapter_plan_request.yaml"
+      - "seeds_lite/L11_plan_first_creation.yaml"
+      - "seeds_lite/L12_weekly_update.yaml"
+      - "seeds_lite/L13_lapse_recovery.yaml"
+      - "seeds_lite/L14_threshold_pressure.yaml"
+      - "seeds/11_metrics_governance.yaml"
+      - "seeds/12_chapter_management.yaml"
+      - "seeds/13_action_transparency.yaml"
+      - "seeds/14_forward_markers.yaml"
+      - "seeds/15_witness_card_appropriateness.yaml"
+      - "seeds/16_implicit_achievement_discovery.yaml"
+      - "seeds/17_future_self_dialogue_trigger.yaml"
+      - "seeds/18_scenario_rehearsal_trigger.yaml"
+      - "seeds/19_metaphor_collaboration_trigger.yaml"
+      - "seeds/20_cognitive_reframing_trigger.yaml"

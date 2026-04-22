@@ -1,5 +1,5 @@
 # ABOUTME: CLI 入口，解析参数并调用评估编排器
-# ABOUTME: 保留 lite/full 与 compare 外壳，但内部统一为混合评分架构
+# ABOUTME: 通过 smoke/lite/full manifest 收口 profile 语义与报告元数据
 
 from __future__ import annotations
 
@@ -14,7 +14,13 @@ from typing import Any, Callable, TypeVar
 
 import click
 
-from voliti_eval.config import EvalConfig, load_config, load_seeds
+from voliti_eval.config import (
+    EvalConfig,
+    ProfileDefinition,
+    load_config,
+    load_profile_manifest,
+    load_seed,
+)
 from voliti_eval.judge import Judge
 from voliti_eval.models import EvalResult, Seed
 from voliti_eval.report import generate_comparison_report, generate_report
@@ -40,27 +46,38 @@ def load_profile_seeds(
     config: EvalConfig,
     profile: str,
     *,
-    seed_loader: Callable[[Path], list[SeedLike]] = load_seeds,
+    seed_loader: Callable[[Path], SeedLike] = load_seed,
+    manifest_loader: Callable[[EvalConfig], dict[str, ProfileDefinition]] = load_profile_manifest,
 ) -> list[SeedLike]:
-    """按 profile 加载 seed。
-
-    `full` 语义为 lite 10 个基础场景 + 全部扩展场景。
-    """
-    if profile == "lite":
-        return list(seed_loader(config.seed_directory_lite))
-    if profile != "full":
+    """按 profile manifest 加载 seed。"""
+    manifest = manifest_loader(config)
+    definition = manifest.get(profile)
+    if definition is None:
         raise ValueError(f"Unsupported profile: {profile}")
+    return [seed_loader(path) for path in definition.seed_files]
 
-    combined: list[SeedLike] = []
-    seen_ids: set[str] = set()
-    for directory in (config.seed_directory_lite, config.seed_directory):
-        for seed in seed_loader(directory):
-            seed_id = _seed_id(seed)
-            if seed_id in seen_ids:
-                continue
-            seen_ids.add(seed_id)
-            combined.append(seed)
-    return combined
+
+def load_profile_definition(
+    config: EvalConfig,
+    profile: str,
+    *,
+    manifest_loader: Callable[[EvalConfig], dict[str, ProfileDefinition]] = load_profile_manifest,
+) -> ProfileDefinition:
+    """返回单个 profile 的元数据。"""
+    manifest = manifest_loader(config)
+    definition = manifest.get(profile)
+    if definition is None:
+        raise ValueError(f"Unsupported profile: {profile}")
+    return definition
+
+
+def _profile_snapshot(profile: ProfileDefinition, seeds: list[SeedLike]) -> dict[str, Any]:
+    return {
+        "profile_name": profile.name,
+        "profile_description": profile.description,
+        "profile_seed_count": len(seeds),
+        "profile_seed_ids": [_seed_id(seed) for seed in seeds],
+    }
 
 
 def filter_seeds(all_seeds: list[SeedLike], selector: str) -> list[SeedLike]:
@@ -79,6 +96,7 @@ def filter_seeds(all_seeds: list[SeedLike], selector: str) -> list[SeedLike]:
 @click.command()
 @click.option("--seeds", default="all", help="逗号分隔的 seed ID（如 L01,14）或 'all'")
 @click.option("--server-url", default=None, help="LangGraph dev server URL")
+@click.option("--concurrency", default=None, type=click.IntRange(min=1), help="单个 server_url 的并发 seed 上限")
 @click.option("--assistant-id", default=None, help="LangGraph assistant ID")
 @click.option("--output", "output_dir", default=None, type=click.Path(), help="输出目录")
 @click.option("--max-turns", default=None, type=int, help="覆盖所有 seed 的 max_turns")
@@ -95,12 +113,13 @@ def filter_seeds(all_seeds: list[SeedLike], selector: str) -> list[SeedLike]:
 @click.option(
     "--profile",
     default="lite",
-    type=click.Choice(["full", "lite"]),
-    help="评估 Profile：lite（10 seed，默认）或 full（lite 10 + 全部扩展）",
+    type=click.Choice(["smoke", "full", "lite"]),
+    help="评估 Profile：smoke（超轻链路）、lite（14 个主线核心行为）或 full（24 个全面回归）",
 )
 def main(
     seeds: str,
     server_url: str | None,
+    concurrency: int | None,
     assistant_id: str | None,
     output_dir: str | None,
     max_turns: int | None,
@@ -125,6 +144,7 @@ def main(
     config = load_config(
         eval_root,
         server_url=server_url,
+        max_concurrency=concurrency,
         assistant_id=assistant_id,
         max_turns=max_turns,
         output_dir=output_path,
@@ -132,6 +152,7 @@ def main(
 
     try:
         all_seeds = load_profile_seeds(config, profile)
+        profile_definition = load_profile_definition(config, profile)
     except ValueError as exc:
         click.echo(f"错误：{exc}", err=True)
         sys.exit(1)
@@ -146,7 +167,10 @@ def main(
         sys.exit(1)
 
     click.echo(f"Profile: {profile}")
+    click.echo(f"Description: {profile_definition.description}")
     click.echo(f"Seeds: {len(selected)}/{len(all_seeds)} selected")
+    click.echo(f"Server: {config.server_url}")
+    click.echo(f"Concurrency: {config.max_concurrency}")
     for seed in selected:
         click.echo(f"  {_seed_id(seed)} — {_seed_name(seed)}")
 
@@ -156,9 +180,26 @@ def main(
 
     if compare:
         model_ids = [model.strip() for model in (models or "coach,coach_qwen").split(",") if model.strip()]
-        asyncio.run(_run_compare(selected, config, model_ids, runs, profile=profile))
+        asyncio.run(
+            _run_compare(
+                selected,
+                config,
+                model_ids,
+                runs,
+                profile=profile,
+                profile_snapshot=_profile_snapshot(profile_definition, all_seeds),
+            )
+        )
     else:
-        asyncio.run(_run(selected, config, profile=profile, runs=runs))
+        asyncio.run(
+            _run(
+                selected,
+                config,
+                profile=profile,
+                runs=runs,
+                profile_snapshot=_profile_snapshot(profile_definition, all_seeds),
+            )
+        )
 
 
 def _print_dry_run(
@@ -181,7 +222,14 @@ def _print_dry_run(
         click.echo(f"\n对比模式: {model_ids} × {runs} runs")
 
 
-async def _run(seeds: list[Seed], config: EvalConfig, *, profile: str, runs: int) -> None:
+async def _run(
+    seeds: list[Seed],
+    config: EvalConfig,
+    *,
+    profile: str,
+    runs: int,
+    profile_snapshot: dict[str, Any],
+) -> None:
     """异步执行单模型评估流程。"""
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     output_dir = config.output_directory / f"{timestamp}_{profile}"
@@ -189,6 +237,7 @@ async def _run(seeds: list[Seed], config: EvalConfig, *, profile: str, runs: int
 
     click.echo(f"\n开始评估 → {output_dir}")
     click.echo(f"Server: {config.server_url}")
+    click.echo(f"Concurrency: {config.max_concurrency}")
     click.echo(f"Assistant: {config.assistant_id}")
     click.echo(f"Runs: {runs}")
     click.echo()
@@ -206,6 +255,7 @@ async def _run(seeds: list[Seed], config: EvalConfig, *, profile: str, runs: int
             judge_fn=judge.score,
             output_dir=str(run_dir),
         )
+        result.config_snapshot.update(profile_snapshot)
         result.config_snapshot["report_output_subdir"] = (
             run_dir.relative_to(output_dir).as_posix() if run_dir != output_dir else ""
         )
@@ -225,6 +275,7 @@ async def _run_compare(
     runs_per_model: int,
     *,
     profile: str,
+    profile_snapshot: dict[str, Any],
 ) -> None:
     """对多个模型顺序运行评估，生成对比报告。"""
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
@@ -234,6 +285,7 @@ async def _run_compare(
 
     click.echo(f"\n开始多模型对比 → {compare_dir}")
     click.echo(f"Server: {config.server_url}")
+    click.echo(f"Concurrency: {config.max_concurrency}")
     click.echo(f"Models: {model_ids}")
     click.echo(f"Runs per model: {runs_per_model}")
     click.echo()
@@ -261,6 +313,7 @@ async def _run_compare(
                 judge_fn=judge.score,
                 output_dir=str(run_dir),
             )
+            result.config_snapshot.update(profile_snapshot)
             result.config_snapshot["report_output_subdir"] = (
                 run_dir.relative_to(compare_dir / model_id).as_posix()
             )

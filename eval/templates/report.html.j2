@@ -270,7 +270,17 @@
   <h1>Voliti Eval Report</h1>
   <div class="meta">
     Run ID: {{ run_id }} | {{ started_at }} | {{ seed_count }} seeds |
+    Profile: {{ profile.name }}{% if profile.description %} ({{ profile.description }}){% endif %} |
     Assistant: {{ config.assistant_id }} | Auditor: {{ config.auditor_model }} | Judge: {{ config.judge_model }}
+  </div>
+  <div class="meta">
+    Server: {{ runtime.server_url or "N/A" }} | Concurrency: {{ runtime.max_concurrency if runtime.max_concurrency is not none else "N/A" }}
+  </div>
+  <div class="meta">
+    Profile Seeds: {{ profile.seed_count }}
+    {% if profile.seed_ids %}
+    | {{ profile.seed_ids | join(", ") }}
+    {% endif %}
   </div>
 
   <section class="grid">

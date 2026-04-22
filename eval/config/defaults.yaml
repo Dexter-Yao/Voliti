@@ -7,6 +7,8 @@ max_turns_default: 20
 turn_timeout_seconds: 300
 seed_directory: "seeds/"
 seed_directory_lite: "seeds_lite/"
+seed_directory_smoke: "seeds_smoke/"
+profile_manifest: "config/profiles.yaml"
 output_directory: "output/"
 max_concurrency: 10
 

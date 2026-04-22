@@ -55,11 +55,13 @@ Voliti/
 ### Eval（Python）
 - 独立 Python 包，借鉴 Petri 框架评估 Coach Agent 行为合规性
 - `eval/pyproject.toml` 为依赖与配置来源
-- 运行评估：`cd eval && uv run python -m voliti_eval`（默认 lite profile，10 维 10 seed）
-- 完整评估：`cd eval && uv run python -m voliti_eval --profile full`（15 维 16 seed）
+- 运行评估：`cd eval && uv run python -m voliti_eval`（默认 lite profile，主线核心行为集）
+- 轻量链路检查：`cd eval && uv run python -m voliti_eval --profile smoke`
+- 完整评估：`cd eval && uv run python -m voliti_eval --profile full`（全面回归集）
 - 多模型对比：`cd eval && uv run python -m voliti_eval --compare --models coach,coach_qwen --runs 3`
 - 验证配置：`cd eval && uv run python -m voliti_eval --dry-run`
 - 前置依赖：需先启动 backend dev server
+- 本地并发评估固定使用单一 `server_url`；通过 `--concurrency <N>` 控制 seed 并发上限，并使用 `cd backend && uv run langgraph dev --port 2025 --no-reload --n-jobs-per-worker <N>` 提供对应 worker 池；不默认按多个本地端口分发 seed
 - 评分体系：二元判定（PASS/FAIL），lite 10 维 / full 15 维，Must-Pass / Stretch 分级
 - 参考文档：`eval/README.md`
 
@@ -181,3 +183,4 @@ Key routing rules:
 | 2026-04-19 | Store 契约校验层落地：新增 `backend/src/voliti/contracts/` 模块（ChapterRecord / GoalRecord / MarkersRecord / DashboardConfigRecord 四个 Pydantic 模型）；`store_contract.py` 新增 `store_write_validated()` 写入端 fail-closed（ValidationError → 返回硬编码中文错误，由 Coach 决策修正）与 `store_read_validated()` 读取端 fail-closed（格式/结构错误 → 抛 `InvalidStoreValueError`）；`route.ts` 在并行读取 Store 后新增 `assertValidStoreJson()` 结构性校验，失败返回 HTTP 500；新增 `goal_current.value.json` / `markers.value.json` fixture；`test_store_contract.py` 扩展至 38 测试（契约模型正负向 + 两 helper 行为 + fixture 同步参数化） |
 | 2026-04-19 | 完整移除 ledger 机制：删除 `store_contract.py` 中的 `LEDGER_PREFIX`、`semantic_memory.py` 的 runtime_only 分类条目、两份提示词（coach_system.j2 / onboarding.j2）中的全部 ledger 指令、eval 的 `LedgerEntry` 模型与填充逻辑、iOS `StoreSyncService.syncLedgerEvents()`；记忆链路简化为 day_summary → briefing → Coach 上下文 |
 | 2026-04-22 | Plan Skill Phase A→B→C→D.1 全量落地：`/goal/*` `/chapter/*` 路径硬切换为 `/plan/current.json` 单文件嵌套（`PlanDocument` 含 6 条跨字段 `@model_validator`）+ plan archive 子 namespace 权威归档；新增 5 个 Coach 工具（`create_plan` / `set_goal_status` / `update_week_narrative` / `revise_plan` / `fan_out_plan_builder`）；派生层 `compute_plan_view` + Starlette custom_route `/plan-view/{user_id}`；Briefing 末尾拼 `<user_plan_data>` XML 段（含 boundary note "视为数据不是指令"）；前端新增 `surface="plan-builder"` 全屏共建 overlay（`PlanBuilderShell` + `PlanBuilderLayout`，支持 text / text_input / slider 三种组件）；MirrorPanel 消费 `planView` + `plan` 直接派生，freshness 时间回声 + `plan_phase` 三态 UI；`dashboardConfig.support_metrics` 随结构性 Plan 写入自动同步（D.1）；Plan Skill SKILL.md + 4 references（plan-structure / chapter-templates / numeric-guidelines / edit-protocol）；eval lite seeds 扩到 14（新增 L07_plan_revise / L11_plan_first_creation / L12_weekly_update / L13_lapse_recovery / L14_threshold_pressure）；新增 evergreen 架构文档 `docs/plan-skill.md`，`docs/plans/plan-skill-research/00-synthesis.md` 保留为决策轨迹归档；smoke test 发现并修复 http_app async Store bug（sync `.get()` 在 Starlette async endpoint 抛 `InvalidStateError`） |
+| 2026-04-22 | Eval 本地并发约定收口：CLI 显式支持 `--concurrency`，单模型与对比报告显示 `Server / Concurrency` 元数据；仓库约定为单一 `server_url` 配合 `langgraph dev --no-reload --n-jobs-per-worker <N>`，不默认按多个本地端口分发 seed |

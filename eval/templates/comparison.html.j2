@@ -78,6 +78,15 @@
 <div class="page">
   <h1>Voliti Eval Comparison</h1>
   <div class="meta">
+    Profile: {{ profile.name }}{% if profile.description %} ({{ profile.description }}){% endif %} | Seeds: {{ profile.seed_count }}
+    {% if profile.seed_ids %}
+    | {{ profile.seed_ids | join(", ") }}
+    {% endif %}
+  </div>
+  <div class="meta">
+    Server: {{ runtime.server_url or "N/A" }} | Concurrency: {{ runtime.max_concurrency if runtime.max_concurrency is not none else "N/A" }}
+  </div>
+  <div class="meta">
     {% for row in model_summaries %}
     {{ row.label }}{% if not loop.last %} vs {% endif %}
     {% endfor %}
@@ -91,8 +100,8 @@
         <th>运行次数</th>
         <th>Blocked</th>
         <th>总体通过率</th>
-        <th>硬契约通过率</th>
-        <th>行为维度通过率</th>
+        <th>Runtime Contract Gate</th>
+        <th>User Gate</th>
         <th>Must-Pass 通过率</th>
       </tr>
     </thead>
@@ -103,8 +112,8 @@
         <td>{{ row.run_count }}</td>
         <td>{{ row.blocked_count }}</td>
         <td>{{ row.overall_pass_rate | display_percent }}</td>
-        <td>{{ row.contract_pass_rate | display_percent }}</td>
-        <td>{{ row.behavior_pass_rate | display_percent }}</td>
+        <td>{{ row.runtime_gate_pass_rate | display_percent }}</td>
+        <td>{{ row.user_gate_pass_rate | display_percent }}</td>
         <td>{{ row.must_pass_rate | display_percent }}</td>
       </tr>
       {% endfor %}
@@ -128,8 +137,9 @@
         {% for model in row.models %}
         <td>
           <div>overall={{ model.average_pass_rate | display_percent }}</div>
-          <div>contract={{ model.contract_pass_rate | display_percent }}</div>
-          <div>behavior={{ model.behavior_pass_rate | display_percent }}</div>
+          <div>runtime_gate={{ model.runtime_gate_pass_rate | display_percent }}</div>
+          <div>user_gate={{ model.user_gate_pass_rate | display_percent }}</div>
+          <div>diagnostic={{ model.diagnostic_pass_rate | display_percent }}</div>
           <div>blocked={{ model.blocked_count }}</div>
         </td>
         {% endfor %}

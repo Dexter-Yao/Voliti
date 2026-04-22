@@ -215,6 +215,10 @@ def test_generate_reports_render_html_files(tmp_path) -> None:
             "assistant_id": "coach",
             "auditor_model": "gpt-5.4",
             "judge_model": "gpt-5.4",
+            "profile_name": "lite",
+            "profile_description": "主线核心行为回归",
+            "profile_seed_count": 14,
+            "profile_seed_ids": ["L01_onboarding_quick_minimum_dataset"],
         },
         seed_results=[
             _make_seed_result(
@@ -246,6 +250,82 @@ def test_generate_reports_render_html_files(tmp_path) -> None:
     assert comparison_path.exists()
     assert "Voliti Eval Report" in report_path.read_text(encoding="utf-8")
     assert "Voliti Eval Comparison" in comparison_path.read_text(encoding="utf-8")
+
+
+def test_build_report_context_includes_profile_metadata() -> None:
+    eval_result = EvalResult.model_validate(
+        {
+            "run_id": "run_profile",
+            "started_at": "2026-04-17T00:00:00Z",
+            "config_snapshot": {
+                "assistant_id": "coach",
+                "auditor_model": "gpt-5.4",
+                "judge_model": "gpt-5.4",
+                "profile_name": "smoke",
+                "profile_description": "超轻链路检查",
+                "profile_seed_count": 2,
+                "profile_seed_ids": [
+                    "S01_text_roundtrip_sanity",
+                    "S02_a2ui_store_roundtrip_sanity",
+                ],
+            },
+            "seed_results": [
+                _make_seed_result(
+                    "S01_text_roundtrip_sanity",
+                    {
+                        "coach_state_before_strategy": DimensionScore(
+                            passed=True,
+                            justification="先接住了状态。",
+                            score_source="llm",
+                        ),
+                    },
+                ).model_dump(mode="json"),
+            ],
+        }
+    )
+
+    context = build_report_context(eval_result)
+
+    assert context["profile"]["name"] == "smoke"
+    assert context["profile"]["description"] == "超轻链路检查"
+    assert context["profile"]["seed_count"] == 2
+    assert context["profile"]["seed_ids"] == [
+        "S01_text_roundtrip_sanity",
+        "S02_a2ui_store_roundtrip_sanity",
+    ]
+
+
+def test_build_report_context_preserves_runtime_parallelism_metadata() -> None:
+    eval_result = EvalResult.model_validate(
+        {
+            "run_id": "run_parallel",
+            "started_at": "2026-04-17T00:00:00Z",
+            "config_snapshot": {
+                "assistant_id": "coach",
+                "auditor_model": "gpt-5.4",
+                "judge_model": "gpt-5.4",
+                "server_url": "http://localhost:2121",
+                "max_concurrency": 7,
+            },
+            "seed_results": [
+                _make_seed_result(
+                    "S01_text_roundtrip_sanity",
+                    {
+                        "coach_state_before_strategy": DimensionScore(
+                            passed=True,
+                            justification="先接住了状态。",
+                            score_source="llm",
+                        ),
+                    },
+                ).model_dump(mode="json"),
+            ],
+        }
+    )
+
+    context = build_report_context(eval_result)
+
+    assert context["config"]["server_url"] == "http://localhost:2121"
+    assert context["config"]["max_concurrency"] == 7
 
 
 def test_build_report_context_includes_review_bundle() -> None:
@@ -505,3 +585,165 @@ def test_build_report_context_includes_run_history_paths_for_manual_review() -> 
     assert seed_row["run_history"][0]["transcript_path"] == "run_1/transcripts/20_cognitive_reframing_trigger.json"
     assert seed_row["run_history"][0]["score_path"] == "run_1/scores/20_cognitive_reframing_trigger.json"
     assert seed_row["run_history"][1]["transcript_path"] == "run_2/transcripts/20_cognitive_reframing_trigger.json"
+
+
+def test_build_comparison_summary_uses_user_and_runtime_gate_labels() -> None:
+    run = EvalResult(
+        run_id="run_compare",
+        started_at="2026-04-17T00:00:00Z",
+        config_snapshot={
+            "profile_name": "full",
+            "profile_description": "全面回归",
+            "profile_seed_count": 24,
+            "profile_seed_ids": ["L01_onboarding_quick_minimum_dataset"],
+        },
+        seed_results=[
+            _make_seed_result(
+                "L01_onboarding_quick_minimum_dataset",
+                {
+                    "contract_onboarding_artifacts": DimensionScore(
+                        passed=True,
+                        justification="ok",
+                        score_source="deterministic",
+                    ),
+                    "coach_action_transparency": DimensionScore(
+                        passed=False,
+                        justification="not explained",
+                        failure_severity="notable",
+                        score_source="llm",
+                    ),
+                },
+            )
+        ],
+    )
+
+    summary = build_comparison_summary({"coach": [run]}, {"coach": "GPT-5.4"})
+
+    model_summary = summary["model_summaries"][0]
+    assert model_summary["runtime_gate_pass_rate"] == 1.0
+    assert model_summary["user_gate_pass_rate"] == 0.0
+    assert "contract_pass_rate" not in model_summary
+    assert "behavior_pass_rate" not in model_summary
+    assert summary["profile"]["name"] == "full"
+    assert summary["profile"]["seed_count"] == 24
+
+
+def test_generate_comparison_report_renders_profile_and_gate_labels(tmp_path) -> None:
+    run = EvalResult(
+        run_id="run_compare_html",
+        started_at="2026-04-17T00:00:00Z",
+        config_snapshot={
+            "profile_name": "full",
+            "profile_description": "全面回归",
+            "profile_seed_count": 24,
+            "profile_seed_ids": ["L01_onboarding_quick_minimum_dataset"],
+        },
+        seed_results=[
+            _make_seed_result(
+                "L01_onboarding_quick_minimum_dataset",
+                {
+                    "contract_onboarding_artifacts": DimensionScore(
+                        passed=True,
+                        justification="ok",
+                        score_source="deterministic",
+                    ),
+                    "coach_action_transparency": DimensionScore(
+                        passed=True,
+                        justification="explained",
+                        score_source="llm",
+                    ),
+                },
+            )
+        ],
+    )
+
+    comparison_path = generate_comparison_report(
+        {"coach": [run]},
+        {"coach": "GPT-5.4"},
+        tmp_path / "compare",
+    )
+    html = comparison_path.read_text(encoding="utf-8")
+
+    assert "Profile: full" in html
+    assert "全面回归" in html
+    assert "Runtime Contract Gate" in html
+    assert "User Gate" in html
+    assert "Must-Pass" in html
+    assert "contract=" not in html
+    assert "behavior=" not in html
+
+
+def test_generate_report_renders_runtime_parallelism_metadata(tmp_path) -> None:
+    run = EvalResult(
+        run_id="run_parallel_html",
+        started_at="2026-04-17T00:00:00Z",
+        config_snapshot={
+            "assistant_id": "coach",
+            "auditor_model": "gpt-5.4",
+            "judge_model": "gpt-5.4",
+            "server_url": "http://localhost:2121",
+            "max_concurrency": 7,
+            "profile_name": "smoke",
+            "profile_description": "超轻链路检查",
+            "profile_seed_count": 2,
+            "profile_seed_ids": ["S01_text_roundtrip_sanity", "S02_a2ui_store_roundtrip_sanity"],
+        },
+        seed_results=[
+            _make_seed_result(
+                "S01_text_roundtrip_sanity",
+                {
+                    "coach_state_before_strategy": DimensionScore(
+                        passed=True,
+                        justification="ok",
+                        score_source="llm",
+                    ),
+                },
+            )
+        ],
+    )
+
+    report_path = generate_report(run, tmp_path / "single")
+    html = report_path.read_text(encoding="utf-8")
+
+    assert "Server: http://localhost:2121" in html
+    assert "Concurrency: 7" in html
+
+
+def test_generate_comparison_report_renders_runtime_parallelism_metadata(tmp_path) -> None:
+    run = EvalResult(
+        run_id="run_compare_parallel_html",
+        started_at="2026-04-17T00:00:00Z",
+        config_snapshot={
+            "assistant_id": "coach",
+            "auditor_model": "gpt-5.4",
+            "judge_model": "gpt-5.4",
+            "server_url": "http://localhost:2121",
+            "max_concurrency": 7,
+            "profile_name": "smoke",
+            "profile_description": "超轻链路检查",
+            "profile_seed_count": 2,
+            "profile_seed_ids": ["S01_text_roundtrip_sanity", "S02_a2ui_store_roundtrip_sanity"],
+        },
+        seed_results=[
+            _make_seed_result(
+                "S01_text_roundtrip_sanity",
+                {
+                    "coach_state_before_strategy": DimensionScore(
+                        passed=True,
+                        justification="ok",
+                        score_source="llm",
+                    ),
+                },
+            )
+        ],
+    )
+
+    comparison_path = generate_comparison_report(
+        {"coach": [run]},
+        {"coach": "GPT-5.4"},
+        tmp_path / "compare",
+    )
+    html = comparison_path.read_text(encoding="utf-8")
+
+    assert "Server: http://localhost:2121" in html
+    assert "Concurrency: 7" in html

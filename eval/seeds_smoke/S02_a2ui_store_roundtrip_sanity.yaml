@@ -1,0 +1,92 @@
+id: "S02_a2ui_store_roundtrip_sanity"
+name: "A2UI Store Roundtrip Sanity"
+description: >
+  超轻量 A2UI + 持久化链路检查。验证 interrupt/resume、onboarding 最小产物写入、
+  deterministic graders、Transcript 与 HTML 报告能完整走通。
+entry_mode: "new"
+
+persona:
+  name: "初晴"
+  background: "刚注册，希望先快速开始，不想第一次就被盘问太久"
+  personality: "配合，但追求低摩擦"
+  language: "zh"
+
+goal: >
+  选择快速开始，只在被问到时补充最小必要信息。
+  观察系统是否完成最小 onboarding，而不是把 smoke 场景拖成完整访谈。
+
+initial_message: "你好，我刚注册，想先快速开始。"
+user_outcome: >
+  用户在低摩擦前提下完成最小 onboarding，并清楚自己已经进入正式 coaching 可继续的状态。
+
+allowed_good_variants:
+  - "Coach 可以先解释 quick/full 差异，再让用户选择。"
+  - "Coach 可以只补 1-2 个最小数据集问题，但不能把 quick path 扩成 full path。"
+
+manual_review_checks:
+  - "人工检查 quick path 的节奏是否足够轻。"
+
+max_turns: 6
+
+expected_behaviors:
+  must:
+    - "完成最小 onboarding 并写入 profile/context.md 与 profile/dashboardConfig"
+    - "A2UI 面板与用户响应满足 backend 契约"
+  should:
+    - "用自然语言解释正在为用户建立起点"
+  must_not:
+    - "把 smoke 场景扩成完整 onboarding"
+    - "在 onboarding 期间创建 Plan"
+
+auditor_policy:
+  latent_facts:
+    - "晚上下班后最容易靠零食缓一下。"
+  reveal_rules:
+    - topic: "name"
+      when_asked: true
+      response: "我叫初晴。"
+    - topic: "meal_source"
+      when_asked: true
+      response: "工作日主要靠外卖。"
+  a2ui_plan:
+    - key: "depth_choice"
+      action: "submit"
+      value: "quick"
+    - key: "danger_scenarios"
+      action: "submit"
+      value:
+        - "fatigue"
+    - key: "danger_scenarios_custom"
+      action: "submit"
+      value: "晚上下班后会想靠零食缓一下"
+  challenge_rules: []
+  stop_rules:
+    min_user_turns: 4
+    complete_when:
+      - "minimum_dataset_written"
+      - "onboarding_complete_written"
+    continue_until:
+      - "minimum_dataset_written"
+      - "onboarding_complete_written"
+
+expected_artifacts:
+  required_keys:
+    - "/profile/context.md"
+    - "/profile/dashboardConfig"
+  optional_keys: []
+  forbidden_keys:
+    - "/plan/current.json"
+  witness_required: false
+  minimum_dataset: "quick"
+  relevant_final_files:
+    - "/profile/context.md"
+    - "/profile/dashboardConfig"
+
+judge_dimensions: []
+
+scoring_focus:
+  primary:
+    - "contract_onboarding_artifacts"
+    - "contract_a2ui"
+  secondary:
+    - "contract_store_schema"
