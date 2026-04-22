@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -12,6 +13,7 @@ from langchain_core.tools import InjectedToolArg, tool
 from langgraph.store.base import BaseStore
 from pydantic import ValidationError
 
+from voliti.contracts.dashboard import DashboardConfigRecord
 from voliti.contracts.plan import (
     ChapterPatch,
     ChapterRecord,
@@ -24,11 +26,24 @@ from voliti.contracts.plan_errors import format_plan_write_error
 from voliti.store_contract import (
     InvalidStoreValueError,
     PLAN_CURRENT_KEY,
+    PROFILE_DASHBOARD_CONFIG_KEY,
     make_file_value,
     resolve_plan_archive_namespace,
     resolve_user_namespace,
     unwrap_file_value,
 )
+
+# target.metric → dashboardConfig.north_star 默认呈现的映射（新用户 / 无 onboarding
+# placeholder 时走这套兜底）
+_METRIC_NORTH_STAR_DEFAULTS: dict[str, dict[str, Any]] = {
+    "weight_kg": {
+        "key": "weight_kg",
+        "label": "体重",
+        "type": "numeric",
+        "unit": "kg",
+        "delta_direction": "decrease",
+    },
+}
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +182,127 @@ def _write_archive(
 
 
 # ────────────────────────────────────────────────────────────────────────
+#  dashboardConfig 同步（D.1）
+# ────────────────────────────────────────────────────────────────────────
+
+
+def _derive_support_metrics_from_plan(plan: PlanDocument) -> list[dict[str, Any]]:
+    """从 Plan 第一章的 process_goals 派生 dashboardConfig.support_metrics。
+
+    对齐规则（D.1）：
+      · 第一章作为 Mirror 面板的关注源（Plan 入口章节）；后续切章通过 revise_plan 触发重新同步
+      · label 直接承接 process_goal.name（用户文本）；key 走 metric_{i} 稳定序号
+      · type="ratio"，unit="/{weekly_total_days}"（匹配 goals_status.days_met/days_expected 的语义）
+      · order=i 保证 UI 顺序一致
+    """
+    if not plan.chapters:
+        return []
+    first = plan.chapters[0]
+    return [
+        {
+            "key": f"metric_{i}",
+            "label": pg.name,
+            "type": "ratio",
+            "unit": f"/{pg.weekly_total_days}",
+            "order": i,
+        }
+        for i, pg in enumerate(first.process_goals)
+    ]
+
+
+def _try_read_dashboard_config(
+    store: BaseStore, user_namespace: tuple[str, ...]
+) -> dict[str, Any] | None:
+    """读 /profile/dashboardConfig；损坏 / 缺失 → None（fail-open，让同步路径重建）。"""
+    try:
+        item = store.get(user_namespace, PROFILE_DASHBOARD_CONFIG_KEY)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "plan_tools: failed to read dashboardConfig",
+            extra={"exception_type": type(exc).__name__},
+        )
+        return None
+    if item is None or item.value is None:
+        return None
+    try:
+        text = unwrap_file_value(item.value)
+        data = json.loads(text)
+        # 结构性校验（挡住明显损坏）；字段扩展由 Pydantic 允许
+        DashboardConfigRecord.model_validate(data)
+        return data
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "plan_tools: dashboardConfig corrupted, will rebuild on next sync",
+            extra={"exception_type": type(exc).__name__},
+        )
+        return None
+
+
+def _sync_dashboard_config_from_plan(
+    store: BaseStore,
+    user_namespace: tuple[str, ...],
+    plan: PlanDocument,
+    *,
+    now: datetime | None = None,
+) -> None:
+    """把 Plan 第一章 process_goals 同步到 dashboardConfig.support_metrics。
+
+    调用时机：任何结构性 Plan 写入（create_plan / revise_plan touching target /
+    chapters / linked_*）完成后。状态性写入（current_week 变化）不触发。
+
+    fail-open：sync 异常仅 WARN 日志，不阻塞 Plan 主写入——Plan 是 source of truth，
+    dashboardConfig 是派生 surface；下次结构性修改会再次尝试同步。
+
+    保留策略：
+      · 已有 dashboardConfig.north_star → 保留（onboarding 期间写的语义优先）
+      · 已有 dashboardConfig.user_goal → 保留（同上）
+      · support_metrics 整体替换为派生结果（Plan 为 source of truth）
+    无 dashboardConfig → 基于 target.metric 查 _METRIC_NORTH_STAR_DEFAULTS 兜底构造。
+    """
+    existing = _try_read_dashboard_config(store, user_namespace)
+    new_metrics = _derive_support_metrics_from_plan(plan)
+
+    if existing is None:
+        north_star = _METRIC_NORTH_STAR_DEFAULTS.get(plan.target.metric, {
+            "key": plan.target.metric,
+            "label": plan.target.metric,
+            "type": "numeric",
+        })
+        new_config: dict[str, Any] = {
+            "north_star": north_star,
+            "support_metrics": new_metrics,
+            "user_goal": plan.target_summary,
+        }
+    else:
+        new_config = dict(existing)
+        new_config["support_metrics"] = new_metrics
+        if not new_config.get("user_goal"):
+            new_config["user_goal"] = plan.target_summary
+
+    try:
+        store.put(
+            user_namespace,
+            PROFILE_DASHBOARD_CONFIG_KEY,
+            make_file_value(
+                json.dumps(new_config, ensure_ascii=False),
+                now=now,
+            ),
+        )
+        logger.info(
+            "plan_tools: dashboardConfig.support_metrics synced from plan",
+            extra={"plan_id": plan.plan_id, "metric_count": len(new_metrics)},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "plan_tools: dashboard sync write failed (non-blocking)",
+            extra={
+                "plan_id": plan.plan_id,
+                "exception_type": type(exc).__name__,
+            },
+        )
+
+
+# ────────────────────────────────────────────────────────────────────────
 #  执行流程 helper
 # ────────────────────────────────────────────────────────────────────────
 
@@ -223,6 +359,9 @@ def _execute_plan_tool(
     if is_structural:
         archive_key = _write_archive(store, archive_namespace, new_plan, now=now)
         _write_current(store, user_namespace, new_plan, now=now)
+        # dashboardConfig.support_metrics 同步（D.1 · fail-open）——结构性修改后
+        # 让 Mirror 面板的指标与 Plan 第一章 process_goals 自动对齐
+        _sync_dashboard_config_from_plan(store, user_namespace, new_plan, now=now)
         logger.info(
             "plan_tools: structural revise_plan committed",
             extra={

@@ -1011,3 +1011,210 @@ class TestApplyPlanBuilderSubmissionNumericFields:
         assert chapter_patch["daily_rhythm"]["training"]["value"] == "每周三次"
         # 三条变更都应出现在摘要里
         assert len(changes) == 3
+
+
+# ── D.1 · dashboardConfig 同步 ────────────────────────────────────────
+
+
+class TestDeriveSupportMetrics:
+    def test_derives_from_first_chapter_process_goals(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        from voliti.tools.plan_tools import _derive_support_metrics_from_plan
+
+        metrics = _derive_support_metrics_from_plan(baseline_plan)
+        # baseline_plan 第一章有 1 个 process_goal "早餐蛋白 25 克以上"，weekly_total_days=7
+        assert len(metrics) == 1
+        assert metrics[0] == {
+            "key": "metric_0",
+            "label": "早餐蛋白 25 克以上",
+            "type": "ratio",
+            "unit": "/7",
+            "order": 0,
+        }
+
+    def test_derives_from_chapter_with_multiple_goals(
+        self, fixed_now: datetime
+    ) -> None:
+        """process_goals 多条时按顺序映射，order 递增。"""
+        from voliti.tools.plan_tools import _derive_support_metrics_from_plan
+
+        doc = _baseline_plan_dict()
+        doc["chapters"][0]["process_goals"] = [
+            {"name": "指标 A", "weekly_target_days": 5, "weekly_total_days": 7,
+             "how_to_measure": "Coach 评估", "examples": []},
+            {"name": "指标 B", "weekly_target_days": 2, "weekly_total_days": 2,
+             "how_to_measure": "Coach 评估", "examples": []},
+            {"name": "指标 C", "weekly_target_days": 7, "weekly_total_days": 7,
+             "how_to_measure": "Coach 评估", "examples": []},
+        ]
+        plan = PlanDocument.model_validate(doc)
+        metrics = _derive_support_metrics_from_plan(plan)
+        assert [m["label"] for m in metrics] == ["指标 A", "指标 B", "指标 C"]
+        assert [m["order"] for m in metrics] == [0, 1, 2]
+        assert [m["unit"] for m in metrics] == ["/7", "/2", "/7"]
+
+
+class TestSyncDashboardConfig:
+    def test_creates_dashboard_when_none_exists(
+        self, baseline_plan: PlanDocument, empty_store: InMemoryStore
+    ) -> None:
+        """新用户无 dashboardConfig → 派生 north_star 默认（weight_kg → 体重/kg/decrease）+ metrics。"""
+        from voliti.tools.plan_tools import _sync_dashboard_config_from_plan
+
+        _sync_dashboard_config_from_plan(empty_store, USER_NS, baseline_plan)
+        item = empty_store.get(USER_NS, "/profile/dashboardConfig")
+        assert item is not None
+        cfg = json.loads(unwrap_file_value(item.value))
+        assert cfg["north_star"]["key"] == "weight_kg"
+        assert cfg["north_star"]["label"] == "体重"
+        assert cfg["north_star"]["delta_direction"] == "decrease"
+        assert len(cfg["support_metrics"]) == 1
+        assert cfg["support_metrics"][0]["label"] == "早餐蛋白 25 克以上"
+        assert cfg["user_goal"] == baseline_plan.target_summary
+
+    def test_preserves_existing_north_star_and_user_goal(
+        self, baseline_plan: PlanDocument, empty_store: InMemoryStore
+    ) -> None:
+        """onboarding 已写 placeholder dashboardConfig → north_star / user_goal 保留，仅改 support_metrics。"""
+        from voliti.tools.plan_tools import _sync_dashboard_config_from_plan
+
+        original = {
+            "north_star": {
+                "key": "weight", "label": "体重指标", "type": "numeric",
+                "unit": "KG", "delta_direction": "decrease",
+            },
+            "support_metrics": [],
+            "user_goal": "两个月减 10 斤 · 起点",
+        }
+        empty_store.put(
+            USER_NS, "/profile/dashboardConfig",
+            make_file_value(json.dumps(original, ensure_ascii=False)),
+        )
+
+        _sync_dashboard_config_from_plan(empty_store, USER_NS, baseline_plan)
+        item = empty_store.get(USER_NS, "/profile/dashboardConfig")
+        cfg = json.loads(unwrap_file_value(item.value))
+        # north_star 原样保留（onboarding 文案优先）
+        assert cfg["north_star"]["label"] == "体重指标"
+        assert cfg["north_star"]["unit"] == "KG"
+        # user_goal 已有值 → 保留
+        assert cfg["user_goal"] == "两个月减 10 斤 · 起点"
+        # support_metrics 被 plan 改写
+        assert len(cfg["support_metrics"]) == 1
+        assert cfg["support_metrics"][0]["label"] == "早餐蛋白 25 克以上"
+
+    def test_rebuilds_support_metrics_on_subsequent_sync(
+        self, baseline_plan: PlanDocument, empty_store: InMemoryStore
+    ) -> None:
+        """第二次 sync（plan 改动后）→ support_metrics 应完全重建而非 append。"""
+        from voliti.tools.plan_tools import _sync_dashboard_config_from_plan
+
+        _sync_dashboard_config_from_plan(empty_store, USER_NS, baseline_plan)
+
+        # 改动 plan 第一章 process_goals → 再 sync
+        doc = _baseline_plan_dict()
+        doc["chapters"][0]["process_goals"] = [
+            {"name": "新目标 X", "weekly_target_days": 4, "weekly_total_days": 7,
+             "how_to_measure": "Coach 评估", "examples": []},
+            {"name": "新目标 Y", "weekly_target_days": 3, "weekly_total_days": 7,
+             "how_to_measure": "Coach 评估", "examples": []},
+        ]
+        new_plan = PlanDocument.model_validate(doc)
+        _sync_dashboard_config_from_plan(empty_store, USER_NS, new_plan)
+
+        cfg = json.loads(unwrap_file_value(
+            empty_store.get(USER_NS, "/profile/dashboardConfig").value
+        ))
+        # 整体替换——旧的"早餐蛋白"消失
+        assert [m["label"] for m in cfg["support_metrics"]] == ["新目标 X", "新目标 Y"]
+
+    def test_sync_recovers_from_corrupted_existing_dashboard(
+        self, baseline_plan: PlanDocument, empty_store: InMemoryStore
+    ) -> None:
+        """existing dashboardConfig JSON 损坏 → 走 None 分支重建。"""
+        from voliti.tools.plan_tools import _sync_dashboard_config_from_plan
+
+        empty_store.put(
+            USER_NS, "/profile/dashboardConfig",
+            make_file_value("{garbage json"),
+        )
+        _sync_dashboard_config_from_plan(empty_store, USER_NS, baseline_plan)
+        cfg = json.loads(unwrap_file_value(
+            empty_store.get(USER_NS, "/profile/dashboardConfig").value
+        ))
+        assert cfg["north_star"]["key"] == "weight_kg"
+        assert len(cfg["support_metrics"]) == 1
+
+
+class TestCreatePlanTriggersDashboardSync:
+    def test_create_plan_syncs_dashboard_end_to_end(
+        self, empty_store: InMemoryStore
+    ) -> None:
+        """create_plan 是结构性写入 → 必须触发 dashboardConfig 同步。"""
+        document = _baseline_plan_dict()
+        result = create_plan.func(
+            document=document, store=empty_store, config=CONFIG
+        )
+        assert "写入成功" in result
+
+        cfg_item = empty_store.get(USER_NS, "/profile/dashboardConfig")
+        assert cfg_item is not None, "create_plan 后 dashboardConfig 必须被创建"
+        cfg = json.loads(unwrap_file_value(cfg_item.value))
+        assert cfg["support_metrics"][0]["label"] == "早餐蛋白 25 克以上"
+
+
+class TestReviseTriggersDashboardSync:
+    def test_structural_revise_plan_updates_dashboard(
+        self, store_with_plan: InMemoryStore
+    ) -> None:
+        """结构性 revise_plan（chapters 修改）→ dashboardConfig 同步。"""
+        patch = {
+            "chapters": [
+                {
+                    "chapter_index": 1,
+                    "process_goals": [
+                        {"name": "早睡 23:30 前", "weekly_target_days": 5,
+                         "weekly_total_days": 7, "how_to_measure": "Coach 每日自报", "examples": []},
+                    ],
+                }
+            ]
+        }
+        result = revise_plan.func(patch=patch, store=store_with_plan, config=CONFIG)
+        assert "写入成功" in result
+
+        cfg = json.loads(unwrap_file_value(
+            store_with_plan.get(USER_NS, "/profile/dashboardConfig").value
+        ))
+        assert [m["label"] for m in cfg["support_metrics"]] == ["早睡 23:30 前"]
+
+    def test_state_only_update_does_not_touch_dashboard(
+        self, store_with_plan: InMemoryStore
+    ) -> None:
+        """set_goal_status / update_week_narrative 是状态性 → 不同步 dashboardConfig。"""
+        # 先拿一份 dashboard baseline（onboarding 风格的 placeholder）
+        original = {
+            "north_star": {"key": "weight_kg", "label": "体重", "type": "numeric",
+                           "unit": "kg", "delta_direction": "decrease"},
+            "support_metrics": [
+                {"key": "k_old", "label": "老标签", "type": "ratio", "unit": "/7", "order": 0},
+            ],
+            "user_goal": "原始目标",
+        }
+        store_with_plan.put(
+            USER_NS, "/profile/dashboardConfig",
+            make_file_value(json.dumps(original, ensure_ascii=False)),
+        )
+
+        # 状态性修改
+        set_goal_status.func(
+            goal_name="早餐蛋白 25 克以上", days_met=4, days_expected=5,
+            store=store_with_plan, config=CONFIG,
+        )
+
+        cfg = json.loads(unwrap_file_value(
+            store_with_plan.get(USER_NS, "/profile/dashboardConfig").value
+        ))
+        # dashboard 原样保留
+        assert cfg["support_metrics"][0]["label"] == "老标签"
+        assert cfg["user_goal"] == "原始目标"
