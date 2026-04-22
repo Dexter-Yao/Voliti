@@ -28,7 +28,7 @@ from voliti.derivations.plan_view import (
 
 
 def _baseline_plan_dict() -> dict:
-    """合法 PlanDocument dict。start=2026-02-21, chapters=[2/21-3/6, 3/6-4/3, 4/3-4/17]。"""
+    """合法 PlanDocument dict。start=2026-02-21, chapters=[2/21-3/6, 3/7-4/3, 4/4-4/17]。"""
     return {
         "plan_id": "plan_test_001",
         "status": "active",
@@ -76,7 +76,7 @@ def _baseline_plan_dict() -> dict:
                 "chapter_index": 2,
                 "name": "训练成锚",
                 "why_this_chapter": "让训练变成不用挣扎的惯性。",
-                "start_date": "2026-03-06",
+                "start_date": "2026-03-07",
                 "end_date": "2026-04-03",
                 "milestone": "再减 3 公斤",
                 "process_goals": [
@@ -101,7 +101,7 @@ def _baseline_plan_dict() -> dict:
                 "chapter_index": 3,
                 "name": "焊进日常",
                 "why_this_chapter": "测试节奏抗压能力。",
-                "start_date": "2026-04-03",
+                "start_date": "2026-04-04",
                 "end_date": "2026-04-17",
                 "milestone": "压力测试下守住",
                 "process_goals": [
@@ -206,6 +206,12 @@ def test_plan_phase_in_chapter_1(baseline_plan: PlanDocument) -> None:
 
 def test_plan_phase_in_chapter_2(baseline_plan: PlanDocument) -> None:
     phase, idx = _compute_plan_phase(baseline_plan, date(2026, 3, 20))
+    assert phase == "in_chapter"
+    assert idx == 2
+
+
+def test_plan_phase_boundary_day_enters_next_chapter(baseline_plan: PlanDocument) -> None:
+    phase, idx = _compute_plan_phase(baseline_plan, date(2026, 3, 7))
     assert phase == "in_chapter"
     assert idx == 2
 

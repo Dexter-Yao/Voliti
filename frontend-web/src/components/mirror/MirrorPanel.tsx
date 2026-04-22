@@ -6,8 +6,19 @@
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, X } from "lucide-react";
-import { fetchCoachContext, type CoachContextData, type WitnessCard, type ForwardMarkerSummary } from "@/lib/store-sync";
+import {
+  fetchCoachContext,
+  type CoachContextData,
+  type WitnessCard,
+} from "@/lib/store-sync";
 import { derivePlanPhaseCopy, formatFreshnessLabel } from "@/lib/plan-freshness";
+import {
+  buildPlannerEventStream,
+  buildPlannerLifeSigns,
+  buildPlannerProcessMetrics,
+  getActiveChapter,
+  type PlannerEventRow,
+} from "@/lib/planner-mirror";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 function EmptyState() {
@@ -82,7 +93,7 @@ function formatMarkerDate(dateStr: string): string {
   return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function EventStream({ markers }: { markers: ForwardMarkerSummary[] }) {
+function EventStream({ markers }: { markers: PlannerEventRow[] }) {
   const [filter, setFilter] = useState<RiskFilter>("all");
 
   const visible = markers.filter(
@@ -217,23 +228,17 @@ export function MirrorPanel() {
     );
   }
 
-  const activeChapter =
-    data?.plan && data?.planView?.active_chapter_index != null
-      ? data.plan.chapters.find(
-          (c) => c.chapter_index === data.planView!.active_chapter_index,
-        ) ?? null
-      : null;
+  const activeChapter = getActiveChapter(data?.plan ?? null, data?.planView ?? null);
 
   if (!activeChapter || !data) {
     return <EmptyState />;
   }
 
-  const { plan, copingPlans, dashboardConfig, identityStatement } = data;
+  const { plan, dashboardConfig, identityStatement } = data;
   const freshnessLabel = formatFreshnessLabel(data.planView?.week_freshness);
-
-  // Support metrics 目前按 index 对齐到 process_goals（onboarding 后 dashboardConfig
-  // 可能仍是空 support_metrics 的 placeholder，此时下方 grid 不渲染）
-  const supportMetrics = dashboardConfig?.support_metrics ?? [];
+  const processMetrics = buildPlannerProcessMetrics(data.plan, data.planView);
+  const plannerLifeSigns = buildPlannerLifeSigns(data.planView);
+  const plannerEvents = buildPlannerEventStream(data.planView);
   const cards = data.witnessCards ?? [];
   const PLAN_METRIC_UNIT_MAP: Record<string, string> = {
     weight_kg: "kg",
@@ -292,14 +297,12 @@ export function MirrorPanel() {
 
         {/* Journey progress bar — 当前 chapter 进度 */}
         {(() => {
-          const start = new Date(activeChapter.start_date).getTime();
-          const end = new Date(activeChapter.end_date).getTime();
-          const now = Date.now();
-          const total = end - start;
-          const elapsed = now - start;
-          const pct = total > 0 ? Math.max(0, Math.min(100, (elapsed / total) * 100)) : 0;
-          const dayNum = Math.max(1, Math.ceil(elapsed / (1000 * 60 * 60 * 24)));
-          const totalDays = Math.max(1, Math.ceil(total / (1000 * 60 * 60 * 24)));
+          const [dayNum, totalDays] = data.planView?.active_chapter_day_progress ?? [0, 0];
+          const safeTotalDays = Math.max(1, totalDays);
+          const pct = Math.max(
+            0,
+            Math.min(100, (Math.max(dayNum, 0) / safeTotalDays) * 100),
+          );
           return (
             <>
               <div className="relative h-[2px] bg-[#1A1816]/10">
@@ -308,7 +311,7 @@ export function MirrorPanel() {
               </div>
               <div className="mt-1 flex justify-between font-mono-system text-[8px] text-[#1A1816]/30">
                 <span>{activeChapter.start_date.slice(5, 10)}</span>
-                <span>Day {dayNum}/{totalDays}</span>
+                <span>Day {dayNum}/{safeTotalDays}</span>
               </div>
             </>
           );
@@ -337,37 +340,35 @@ export function MirrorPanel() {
           </div>
         )}
 
-        {/* Support metrics —— 与 active chapter 的 process_goals 按序对齐展示 */}
-        {supportMetrics.length > 0 && activeChapter.process_goals.length > 0 && (
+        {/* Process goals */}
+        {processMetrics.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <div className="grid grid-cols-3 text-center">
-              {supportMetrics.slice(0, 3).map((metric, idx) => {
-                const processGoal = activeChapter.process_goals[idx] ?? null;
-                const target = processGoal
-                  ? `${processGoal.weekly_target_days}/${processGoal.weekly_total_days}`
-                  : "—";
-                const label = processGoal?.name ?? metric.label;
+              {processMetrics.slice(0, 3).map((metric, idx) => {
                 return (
                   <div
                     key={metric.key}
                     className={idx > 0 ? "border-l border-[#1A1816]/10" : ""}
                   >
                     <div className="font-serif-coach text-xl font-medium text-[#1A1816]">
-                      {target}
+                      {metric.currentValue}
                     </div>
                     <div className="inline-flex items-center justify-center gap-1">
                       <span className="font-mono-system text-[9px] uppercase tracking-[1px] text-[#1A1816]/40">
-                        {label}
+                        {metric.label}
                       </span>
-                      {processGoal?.why_this_goal && (
+                      {metric.whyThisGoal && (
                         <InfoTooltip
-                          label={`${label} 的来由`}
+                          label={`${metric.label} 的来由`}
                           iconSize={10}
-                          align={idx === supportMetrics.length - 1 ? "right" : "left"}
+                          align={idx === processMetrics.length - 1 ? "right" : "left"}
                         >
-                          {processGoal.why_this_goal}
+                          {metric.whyThisGoal}
                         </InfoTooltip>
                       )}
+                    </div>
+                    <div className="mt-1 font-mono-system text-[9px] text-[#1A1816]/25">
+                      目标 {metric.targetValue}
                     </div>
                   </div>
                 );
@@ -377,22 +378,26 @@ export function MirrorPanel() {
         )}
 
         {/* Coping plans / LifeSign */}
-        {copingPlans.length > 0 && (
+        {plannerLifeSigns.length > 0 && (
           <div className="space-y-2 border-t border-[#1A1816]/5 pt-4">
             <span className="font-mono-system text-xs uppercase tracking-[2px] text-[#B87333]">
               LifeSign
             </span>
             <div className="flex flex-col gap-3">
-              {copingPlans.map((plan, i) => (
-                <div key={i}>
+              {plannerLifeSigns.map((lifeSign) => (
+                <div key={lifeSign.id}>
                   <div className="text-xs">
                     <span className="font-mono-system text-[10px] text-[#B87333]">IF </span>
-                    <span className="font-serif-coach text-[#1A1816]/60">{plan.trigger}</span>
+                    <span className="font-serif-coach text-[#1A1816]/60">
+                      {lifeSign.trigger || lifeSign.name}
+                    </span>
                   </div>
-                  {plan.coping_response && (
+                  {lifeSign.copingResponse && (
                     <div className="mt-0.5 text-xs">
                       <span className="font-mono-system text-[10px] text-[#B87333]">THEN </span>
-                      <span className="font-serif-coach text-[#1A1816]/60">{plan.coping_response}</span>
+                      <span className="font-serif-coach text-[#1A1816]/60">
+                        {lifeSign.copingResponse}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -402,8 +407,8 @@ export function MirrorPanel() {
         )}
 
         {/* Event stream */}
-        {(data.allMarkers?.length ?? 0) > 0 && (
-          <EventStream markers={data.allMarkers} />
+        {plannerEvents.length > 0 && (
+          <EventStream markers={plannerEvents} />
         )}
 
         {/* Witness Card gallery */}

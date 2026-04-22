@@ -96,6 +96,8 @@ export interface PlanViewEvent {
   name: string;
   event_date: string;
   urgency: number;
+  description: string | null;
+  is_past: boolean;
   risk_level: string | null;
 }
 
@@ -124,6 +126,7 @@ export interface PlanViewWatchItem {
   note: string | null;
   relevant_chapters: number[] | null;
   trigger: string | null;
+  coping_response: string | null;
 }
 
 export interface PlanViewData {
@@ -131,6 +134,7 @@ export interface PlanViewData {
   active_chapter_index: number | null;
   week_index: number;
   day_progress: [number, number];
+  active_chapter_day_progress: [number, number];
   days_left_in_chapter: number;
   map_state: PlanViewMapState;
   week_view: Array<{
@@ -283,4 +287,3 @@ export function buildAcceptedWitnessCardsFromStoreItems(
       (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
     );
 }
-

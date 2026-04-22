@@ -29,6 +29,8 @@ class EventView(BaseModel):
     name: str
     event_date: date
     urgency: float         # 0.25 - 1.0 语义权重
+    description: str | None = None
+    is_past: bool = False
     risk_level: str | None = None
 
 
@@ -59,6 +61,7 @@ class WatchItem(BaseModel):
     # lifesign-only
     relevant_chapters: list[int] | None = None
     trigger: str | None = None
+    coping_response: str | None = None
 
 
 class PlanViewRecord(BaseModel):
@@ -66,6 +69,7 @@ class PlanViewRecord(BaseModel):
     active_chapter_index: int | None
     week_index: int
     day_progress: tuple[int, int]        # (past_days, total_days)
+    active_chapter_day_progress: tuple[int, int]
     days_left_in_chapter: int
     map_state: MapState
     week_view: list[GoalStatus]           # 透传 current_week.goals_status
@@ -94,8 +98,9 @@ def compute_plan_view(
     plan_phase, active_idx = _compute_plan_phase(plan, today)
     week_index = _compute_week_index(plan, today)
     day_progress = _compute_day_progress(plan, today)
+    active_chapter_day_progress = _compute_active_chapter_day_progress(plan, today, active_idx)
     days_left = _compute_days_left_in_chapter(plan, today, active_idx)
-    map_state = _compute_map_state(plan, today)
+    map_state = _compute_map_state(plan, today, markers)
     week_view = _compute_week_view(plan)
     freshness = _compute_week_freshness(plan, today)
     day_template = _compute_day_template(plan, active_idx)
@@ -106,6 +111,7 @@ def compute_plan_view(
         active_chapter_index=active_idx,
         week_index=week_index,
         day_progress=day_progress,
+        active_chapter_day_progress=active_chapter_day_progress,
         days_left_in_chapter=days_left,
         map_state=map_state,
         week_view=week_view,
@@ -131,7 +137,7 @@ def _compute_plan_phase(
     if today > last_end:
         return "after_end", None
     for chapter in plan.chapters:
-        # chapters 首尾相连（model_validator 保证），约定 end_date 归属本章，下一章从 end_date 开始
+        # chapters 连续且不重叠（model_validator 保证），start/end 都归属本章
         if chapter.start_date <= today <= chapter.end_date:
             return "in_chapter", chapter.chapter_index
     # 按约束应不可达；fallback
@@ -166,7 +172,26 @@ def _compute_days_left_in_chapter(
     return max(0, (chapter.end_date - today).days)
 
 
-def _compute_map_state(plan: PlanDocument, today: date) -> MapState:
+def _compute_active_chapter_day_progress(
+    plan: PlanDocument,
+    today: date,
+    active_idx: int | None,
+) -> tuple[int, int]:
+    if active_idx is None:
+        return 0, 0
+    chapter = _find_chapter(plan, active_idx)
+    if chapter is None:
+        return 0, 0
+    total_days = max(1, (chapter.end_date - chapter.start_date).days + 1)
+    elapsed_days = max(0, min((today - chapter.start_date).days, total_days - 1)) + 1
+    return elapsed_days, total_days
+
+
+def _compute_map_state(
+    plan: PlanDocument,
+    today: date,
+    markers: dict[str, MarkerItem],
+) -> MapState:
     plan_start = plan.started_at.date()
     plan_end = plan.planned_end_at.date()
     total_days = max(1, (plan_end - plan_start).days)
@@ -182,7 +207,9 @@ def _compute_map_state(plan: PlanDocument, today: date) -> MapState:
                 name=mk.name,
                 event_date=mk.date,
                 urgency=urgency,
-                risk_level=None,   # 如上游 markers dict 提供，在 watch_list 再填
+                description=markers.get(mk.id).description if mk.id in markers else mk.name,
+                is_past=mk.date < today,
+                risk_level=markers.get(mk.id).risk_level if mk.id in markers else None,
             )
         )
     return MapState(flag_ratio=flag_ratio, events=events)
@@ -274,6 +301,7 @@ def _resolve_lifesign(
         name=ls.name,
         relevant_chapters=list(ls.relevant_chapters),
         trigger=data.get("trigger"),
+        coping_response=data.get("coping_response"),
     )
 
 

@@ -23,6 +23,7 @@ from voliti.store_contract import (
     PLAN_CURRENT_KEY,
     TIMELINE_MARKERS_KEY,
     make_file_value,
+    make_plan_archive_namespace,
     make_user_namespace,
     unwrap_file_value,
 )
@@ -32,6 +33,7 @@ FIXTURES_DIR = (
 )
 TEST_USER_ID = "http_test_0001"
 USER_NS = make_user_namespace(TEST_USER_ID)
+ARCHIVE_NS = make_plan_archive_namespace(TEST_USER_ID)
 
 
 def _load_plan_fixture_raw() -> dict[str, Any]:
@@ -182,8 +184,14 @@ def test_parse_lifesigns_extracts_trigger_from_index_lines() -> None:
     )
     result = _parse_lifesigns(raw)
     assert result == {
-        "ls_001": {"trigger": "下班后压力大"},
-        "ls_002": {"trigger": "周末聚餐"},
+        "ls_001": {
+            "trigger": "下班后压力大",
+            "coping_response": "泡茶+阳台3分钟",
+        },
+        "ls_002": {
+            "trigger": "周末聚餐",
+            "coping_response": "提前吃轻食垫底",
+        },
     }
 
 
@@ -232,6 +240,11 @@ def test_endpoint_rejects_malformed_today_query(client_with_store: TestClient) -
     assert response.status_code == 400
 
 
+def test_endpoint_requires_today_query(client_with_store: TestClient) -> None:
+    response = client_with_store.get(f"/plan-view/{TEST_USER_ID}")
+    assert response.status_code == 400
+
+
 def test_endpoint_returns_payload_on_valid_request(client_with_store: TestClient) -> None:
     response = client_with_store.get(f"/plan-view/{TEST_USER_ID}?today=2026-04-20")
     assert response.status_code == 200
@@ -248,5 +261,18 @@ def test_endpoint_returns_404_when_plan_absent(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr("voliti.http_app._resolve_store", _fake)
     client = TestClient(app)
-    response = client.get(f"/plan-view/{TEST_USER_ID}")
+    response = client.get(f"/plan-view/{TEST_USER_ID}?today=2026-04-20")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_build_plan_view_payload_self_heals_from_archive() -> None:
+    store = InMemoryStore()
+    store.put(USER_NS, PLAN_CURRENT_KEY, make_file_value("{not valid json"))
+    store.put(ARCHIVE_NS, "plan_fixture_001_v1.json", _load_plan_fixture_raw())
+
+    result = await build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
+
+    assert result is not None
+    assert result["plan"]["plan_id"] == "plan_fixture_001"
+    assert result["plan_degraded_reason"] == "plan_data_corrupted_recovered"

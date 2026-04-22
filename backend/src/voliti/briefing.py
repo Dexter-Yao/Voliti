@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from html import escape as xml_escape
 from typing import Any, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel
 
@@ -20,17 +21,31 @@ from voliti.derivations.plan_view import (
     WeekFreshness,
     compute_plan_view,
 )
+from voliti.plan_runtime import aread_current_plan_via_client_with_self_heal
 from voliti.store_contract import (
     BRIEFING_STORE_KEY,
     COPING_PLANS_INDEX_KEY,
     DAY_SUMMARY_PREFIX,
-    PLAN_CURRENT_KEY,
     TIMELINE_MARKERS_KEY,
     make_file_value,
+    make_plan_archive_namespace,
     unwrap_file_value,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_local_now(now: datetime, user_timezone: str | None) -> datetime:
+    if not user_timezone:
+        return now
+    try:
+        return now.astimezone(ZoneInfo(user_timezone))
+    except ZoneInfoNotFoundError:
+        logger.warning(
+            "Briefing: invalid timezone %r, falling back to UTC",
+            user_timezone,
+        )
+        return now
 
 def compute_days_since_last_session(
     threads: list[dict[str, Any]],
@@ -438,20 +453,18 @@ async def _build_plan_xml_section(
     返回 None 表示用户尚未创建 Plan（Coach prompt 不注入 <user_plan_data>）；
     返回 <user_plan_data_unavailable> 表示派生异常，Coach 按降级话术引导用户。
     """
-    plan_raw = await _read_store_raw_value(client, namespace, PLAN_CURRENT_KEY)
-    if plan_raw is None:
+    plan_result = await aread_current_plan_via_client_with_self_heal(
+        client,
+        namespace,
+        make_plan_archive_namespace(user_id),
+        now=now,
+        context="briefing",
+    )
+    plan = plan_result.plan
+    if plan is None:
+        if plan_result.degraded_reason == "plan_data_corrupted_unrecovered":
+            return _PLAN_DATA_UNAVAILABLE
         return None
-
-    plan: PlanDocument | None = None
-    try:
-        text = unwrap_file_value(plan_raw)
-        plan = PlanDocument.model_validate_json(text)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "Briefing: plan current.json corrupted, injecting degraded block",
-            extra={"user_id": user_id, "exception_type": type(exc).__name__},
-        )
-        return _PLAN_DATA_UNAVAILABLE
 
     try:
         markers = parse_markers(markers_raw)
@@ -496,6 +509,7 @@ async def compute_and_write_briefing(
         生成的 briefing 文本，或 None（计算失败时）
     """
     now = now or datetime.now(timezone.utc)
+    local_now = _resolve_local_now(now, user_timezone)
 
     # 1. 获取 threads（如果未预传入）
     if threads is None:
@@ -511,17 +525,17 @@ async def compute_and_write_briefing(
     # 2. 并行读取 Store 数据（markers 与 coping_plans_index 复用于 Plan slice）
     markers_task = _read_store_raw_value(client, namespace, TIMELINE_MARKERS_KEY)
     coping_task = _read_store_raw_value(client, namespace, COPING_PLANS_INDEX_KEY)
-    summaries_task = collect_recent_summaries(client, namespace, now=now)
+    summaries_task = collect_recent_summaries(client, namespace, now=local_now)
     markers_raw, coping_raw, recent_summaries = await asyncio.gather(
         markers_task, coping_task, summaries_task,
     )
 
     # 3. 计算各项指标
-    days_since_last = compute_days_since_last_session(threads, now=now)
-    sessions_this_week = compute_sessions_this_week(threads, now=now)
+    days_since_last = compute_days_since_last_session(threads, now=local_now)
+    sessions_this_week = compute_sessions_this_week(threads, now=local_now)
     markers_text = unwrap_file_value(markers_raw) if markers_raw else None
     coping_text = unwrap_file_value(coping_raw) if coping_raw else None
-    upcoming = extract_upcoming_markers(markers_text, now=now)
+    upcoming = extract_upcoming_markers(markers_text, now=local_now)
     lifesigns = extract_lifesign_activity(coping_text)
 
     plan_xml = await _build_plan_xml_section(
@@ -529,7 +543,7 @@ async def compute_and_write_briefing(
         namespace=namespace,
         markers_raw=markers_raw,
         coping_raw=coping_raw,
-        now=now,
+        now=local_now,
         user_id=user_id,
     )
 
@@ -541,7 +555,7 @@ async def compute_and_write_briefing(
         lifesign_activity=lifesigns,
         recent_summaries=recent_summaries,
         plan_xml=plan_xml,
-        now=now,
+        now=local_now,
     )
 
     try:

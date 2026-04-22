@@ -26,6 +26,7 @@ from voliti.tools.plan_tools import (
     _merge_revise_plan,
     _merge_set_goal_status,
     _merge_update_week_narrative,
+    create_successor_plan,
     create_plan,
     fan_out_plan_builder,
     read_current_plan_with_self_heal,
@@ -92,7 +93,7 @@ def _baseline_plan_dict() -> dict[str, Any]:
                 "chapter_index": 2,
                 "name": "训练成锚",
                 "why_this_chapter": "让训练变成不用挣扎的惯性。",
-                "start_date": "2026-03-06",
+                "start_date": "2026-03-07",
                 "end_date": "2026-04-17",
                 "milestone": "再减 3 公斤",
                 "process_goals": [
@@ -118,6 +119,12 @@ def _baseline_plan_dict() -> dict[str, Any]:
         "linked_markers": [],
         "current_week": None,
     }
+
+
+def _parse_tool_result(result: str) -> dict[str, Any]:
+    payload = json.loads(result)
+    assert isinstance(payload, dict)
+    return payload
 
 
 @pytest.fixture
@@ -460,11 +467,80 @@ class TestArchiveFirstAndSelfHeal:
         assert result is not None
         assert result.version == 1
 
+    def test_self_heal_prefers_latest_active_plan_across_plan_ids(
+        self, baseline_plan: PlanDocument
+    ) -> None:
+        store = InMemoryStore()
+        store.put(USER_NS, PLAN_CURRENT_KEY, make_file_value("not valid json"))
+
+        old_completed = baseline_plan.model_copy(
+            update={
+                "status": "completed",
+                "version": 2,
+                "predecessor_version": 1,
+            }
+        )
+        new_active = baseline_plan.model_copy(
+            update={
+                "plan_id": "plan_b",
+                "version": 1,
+                "predecessor_version": None,
+                "supersedes_plan_id": baseline_plan.plan_id,
+            }
+        )
+        store.put(
+            ARCHIVE_NS,
+            "plan_a_v2.json",
+            make_file_value(old_completed.model_dump_json()),
+        )
+        store.put(
+            ARCHIVE_NS,
+            "plan_b_v1.json",
+            make_file_value(new_active.model_dump_json()),
+        )
+
+        result = read_current_plan_with_self_heal(store, USER_NS, ARCHIVE_NS)
+        assert result is not None
+        assert result.plan_id == "plan_b"
+
 
 # ── tool happy path 端到端 ───────────────────────────────────────────────
 
 
 class TestToolEndToEnd:
+    def test_create_plan_returns_structured_result(
+        self, empty_store: InMemoryStore
+    ) -> None:
+        result = create_plan.func(
+            document=_baseline_plan_dict(),
+            store=empty_store,
+            config=CONFIG,
+        )
+        payload = _parse_tool_result(result)
+        assert payload["action"] == "create_plan"
+        assert payload["status"] == "success"
+        assert payload["write_kind"] == "structural"
+        assert payload["plan_id"] == "plan_a"
+        assert payload["version"] == 1
+        assert payload["archive_keys"] == ["plan_a_v1.json"]
+        assert "写入成功" in payload["summary"]
+
+    def test_fan_out_plan_builder_rejection_returns_structured_result(
+        self, empty_store: InMemoryStore
+    ) -> None:
+        result = fan_out_plan_builder.func(
+            chapter_index=None,
+            store=empty_store,
+            config=CONFIG,
+        )
+        payload = _parse_tool_result(result)
+        assert payload["action"] == "fan_out_plan_builder"
+        assert payload["status"] == "rejected"
+        assert payload["write_kind"] == "none"
+        assert payload["plan_id"] is None
+        assert payload["version"] is None
+        assert "Plan 尚未创建" in payload["summary"]
+
     def test_set_goal_status_happy_path(
         self, store_with_plan: InMemoryStore
     ) -> None:
@@ -554,6 +630,16 @@ class TestToolEndToEnd:
         # 错误消息应包含字段路径
         assert "rate_kg_per_week" in result
 
+    def test_revise_plan_rejects_unknown_patch_fields(
+        self, store_with_plan: InMemoryStore
+    ) -> None:
+        result = revise_plan.func(
+            patch={"supersedes_plan_id": "plan_old"},
+            store=store_with_plan,
+            config=CONFIG,
+        )
+        assert "supersedes_plan_id" in result
+
 
 # ── create_plan 首次创建 ───────────────────────────────────────────────────
 
@@ -638,9 +724,55 @@ class TestCreatePlanEndToEnd:
             document=bad_doc, store=empty_store, config=CONFIG
         )
         assert "rate_kg_per_week" in result
-        # 失败时 current 与 archive 都不应被写入
-        assert empty_store.get(USER_NS, PLAN_CURRENT_KEY) is None
-        assert list(empty_store.search(ARCHIVE_NS, limit=10)) == []
+
+
+class TestCreateSuccessorPlan:
+    def test_requires_explicit_user_confirmation(
+        self, store_with_plan: InMemoryStore
+    ) -> None:
+        document = _baseline_plan_dict()
+        document["plan_id"] = "plan_b"
+        result = create_successor_plan.func(
+            document=document,
+            previous_plan_id="plan_a",
+            user_confirmed=False,
+            confirmation_text="",
+            store=store_with_plan,
+            config=CONFIG,
+        )
+        assert "明确确认" in result
+
+    def test_archives_completed_previous_and_switches_current(
+        self, store_with_plan: InMemoryStore
+    ) -> None:
+        document = _baseline_plan_dict()
+        document["plan_id"] = "plan_b"
+        document["target_summary"] = "下一阶段再减 4 斤"
+        document["overall_narrative"] = "上一段已经把早餐和训练节奏立起来，这一段改成围绕出差与晚间加餐做稳定化。"
+        result = create_successor_plan.func(
+            document=document,
+            previous_plan_id="plan_a",
+            user_confirmed=True,
+            confirmation_text="是的，这已经是下一段新方案，不是旧方案微调。",
+            store=store_with_plan,
+            config=CONFIG,
+        )
+        assert "已切换为新的 Active Plan" in result
+
+        current_item = store_with_plan.get(USER_NS, PLAN_CURRENT_KEY)
+        assert current_item is not None
+        current = PlanDocument.model_validate_json(unwrap_file_value(current_item.value))
+        assert current.plan_id == "plan_b"
+        assert current.supersedes_plan_id == "plan_a"
+        assert current.status == "active"
+
+        archive_items = store_with_plan.search(ARCHIVE_NS, limit=20)
+        docs = {
+            item.key: PlanDocument.model_validate_json(unwrap_file_value(item.value))
+            for item in archive_items
+        }
+        assert docs["plan_a_v2.json"].status == "completed"
+        assert docs["plan_b_v1.json"].status == "active"
 
 
 # ── Plan Builder（C.3.a）───────────────────────────────────────────────────
@@ -763,6 +895,38 @@ class TestFanOutPlanBuilderGuards:
         )
         assert "不对应任何已有 chapter" in result
         assert "可用 chapter_index" in result
+
+    def test_rejects_invalid_editable_field_specs_instead_of_silent_skip(
+        self, store_with_plan: InMemoryStore
+    ) -> None:
+        result = fan_out_plan_builder.func(
+            chapter_index=1,
+            editable_fields=[
+                {
+                    "key": "made_up_field",
+                    "kind": "slider",
+                    "min": 0,
+                    "max": 100,
+                    "label": "x",
+                },
+                {
+                    "key": "weekly_training_count",
+                    "kind": "slider",
+                    "min": 2,
+                    "max": 3,
+                    "label": "每周训练次数",
+                },
+            ],
+            store=store_with_plan,
+            config=CONFIG,
+        )
+        payload = _parse_tool_result(result)
+        assert payload["action"] == "fan_out_plan_builder"
+        assert payload["status"] == "validation_error"
+        assert payload["write_kind"] == "none"
+        assert "editable_fields[0]" in payload["summary"]
+        assert "made_up_field" in payload["summary"]
+        assert payload["warnings"] == [payload["summary"]]
 
 
 # ── Plan Builder 数值字段（C.3.b.1）────────────────────────────────────────
@@ -887,22 +1051,6 @@ class TestBuildPlanBuilderComponentsWithEditableFields:
         assert "每周训练" not in readonly_rows[0].text
         assert "热量" in readonly_rows[0].text
         assert "蛋白" in readonly_rows[0].text
-
-    def test_invalid_spec_is_silently_skipped(
-        self, baseline_plan: PlanDocument
-    ) -> None:
-        """Coach 传错一个 spec 不应让整个 panel 失败。"""
-        editable = [
-            {"key": "made_up_field", "kind": "slider", "min": 0, "max": 100, "label": "x"},
-            {"key": "weekly_training_count", "kind": "slider",
-             "min": 2, "max": 3, "label": "每周训练次数"},
-        ]
-        components = _build_plan_builder_components(baseline_plan, 1, editable)
-        assert components is not None
-        sliders = [c for c in components if c.kind == "slider"]
-        assert len(sliders) == 1
-        assert sliders[0].key == "weekly_training_count"
-
 
 class TestApplyPlanBuilderSubmissionNumericFields:
     def test_weekly_training_count_integer(

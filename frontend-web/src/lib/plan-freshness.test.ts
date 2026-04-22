@@ -71,6 +71,7 @@ function buildView(phase: PlanViewData["plan_phase"]): PlanViewData {
     active_chapter_index: phase === "in_chapter" ? 1 : null,
     week_index: 1,
     day_progress: [0, 56],
+    active_chapter_day_progress: [0, 0],
     days_left_in_chapter: 0,
     map_state: { flag_ratio: 0, events: [] },
     week_view: [],

@@ -31,6 +31,7 @@ export interface CoachContextData {
   onboardingComplete: boolean;
   plan: PlanDocumentData | null;
   planView: PlanViewData | null;
+  planDegradedReason: string | null;
   dashboardConfig: DashboardConfigData | null;
   copingPlans: CopingPlan[];
   identityStatement: string | null;
@@ -39,10 +40,34 @@ export interface CoachContextData {
   allMarkers: ForwardMarkerSummary[];
 }
 
+function formatDateInTimeZone(now: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
+export function buildCoachContextRequestHeaders(
+  now: Date = new Date(),
+  timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+): Record<string, string> {
+  return {
+    "x-voliti-user-timezone": timeZone,
+    "x-voliti-user-today": formatDateInTimeZone(now, timeZone),
+  };
+}
+
 async function fetchCoachContextInternal(): Promise<CoachContextData> {
   const response = await fetch("/api/me/coach-context", {
     cache: "no-store",
     credentials: "include",
+    headers: buildCoachContextRequestHeaders(),
   });
 
   if (!response.ok) {
@@ -56,6 +81,7 @@ async function fetchCoachContextInternal(): Promise<CoachContextData> {
     onboardingComplete: Boolean(payload.onboardingComplete),
     plan: payload.plan ?? null,
     planView: payload.planView ?? null,
+    planDegradedReason: payload.planDegradedReason ?? null,
     dashboardConfig: payload.dashboardConfig ?? null,
     copingPlans: payload.copingPlans ?? [],
     identityStatement: payload.identityStatement ?? null,

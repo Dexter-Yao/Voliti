@@ -54,6 +54,7 @@ def _fmt_timeline_discontinuous(kv: dict[str, str]) -> str:
     i = kv.get("i", "?")
     prev_end = kv.get("prev_end", "?")
     next_start = kv.get("next_start", "?")
+    expected_next_start = kv.get("expected_next_start", "?")
     try:
         ch_prev = str(int(i) + 1)
         ch_next = str(int(i) + 2)
@@ -63,8 +64,8 @@ def _fmt_timeline_discontinuous(kv: dict[str, str]) -> str:
     return (
         f"  字段：chapters[{i}].end_date\n"
         f"  问题：Chapter {ch_prev} 结束日期（{prev_end}）与 Chapter {ch_next} 开始日期（{next_start}）不连续。\n"
-        f"        chapter 间应首尾相连（上一章 end_date 等于下一章 start_date）。\n"
-        f"  修复：将 Chapter {ch_prev} 的 end_date 改为 {next_start}，或将 Chapter {ch_next} 的 start_date 改为 {prev_end}。"
+        f"        下一章必须从上一章结束后的次日开始（期望开始日：{expected_next_start}）。\n"
+        f"  修复：将 Chapter {ch_next} 的 start_date 改为 {expected_next_start}，或同步调整 Chapter {ch_prev} 的 end_date。"
     )
 
 

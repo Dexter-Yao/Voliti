@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Co-create and maintain the user's structured fat-loss Plan (target, chapters with process goals, weekly progress). Read on the first relevant trigger in a session — when the user explicitly asks to adjust the Plan, when their six-dimension profile is sufficiently filled and they are emotionally stable enough to design next steps, when a Chapter is visibly about to end, or when a week's goals_status needs updating after a conversation. Five tools cover the full lifecycle — create_plan for the first Plan, set_goal_status for weekly progress on one Process Goal, update_week_narrative for this week's highlights and concerns, revise_plan for structural changes, fan_out_plan_builder to open a full-screen co-build overlay so the user can review and lightly revise the active chapter after create_plan or revise_plan.
+description: Co-create and maintain the user's structured fat-loss Plan (target, chapters with process goals, weekly progress). Read on the first relevant trigger in a session — when the user explicitly asks to adjust the Plan, when their six-dimension profile is sufficiently filled and they are emotionally stable enough to design next steps, when a Chapter is visibly about to end, or when a week's goals_status needs updating after a conversation. Six tools cover the full lifecycle — `create_plan` for the first Plan, `create_successor_plan` for an explicitly confirmed next-stage Plan, `set_goal_status` for weekly progress on one Process Goal, `update_week_narrative` for this week's highlights and concerns, `revise_plan` for structural changes inside the current Plan, and `fan_out_plan_builder` to open a full-screen co-build overlay so the user can review and lightly revise the active chapter after `create_plan` or `revise_plan`.
 license: internal
 ---
 
@@ -18,15 +18,16 @@ Three situations bring this skill into play:
 
 Two prerequisites gate a first Plan (`create_plan`): the six-dimension profile in `/user/profile/context.md` is filled to at least the minimum depth that lets you reason about daily rhythm, medical constraints, and risk scenarios; and the user is not in acute dysregulation. The Plan is a commitment — make it with a user who can afford to make one.
 
-## The four tools
+## Core tools
 
 Each tool's docstring already covers parameters and validation. What matters here is **which tool matches the intent**:
 
-- **`create_plan(document)`** — the first Plan. The user has never had one, or a previous Plan was archived and they are starting fresh with a new target. You pass a complete `PlanDocument` dict; the system overrides `version`, `predecessor_version`, `status`, `created_at`, `revised_at`. Validation is strict — if it rejects, the message tells you which field and what would fix it; treat it as a drafting hint, not an error.
+- **`create_plan(document)`** — the first Plan. Use this only when no current Plan exists. You pass a complete `PlanDocument` dict; the system overrides `version`, `predecessor_version`, `status`, `created_at`, `revised_at`. Validation is strict — if it rejects, the message tells you which field and what would fix it; treat it as a drafting hint, not an error.
 - **`set_goal_status(goal_name, days_met, days_expected?)`** — weekly progress on one Process Goal. `goal_name` must exactly match a Process Goal defined in one of the active Plan's Chapters. `days_met` is your holistic judgment ("训练两次但两次都到强度，算作达成" → `days_met=3`), not a raw event count. `days_expected` only when the user's week is atypical (travel, illness).
 - **`update_week_narrative(highlights?, concerns?)`** — the one-sentence version of how the week is actually going that numbers alone can't carry. Either field can be provided alone; at least one must be.
 - **`revise_plan(patch)`** — any structural change: swapping a Process Goal, adjusting calorie range, ending or extending a Chapter, shifting the Target, marking the Plan `completed`. Takes a partial `PlanPatch`. `patch.chapters` uses `chapter_index` as locator for per-chapter merge. Empty patch or a patch that only sets `change_summary` is rejected — the system is asking you to describe what substantively changed.
-- **`fan_out_plan_builder(chapter_index=None, editable_fields=None)`** — opens the full-screen co-build overlay so the user can see the Plan whole and revise the target chapter. Always-open text fields: `milestone` and `daily_rhythm.{meals,training,sleep}.value`. Numeric fields open conditionally via the `editable_fields` parameter — you decide which sliders appear and what their min/max are based on the user's profile, current state, and `references/numeric-guidelines.md`. See the "Numeric co-build" section below for how to compute ranges. Call **once** right after a successful `create_plan` or a meaningful structural `revise_plan`. The tool is self-contained: reads the current Plan, builds the components, interrupts the conversation until the user responds, translates their edits into a PlanPatch, calls revise_plan internally, and returns a one-line Chinese summary of what changed.
+- **`create_successor_plan(document, previous_plan_id, user_confirmed, confirmation_text)`** — an explicit next-stage Plan after the current Plan is truly ending. Use this when the user has clearly confirmed "这是新的方案" rather than "把当前方案调一下". Do not fake successor semantics with `create_plan` or `revise_plan`.
+- **`fan_out_plan_builder(chapter_index=None, editable_fields=None)`** — opens the full-screen co-build overlay so the user can see the Plan whole and revise the target chapter. Always-open text fields: `milestone` and `daily_rhythm.{meals,training,sleep}.value`. Numeric fields open conditionally via the `editable_fields` parameter — you decide which sliders appear and what their min/max are based on the user's profile, current state, and `references/numeric-guidelines.md`. See the "Numeric co-build" section below for how to compute ranges. Call **once** right after a successful `create_plan` or a meaningful structural `revise_plan`. The tool is self-contained: reads the current Plan, builds the components, interrupts the conversation until the user responds, translates their edits into a PlanPatch, calls revise_plan internally, and returns a structured JSON result whose `summary` field tells you what changed in plain language.
 
 Before a `revise_plan` that affects multiple fields, or when the user is asking about their current Plan in detail, read `/user/plan/current.json` just-in-time. Do not keep the full document in context between turns.
 
@@ -70,7 +71,7 @@ When the Plan itself needs to change:
 2. **Read `references/plan-structure.md`** if you need the full field map, and `references/edit-protocol.md` for the per-chapter merge semantics and common patches.
 3. **Build the `PlanPatch`** — only the fields that change. Chapter-level partial via `chapters[].chapter_index` as locator. Target-level changes need the full `TargetRecord`.
 4. **`revise_plan(patch)`** — the system archives a new version automatically when the patch touches structural fields. Tell the user in plain language what was archived and what now is.
-5. **Chapter transitions are just revises**. The pattern "old chapter ends, new chapter begins" is: either a `chapters` patch that updates both end_dates and content, or — if it's a clean transition — a patch that updates the active Chapter's `end_date` so the next Chapter becomes active today. No separate "advance chapter" action exists or is needed.
+5. **Chapter transitions are just revises**. The pattern "old chapter ends, new chapter begins" is: either a `chapters` patch that updates both boundaries and content, or — if it's a clean transition — a patch that sets the active chapter's `end_date` and the next chapter's `start_date` to the following local day. No separate "advance chapter" action exists or is needed inside one Plan.
 
 ### Numeric co-build (opening sliders via `editable_fields`)
 
@@ -111,7 +112,7 @@ Supported `key` values (C.3.b.1 scope):
 - `daily_protein_grams_range.lower` / `daily_protein_grams_range.upper`
 - `process_goals.{N}.weekly_target_days`  (N = 0-based index into the chapter's process_goals)
 
-Other keys are silently skipped — don't rely on that, write valid specs.
+Other keys are rejected before the panel opens — write valid specs and treat any rejection as a real configuration error to fix, not as something the tool will quietly smooth over.
 
 **`hint` writing voice:**
 - Use the user's own frame ("你自己说过周末时间自由度最大"), not clinical prescription ("ISSN recommends 2.3-3.1 g/kg").

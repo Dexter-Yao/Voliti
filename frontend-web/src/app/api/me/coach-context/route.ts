@@ -34,6 +34,7 @@ interface CoachContextResponse {
   onboardingComplete: boolean;
   plan: PlanDocumentData | null;
   planView: PlanViewData | null;
+  planDegradedReason: string | null;
   dashboardConfig: DashboardConfigData | null;
   copingPlans: CopingPlan[];
   identityStatement: string | null;
@@ -65,7 +66,7 @@ function assertValidStoreJson(
 
 // 与 backend/src/voliti/contracts/ 中 Pydantic 必填字段镜像；模型演进时需同步
 const STORE_REQUIRED_KEYS = {
-  dashboardConfig: ["north_star", "support_metrics"],
+  dashboardConfig: ["north_star"],
   markers: ["markers"],
 } as const;
 
@@ -114,13 +115,35 @@ async function getAcceptedWitnessCards(
   }
 }
 
+type PlanViewFetchResult =
+  | {
+      kind: "ok";
+      plan: PlanDocumentData;
+      planView: PlanViewData;
+      degradedReason: string | null;
+    }
+  | {
+      kind: "no_plan";
+    };
+
+function resolveUserLocalToday(request: Request): string {
+  const headerValue = request.headers.get("x-voliti-user-today")?.trim() ?? "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(headerValue)) {
+    return headerValue;
+  }
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function fetchPlanViewPayload(
   userId: string,
-): Promise<{ plan: PlanDocumentData; planView: PlanViewData } | null> {
+  today: string,
+): Promise<PlanViewFetchResult> {
   const apiUrl = process.env.LANGGRAPH_API_URL;
-  if (!apiUrl) return null;
+  if (!apiUrl) {
+    throw new Error("plan_view upstream unavailable: missing LANGGRAPH_API_URL");
+  }
 
-  const url = `${apiUrl.replace(/\/$/, "")}/plan-view/${encodeURIComponent(userId)}`;
+  const url = `${apiUrl.replace(/\/$/, "")}/plan-view/${encodeURIComponent(userId)}?today=${encodeURIComponent(today)}`;
   const headers: Record<string, string> = { accept: "application/json" };
   if (process.env.LANGSMITH_API_KEY) {
     headers["x-api-key"] = process.env.LANGSMITH_API_KEY;
@@ -128,35 +151,45 @@ async function fetchPlanViewPayload(
 
   try {
     const response = await fetch(url, { headers, cache: "no-store" });
-    if (response.status === 404) return null;
+    if (response.status === 404) {
+      return { kind: "no_plan" };
+    }
     if (!response.ok) {
-      console.error(
-        `plan-view upstream non-ok: ${response.status} ${await response.text()}`,
+      const responseText = await response.text();
+      throw new Error(
+        `plan_view upstream non-ok: ${response.status} ${responseText}`,
       );
-      return null;
     }
     const body = (await response.json()) as {
       plan: PlanDocumentData;
       plan_view: PlanViewData;
+      plan_degraded_reason?: string | null;
     };
-    return { plan: body.plan, planView: body.plan_view };
+    return {
+      kind: "ok",
+      plan: body.plan,
+      planView: body.plan_view,
+      degradedReason: body.plan_degraded_reason ?? null,
+    };
   } catch (err) {
     console.error("plan-view fetch failed", err);
-    return null;
+    throw err;
   }
 }
 
-function parseAllMarkers(markersText: string): ForwardMarkerSummary[] {
+function parseAllMarkers(
+  markersText: string,
+  userLocalToday: string,
+): ForwardMarkerSummary[] {
   try {
     const parsed = JSON.parse(markersText) as {
       markers?: Array<Record<string, unknown>>;
     };
-    const now = Date.now();
 
     return (parsed.markers ?? [])
       .map((marker) => {
         const date = typeof marker.date === "string" ? marker.date : "";
-        const timestamp = Date.parse(date);
+        const localDate = date.slice(0, 10);
         return {
           id: typeof marker.id === "string" ? marker.id : "",
           date,
@@ -168,7 +201,7 @@ function parseAllMarkers(markersText: string): ForwardMarkerSummary[] {
             typeof marker.linked_lifesign === "string"
               ? marker.linked_lifesign
               : null,
-          isPast: Number.isFinite(timestamp) && timestamp < now,
+          isPast: Boolean(localDate && localDate < userLocalToday),
         };
       })
       .filter((marker) => marker.id && marker.date && marker.description)
@@ -178,13 +211,25 @@ function parseAllMarkers(markersText: string): ForwardMarkerSummary[] {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getAuthenticatedUser();
   if (!user) {
     return jsonError(401, "请先登录后再继续。");
   }
 
+  const userLocalToday = resolveUserLocalToday(request);
   const namespace = ["voliti", user.id];
+  let planPayload: PlanViewFetchResult;
+  try {
+    planPayload = await fetchPlanViewPayload(user.id, userLocalToday);
+  } catch (err) {
+    const message =
+      err instanceof Error && err.message
+        ? err.message
+        : "plan_view upstream unavailable";
+    return jsonError(502, message);
+  }
+
   const [
     profileValue,
     dashboardConfigValue,
@@ -192,7 +237,6 @@ export async function GET() {
     briefingValue,
     markersValue,
     witnessCards,
-    planPayload,
   ] = await Promise.all([
     getStoreValue(STORE_KEYS.profile, namespace),
     getStoreValue(STORE_KEYS.dashboardConfig, namespace),
@@ -200,7 +244,6 @@ export async function GET() {
     getStoreValue(STORE_KEYS.briefing, namespace),
     getStoreValue(STORE_KEYS.markers, namespace),
     getAcceptedWitnessCards(namespace),
-    fetchPlanViewPayload(user.id),
   ]);
 
   try {
@@ -217,20 +260,21 @@ export async function GET() {
 
   const profileText = unwrapFileValue(profileValue);
   const copingMarkdown = unwrapFileValue(copingPlansValue);
-  const allMarkers = parseAllMarkers(unwrapFileValue(markersValue));
-  const now = Date.now();
+  const allMarkers = parseAllMarkers(unwrapFileValue(markersValue), userLocalToday);
 
   const response: CoachContextResponse = {
     briefing: unwrapFileValue(briefingValue) || null,
     onboardingComplete: profileText.includes("onboarding_complete: true"),
-    plan: planPayload?.plan ?? null,
-    planView: planPayload?.planView ?? null,
+    plan: planPayload.kind === "ok" ? planPayload.plan : null,
+    planView: planPayload.kind === "ok" ? planPayload.planView : null,
+    planDegradedReason:
+      planPayload.kind === "ok" ? planPayload.degradedReason : "no_plan",
     dashboardConfig: parseJsonFileValue<DashboardConfigData>(dashboardConfigValue),
     copingPlans: copingMarkdown ? parseCopingPlans(copingMarkdown) : [],
     identityStatement: profileText ? parseIdentityStatement(profileText) : null,
     witnessCards,
     upcomingMarkers: allMarkers
-      .filter((m) => !m.isPast && Date.parse(m.date) >= now)
+      .filter((m) => !m.isPast)
       .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
       .slice(0, 3),
     allMarkers,

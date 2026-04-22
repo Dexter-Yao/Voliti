@@ -35,7 +35,7 @@ def parse_markers(raw_value: dict[str, Any] | None) -> dict[str, MarkerItem]:
 
 
 def parse_lifesigns_index(raw_value: dict[str, Any] | None) -> dict[str, dict[str, str]]:
-    """从 /coping_plans_index.md 解析出 {id: {trigger}}。
+    """从 /coping_plans_index.md 解析出 {id: {trigger, coping_response}}。
 
     格式约定：`- ls_001: "trigger text" → response [status]`；损坏降级为空 dict。
     """
@@ -63,6 +63,15 @@ def parse_lifesigns_index(raw_value: dict[str, Any] | None) -> dict[str, dict[st
             if rest.count('"') >= 2:
                 second_q = rest.index('"', first_q + 1)
                 trigger = rest[first_q + 1 : second_q]
+        coping_response = ""
+        if "→" in rest:
+            after_arrow = rest.split("→", 1)[1].strip()
+            if "[" in after_arrow:
+                after_arrow = after_arrow.rsplit("[", 1)[0].strip()
+            coping_response = after_arrow
         if ls_id:
-            result[ls_id] = {"trigger": trigger}
+            result[ls_id] = {
+                "trigger": trigger,
+                "coping_response": coping_response,
+            }
     return result

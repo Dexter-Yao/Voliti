@@ -71,7 +71,7 @@ def _baseline_plan_dict() -> dict:
                 "chapter_index": 2,
                 "name": "训练成锚",
                 "why_this_chapter": "让每周三次训练从心情变成不用挣扎的惯性。",
-                "start_date": "2026-03-06",
+                "start_date": "2026-03-07",
                 "end_date": "2026-04-03",
                 "milestone": "再减 3 公斤，训练变成日常",
                 "process_goals": [
@@ -96,7 +96,7 @@ def _baseline_plan_dict() -> dict:
                 "chapter_index": 3,
                 "name": "焊进日常",
                 "why_this_chapter": "测试节奏的抗压能力。",
-                "start_date": "2026-04-03",
+                "start_date": "2026-04-04",
                 "end_date": "2026-04-17",
                 "milestone": "压力测试下节奏守住即毕业",
                 "process_goals": [
@@ -248,12 +248,21 @@ def test_linked_marker_date_rejects_non_iso() -> None:
 
 def test_cross_field_chapter_timeline_not_continuous() -> None:
     data = _baseline_plan_dict()
-    data["chapters"][0]["end_date"] = "2026-03-05"   # chapters[1].start_date = 2026-03-06，出现 gap
+    data["chapters"][0]["end_date"] = "2026-03-05"   # chapters[1].start_date = 2026-03-07，出现 gap
     with pytest.raises(ValidationError) as exc_info:
         PlanDocument.model_validate(data)
     msg = format_plan_write_error(exc_info.value)
     assert "不连续" in msg
     assert "chapters[0].end_date" in msg
+
+
+def test_cross_field_chapter_timeline_rejects_same_day_overlap() -> None:
+    data = _baseline_plan_dict()
+    data["chapters"][1]["start_date"] = "2026-03-06"
+    with pytest.raises(ValidationError) as exc_info:
+        PlanDocument.model_validate(data)
+    msg = format_plan_write_error(exc_info.value)
+    assert "不连续" in msg
 
 
 def test_cross_field_chapter_index_not_monotonic() -> None:
@@ -338,6 +347,12 @@ def test_plan_patch_accepts_chapter_patch_list() -> None:
     assert patch.chapters[0].chapter_index == 2
     assert patch.chapters[0].milestone == "新里程碑"
     assert patch.chapters[0].name is None
+
+
+def test_plan_patch_forbids_unknown_fields() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        PlanPatch.model_validate({"supersedes_plan_id": "plan_old"})
+    assert "supersedes_plan_id" in str(exc_info.value)
 
 
 def test_chapter_patch_requires_chapter_index() -> None:

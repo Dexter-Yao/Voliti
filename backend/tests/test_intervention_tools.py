@@ -25,6 +25,7 @@ _EXPECTED_SKILL_TOOL_NAMES = {
     "fan_out_cognitive_reframing",
     "issue_witness_card",
     "create_plan",
+    "create_successor_plan",
     "set_goal_status",
     "update_week_narrative",
     "revise_plan",
@@ -69,7 +70,7 @@ class TestDynamicLoading:
     """_load_skill_tools 动态加载行为。"""
 
     def test_finds_all_registered_skill_tools(self) -> None:
-        """应发现 4 个 intervention + witness-card + Plan 的 4 个 tool，共 9 个。"""
+        """应发现 4 个 intervention + witness-card + Plan 的 6 个 tool，共 11 个。"""
         tools = _load_skill_tools()
         assert len(tools) == len(_EXPECTED_SKILL_TOOL_NAMES)
 

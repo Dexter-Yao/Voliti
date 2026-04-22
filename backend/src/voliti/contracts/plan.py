@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Literal, Self
 
-from pydantic import AwareDatetime, BaseModel, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 
 # ────────────────────────────────────────────────────────────────────────
@@ -139,13 +139,14 @@ class PlanDocument(BaseModel):
         return self
 
     def _check_chapter_timeline_continuous(self) -> None:
-        """约束 1：chapters[i].end_date 必须等于 chapters[i+1].start_date。"""
+        """约束 1：下一章必须从前一章结束后的次日开始。"""
         for i in range(len(self.chapters) - 1):
             prev_end = self.chapters[i].end_date
             next_start = self.chapters[i + 1].start_date
-            if prev_end != next_start:
+            expected_next_start = prev_end + timedelta(days=1)
+            if next_start != expected_next_start:
                 raise ValueError(
-                    f"chapters_timeline_discontinuous|i={i}|prev_end={prev_end}|next_start={next_start}"
+                    f"chapters_timeline_discontinuous|i={i}|prev_end={prev_end}|next_start={next_start}|expected_next_start={expected_next_start}"
                 )
 
     def _check_chapter_index_monotonic(self) -> None:
@@ -208,6 +209,8 @@ class PlanDocument(BaseModel):
 class ChapterPatch(BaseModel):
     """chapter 级别 partial：chapter_index 必填作为定位键，其他字段可选。"""
 
+    model_config = ConfigDict(extra="forbid")
+
     chapter_index: int = Field(ge=1, le=6)
     name: str | None = Field(default=None, min_length=2, max_length=20)
     why_this_chapter: str | None = Field(default=None, min_length=4, max_length=400)
@@ -226,6 +229,8 @@ class ChapterPatch(BaseModel):
 class PlanPatch(BaseModel):
     """部分修订。chapters 按 chapter_index 定位合并，不是整体替换。
     合并后由 revise_plan tool 再跑 PlanDocument.model_validate 做全量校验。"""
+
+    model_config = ConfigDict(extra="forbid")
 
     status: Literal["active", "completed", "paused", "archived"] | None = None
     change_summary: str | None = None

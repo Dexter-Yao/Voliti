@@ -243,7 +243,7 @@ def _baseline_plan_dict() -> dict[str, Any]:
                 "chapter_index": 2,
                 "name": "训练成锚",
                 "why_this_chapter": "让训练变成不用挣扎的惯性。",
-                "start_date": "2026-03-06",
+                "start_date": "2026-03-07",
                 "end_date": "2026-04-17",
                 "milestone": "再减 3 公斤",
                 "process_goals": [
@@ -465,3 +465,41 @@ class TestComputeAndWriteBriefingPlanIntegration:
         )
         assert result is not None
         assert "<user_plan_data_unavailable>" in result
+
+    @pytest.mark.asyncio
+    async def test_corrupt_current_recovers_from_archive(self) -> None:
+        """/plan/current.json 损坏但 archive 有合法 active plan → briefing 应注入恢复后的方案。"""
+        plan_json = json.dumps(_baseline_plan_dict(), ensure_ascii=False)
+
+        async def fake_get_item(namespace, key):
+            if key == "/plan/current.json":
+                return _make_file_item("{not valid json")
+            return None
+
+        async def fake_search_items(namespace, limit, offset):
+            assert namespace == ("voliti", "u04_briefing", "plan_archive")
+            return {
+                "items": [
+                    {
+                        "key": "plan_briefing_001_v2.json",
+                        "value": _make_file_item(plan_json)["value"],
+                    }
+                ]
+            }
+
+        client = AsyncMock()
+        client.threads.search = AsyncMock(return_value=[])
+        client.store.get_item = AsyncMock(side_effect=fake_get_item)
+        client.store.search_items = AsyncMock(side_effect=fake_search_items)
+        client.store.put_item = AsyncMock()
+
+        now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+        result = await compute_and_write_briefing(
+            client=client,
+            user_id="u04_briefing",
+            namespace=("voliti", "u04_briefing"),
+            now=now,
+        )
+        assert result is not None
+        assert "<user_plan_data>" in result
+        assert "训练成锚" in result

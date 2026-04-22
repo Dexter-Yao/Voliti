@@ -52,7 +52,7 @@
 - `status` — `active` / `completed` / `paused` / `archived`。`create_plan` 时强制 `active`（系统覆盖）；`revise_plan` 可改 `status`，改到 `completed` 或 `archived` 意味着该 Plan 的生命周期结束。
 - `version` — 从 1 递增。`create_plan` 强制 1；`revise_plan` 遇到结构性字段变更自动 `version++`；状态性字段变更（仅 `current_week`）不变 version。
 - `predecessor_version` — 上一个 version 号。`create_plan` 强制 null；`revise_plan` 结构性修订时自动设为旧 version。
-- `supersedes_plan_id` — 指向被替换的上一个 Plan 的 `plan_id`（不是 version）。用于用户结束旧方案启动新方案的血缘追溯。
+- `supersedes_plan_id` — 指向被替换的上一个 Plan 的 `plan_id`（不是 version）。这是跨 Plan 血缘字段，由显式 successor flow 维护；不要把它当成 `revise_plan` patch 字段。
 - `change_summary` — 本次 `revise_plan` 的一句话说明。独立使用（只改 `change_summary`）会被拒；必须伴随实质字段变化。
 - `target_summary` — 一句话概括这次 Plan 想到达的状态（如"两个月减 10 斤"、"三个月回到 60 公斤"）。用户可见。
 - `overall_narrative` — 用户自己表达的动机叙事，10-800 字。这不是由 Coach 写的描述，是用户的话。保存用户的原话比修辞更重要。
@@ -82,7 +82,7 @@
 - `chapter_index` — 1 到 6，必须从 1 开始严格递增（跨字段约束 #2）。
 - `name` — 2-20 字，用户可见的阶段名。
 - `why_this_chapter` — 4-400 字，这一章为什么对用户重要。前端作为 tooltip 显示；写给用户看，不写给 Coach 内部看。
-- `start_date` / `end_date` — ISO-8601 date。相邻章节必须首尾相连：`chapters[i].end_date == chapters[i+1].start_date`（跨字段约束 #1）。
+- `start_date` / `end_date` — ISO-8601 date。相邻章节必须按自然日连续：`chapters[i+1].start_date == chapters[i].end_date + 1 day`（跨字段约束 #1）。
 - `milestone` — 4-200 字，这一章结束时用户能看到的可判断的状态。
 - `process_goals` — 1 到 4 个。每个 Process Goal:
   - `name`（2-60 字）、`why_this_goal`（可选，≤200）、`weekly_target_days`（1-7）、`weekly_total_days`（1-7，默认 7）、`how_to_measure`（4-240）、`examples`（最多 6 条）

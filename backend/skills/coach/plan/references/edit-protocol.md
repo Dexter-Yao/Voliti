@@ -41,7 +41,7 @@
 系统根据 patch 里出现的字段判断是否归档新版本：
 
 **结构性字段**（任一出现即归档，`version++`）：
-- `target` / `chapters` / `linked_lifesigns` / `linked_markers` / `status` / `supersedes_plan_id`
+- `target` / `chapters` / `linked_lifesigns` / `linked_markers` / `status`
 
 **状态性字段**（不归档，`version` 不变）：
 - `target_summary` / `overall_narrative` / `planned_end_at` / `change_summary` / `revised_at`
@@ -50,14 +50,14 @@
 
 状态性修订直接改 `/user/plan/current.json`。结构性修订先写 `/user/plan/archive/{plan_id}_v{new}.json`，再更新 `/user/plan/current.json`（archive-first 半事务）。归档失败会自愈（下次 tool 调用发现 current 落后 archive，自动重写 current）——这是底层机制，你不需要管。
 
-## 何时用 `supersedes_plan_id`
+## 何时开启下一段新方案
 
 两种情况：
 
-- **旧 Plan 完成了，开启新 Plan**：给旧 Plan `status: completed`（结构性），然后 `create_plan` 新 Plan，在新 Plan 的 `supersedes_plan_id` 字段里填旧 Plan 的 `plan_id`。这保留血缘。
-- **旧 Plan 没完成但方向变了**：类似处理，但给旧 Plan `status: archived` 或 `paused`。
+- **旧 Plan 完成了，开启新 Plan**：走显式 successor flow，由 `create_successor_plan(document, previous_plan_id, user_confirmed, confirmation_text)` 创建新 Plan，并在新 Plan 上写入 `supersedes_plan_id`。
+- **旧 Plan 没完成但方向变了**：如果这是跨 Plan 切换，仍然走 successor flow；如果只是当前 Plan 内重排章节、目标或 linked references，则仍是 `revise_plan`。
 
-不要用 `supersedes_plan_id` 来做"这个 Plan 的第二个版本"——那是 `revise_plan` 的 `version++`。`supersedes_plan_id` 是一个 Plan 生命周期结束、另一个 Plan 的开始。
+不要用 `supersedes_plan_id` 来做"这个 Plan 的第二个版本"——那是 `revise_plan` 的 `version++`。`supersedes_plan_id` 代表一个 Plan 生命周期结束、另一个 Plan 的开始。
 
 ## 几种常见修订的话术与 patch 对照
 
@@ -109,13 +109,13 @@
 {
   "chapters": [
     { "chapter_index": 1, "end_date": "2026-04-19" },
-    { "chapter_index": 2, "start_date": "2026-04-19" }
+    { "chapter_index": 2, "start_date": "2026-04-20" }
   ],
   "change_summary": "Chapter 1 提前结束（milestone 已稳定达成），Chapter 2 提前开始"
 }
 ```
 
-必须同时改 Chapter 1 的 `end_date` 和 Chapter 2 的 `start_date`（跨字段约束 #1：相邻 chapters 首尾相连）。只改一边 Pydantic 会拒。
+必须同时改 Chapter 1 的 `end_date` 和 Chapter 2 的 `start_date`（跨字段约束 #1：下一章必须从上一章结束后的次日开始）。只改一边 Pydantic 会拒。
 
 ### 修订 3：调整 Target
 

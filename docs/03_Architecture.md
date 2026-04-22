@@ -74,17 +74,16 @@ Voliti 当前运行时形态：用户在浏览器中与单一 Coach Agent 对话
 │   权威语义（authoritative_semantic）                                           │
 │     /profile/context.md            六维用户画像                                 │
 │     /profile/dashboardConfig       Mirror 仪表盘配置                           │
-│     /goal/current.json             北极星目标                                  │
-│     /goal/archive/{id}.json        历史目标                                    │
-│     /chapter/current.json          当前章节                                    │
-│     /chapter/archive/{id}.json     历史章节                                    │
+│     /plan/current.json             当前 Active Plan 指针                        │
+│     ns: ("voliti", uid, "plan_archive")                                        │
+│       {plan_id}_v{version}.json    历史 Plan 权威归档                          │
 │     /coach/AGENTS.md               Coach 四分区记忆                            │
 │     /coping_plans_index.md         LifeSign 预案索引                           │
 │     /lifesigns.md                  LifeSign 主文件                             │
 │     /timeline/markers.json         前瞻标记                                    │
 │                                                                              │
 │   候选信号（candidate_signal）                                                 │
-│     /derived/briefing.md           Goal/Chapter/摘要的每日只读上下文            │
+│     /derived/briefing.md           日常摘要 + <user_plan_data> 只读上下文       │
 │                                                                              │
 │   原始证据（archive_source）                                                   │
 │     /day_summary/{yyyy-mm-dd}.md        日摘要（≤60 字单句）                   │
@@ -132,7 +131,7 @@ Voliti 当前运行时形态：用户在浏览器中与单一 Coach Agent 对话
 1. 呈现 Coach 对话与 A2UI 结构化交互（8 种组件 + `reject` 理由 + 重置 + Cmd+Enter）。
 2. 管理天级 Thread（一天一个 coaching 会话，自动创建/复用）。
 3. 持有设备本地状态（localStorage）：UI 偏好、临时缓存、非业务状态。
-4. Mirror 面板从 backend 聚合接口读取投影：Identity 从 profile、Goal 从 `/goal/current.json`、Chapter/指标/LifeSign/markers/Witness Card 从相应路径读取。
+4. Mirror 面板从 backend 聚合接口读取投影：Identity 从 `profile`，北极星 label / unit 从 `dashboardConfig`，active-plan 结构与派生统一从 `plan + planView`，Witness Card 从 `interventions` namespace。
 5. 系统触发器：当日首次创建 coaching thread 时发送 `[daily_checkin] HH:MM`；使用 `DO_NOT_RENDER_ID_PREFIX` 在 UI 中隐藏。
 6. Onboarding 全屏 surface 与标准 coaching workspace 的切换由 `onboarding_complete` 判定驱动（契约见 05 §7.5）。
 
@@ -148,7 +147,7 @@ Coach Agent 由 `create_deep_agent()` 构造，运行时组合以下能力：
 
 1. 系统 prompt（`PromptRegistry` + Jinja2 `SandboxedEnvironment`）。
 2. 会话级 middleware 栈（剥离内置默认值、注入 onboarding / skills / briefing）。
-3. 工具：通用 `fan_out`、`add_forward_marker`，以及 `backend/skills/coach/` 下动态加载的 skill 工具——四个 intervention 专用工具、`issue_witness_card`、以及 **Plan Skill 的 5 个工具**（`create_plan` / `set_goal_status` / `update_week_narrative` / `revise_plan` / `fan_out_plan_builder`）。
+3. 工具：通用 `fan_out`、`add_forward_marker`，以及 `backend/skills/coach/` 下动态加载的 skill 工具——四个 intervention 专用工具、`issue_witness_card`，以及 **Plan Skill 的 6 个工具**（`create_plan` / `create_successor_plan` / `set_goal_status` / `update_week_narrative` / `revise_plan` / `fan_out_plan_builder`）。Coach 实际可调用 surface 以 `backend/skills/coach/plan/tool.py` 的 `TOOLS` 列表为准。
 4. 虚拟文件系统（`CompositeBackend`）：`/user/…` 路由到 Store、`/skills/coach/…` 路由到只读文件系统、其他到 State。
 5. 记忆路径：coaching 会话挂载 `/user/coach/AGENTS.md`、`/user/profile/context.md`、`/user/coping_plans_index.md`。
 
@@ -157,7 +156,7 @@ Coach Agent 由 `create_deep_agent()` 构造，运行时组合以下能力：
 1. 用户不直接接触后台分析代理。
 2. 会话差异通过 `SessionProfile` + middleware 组合，而非多套独立 agent。
 3. Witness Card 与体验式干预通过 skill tool 组合进入主运行时，无 subagent。
-4. **Plan Skill 承担结构化减脂方案**：单文件嵌套 PlanDocument（target / chapters / current_week）+ 跨字段 Pydantic 守护 + archive-first 写入 + dashboardConfig 自动同步 + 全屏共建 overlay（`surface="plan-builder"`）。Coach 在六维画像充分后触发 `create_plan`，紧接 `fan_out_plan_builder` 让用户看见并轻度共建。详见 [`plan-skill.md`](plan-skill.md)。
+4. **Plan Skill 承担结构化减脂方案**：单文件嵌套 PlanDocument（target / chapters / current_week）+ `plan_archive` 权威归档 + `plan_runtime.py` 统一自愈读取 + `compute_plan_view` / briefing / Mirror 共用同一派生真相。`dashboardConfig` 仅保留 `north_star` / `user_goal` 与兼容性 write-through。详见 [`plan-skill.md`](plan-skill.md)。
 
 ### 3.4 LangGraph Store 与运行态
 
@@ -364,3 +363,4 @@ cd backend && uv run langgraph dev --port 2025
 | 2026-04-15 | 更新 Web 客户端认证职责描述：Supabase Auth 负责身份验证，服务端注入 `configurable.user_id`（Supabase UUID）与 `session_type` |
 | 2026-04-18 | Witness Card 从专项 subagent 收口为 coach skill tool；Mirror 的 Witness Card 回看数据源收口为 LangGraph Store；DeepAgent 复用边界相应移除 subagent 依赖表述 |
 | 2026-04-19 | 端到端重构：新增 §2 端到端架构图（中间件栈 / CompositeBackend 路由 / Store 语义分层 / Day-End Pipeline）；删除产品决策辩护（§5.1-5.3）、iOS 专项测试章节与 conversation archive retrieval live 脚本要求；iOS 端声明为当前搁置；数据流发起方统一为 Web 客户端；§5.4 Memory Lifecycle 精简指向 05；`Runtime Session History` / `Conversation Archive Access Layer` 标注为尚未封装为独立代码层；§3.5 新增 Day-End Pipeline 节 |
+| 2026-04-22 | Planner 真相边界收口：Store 语义图与 Mirror 数据源改为 `plan/current + plan_archive + plan_view`；`dashboardConfig` 在 active-plan 区块降级为北极星与兼容字段；briefing 描述同步为 `<user_plan_data>` slice |
