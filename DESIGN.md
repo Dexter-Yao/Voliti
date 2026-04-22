@@ -5,7 +5,7 @@
 > 机器可读 tokens 见 [`docs/design-system/design-tokens.json`](docs/design-system/design-tokens.json)。
 
 ## 产品上下文
-- **产品定义：** AI 减脂行为教练，帮助用户在真实生活场景中维持行为一致性
+- **产品定义：** AI 减脂私密行为教练，帮助用户在真实生活场景中维持行为一致性
 - **目标用户：** 理性、上进的知识工作者/管理者。信息储备充足，但压力/疲劳/社交持续打断节奏
 - **支持语言：** 中文、英文
 - **产品类型：** iOS 原生 App（SwiftUI）+ Web 端 MVP（Next.js），三栏可折叠布局
@@ -312,25 +312,32 @@ Onboarding 使用独立的 `onboardingThreadID`，与日常 coaching 的 `thread
 ```
 ┌─────────────────────────────────┐
 │ Chapter Context                 │
-│ 篇章 3 · Day 14                │
-│ "在压力下保持清晰选择的人"        │  ← Serif 24px
-│ 目标：12 周 75kg → 70kg          │  ← Sans 14px obsidian-40
+│ Chapter 2 · 自 2026-04-30       │
+│ "在压力下保持清晰选择的人"        │  ← Serif 小句
+│ 目标：75kg → 70kg                │  ← Sans 12px obsidian-50
+│ 当前章标题 + milestone           │
+├─────────────────────────────────┤
+│ Journey Progress                │
+│ copper 进度线 + Day N / Total   │
 ├─────────────────────────────────┤
 │ ★ 北极星 / NORTH STAR           │  ← Mono copper
-│ 72.3 KG  ↓ 0.4 本周             │  ← Serif 36px + Mono delta
-│ [■ ■ ■ ■ ■ ■ ■] 7日趋势         │  ← 可点击
-│ 查看全部记录 ›                   │
+│ 72.3 KG                         │  ← Serif 36px
+│ → 70kg                          │  ← Mono / Sans 辅助文案
 ├─────────────────────────────────┤
-│ 支持性指标（3 列等宽）            │
-│ 今日摄入 | 今日状态 | 本周一致性   │
-│ 1,420    | 7/10    | 5/7        │
+│ Process Goals（最多前三项）       │
+│ 早餐蛋白 | 4/7 | 目标 5/7        │
+│ 晚餐提前 | 5/7 | 目标 5/7        │
+│ 每周训练 | 2/2 | 目标 2/2        │
 ├─────────────────────────────────┤
-│ LIFESIGN / 预案                  │  ← Mono copper
-│ 3 预案 · 激活 5 成功 4  ›         │
+│ LIFESIGN / 预案                  │
+│ IF 深夜情绪性进食                 │
+│ THEN 先喝水并给 Coach 发一句话     │
 ├─────────────────────────────────┤
-│ 日志 Filter（动态标签）           │
-│ [全部 12] [饮食 5] [体重 3] ...  │  ← 有记录才显示
-│ 事件流...                        │
+│ Event Stream                    │
+│ 高 / 中 / 低 风险等级事件流       │
+├─────────────────────────────────┤
+│ Witness Card Gallery            │
+│ 见证卡缩略图网格                  │
 └─────────────────────────────────┘
 ```
 
@@ -339,37 +346,36 @@ Onboarding 使用独立的 `onboardingThreadID`，与日常 coaching 的 `thread
 - 标签：Mono 10px · copper · uppercase · ★ 前缀
 - 数值：Serif 36px
 - 单位：Mono 12px · obsidian-40
-- Delta：Mono 12px · aligned（正向）/ risk-red（负向）
-- 7日趋势：直接在数值下方，柱状图，高度 40px
-  - reported 柱：obsidian-10（非活跃）/ copper（今日/选中）
-  - estimated 柱：同色但 opacity 0.4，视觉传达"推断值"
-  - 今日柱：copper
-  - hover/tap 状态：copper-40
-  - 日期标签：Mono 9px · obsidian-40
-  - "查看全部记录 ›"：Mono 10px · obsidian-40 · 右对齐
+- 目标值：紧随主数值显示，作为 baseline → goal 的方向提示
+- 数据来源：label / unit 取自 `dashboardConfig.north_star`，数值取自当前 Plan target
 
-### 支持性指标
+### Process Goals
 
-- 固定 3 个，由 Coach 在 Onboarding 确定
+- 展示当前 active chapter 的 process goals，默认最多显示前三项
+- 每项显示 `days_met / days_expected` 与静态目标 `weekly_target_days / weekly_total_days`
 - 等宽三列，border-left 分隔（第一列无左边框）
 - 标签：Mono 10px · obsidian-40 · uppercase
 - 数值：Serif 20px
 - 副标签：Mono 10px · obsidian-40
+- `why_this_goal` 通过 info tooltip 展开，不在主面板堆长文
 
-### LifeSign 摘要卡片
+### LifeSign 卡片
 
-- 标题：Mono 12px · copper · uppercase · "LIFESIGN"（EN）/ "预案"（ZH）
-- 统计：Sans 14px
-- Chevron：12px · obsidian-40 · 右对齐
-- 点击进入 LifeSign 列表
+- 标题：Mono 12px · copper · uppercase · "LIFESIGN"
+- 内容结构：`IF trigger` + `THEN coping response`
+- 不展示累计激活次数、成功次数等统计型摘要
 
-### 事件流 Filter
+### 事件流
 
-- 动态标签：只显示有记录的事件类型
-- 每个标签显示计数（Mono 10px）
-- 零记录的事件类型不渲染
-- Pill 样式：Sans 13px · Capsule · obsidian-10 边框
-- 活跃态：obsidian 背景 · parchment 文字
+- 不提供前端事件类型 filter
+- 主排序按日期逆序
+- 风险强度通过颜色或文案弱提示呈现，不抢主叙事
+- 事件描述以 `planView.map_state.events[*].description` 为准，缺失时回退到 name
+
+### 见证卡画廊
+
+- 位于事件流后方，以缩略图网格呈现
+- 点击进入放大查看，不在 Mirror 主流程里叠加强解释
 
 ### 空状态设计
 
@@ -432,11 +438,11 @@ Onboarding 使用独立的 `onboardingThreadID`，与日常 coaching 的 `thread
 | StarpathTypography | 全局 | .starpathSerif / .starpathSans / .starpathMono |
 | TimestampSeparator | Coach | 时间戳组件，按间隔规则显示 |
 | ChatMessage | Coach | Coach/User 双样式 |
-| FilterBar | Mirror | 动态标签 + 计数 |
-| NorthStarMetric | Mirror | 36px 数值 + 趋势图 |
-| SupportMetric | Mirror | 3 列等宽 |
-| LifeSignSummaryCard | Mirror | Copper 标题 + 统计 + Chevron |
-| EventRow | Mirror | 类型标签 + 时间 + 摘要 |
+| NorthStarMetric | Mirror | 36px 数值 + 目标方向提示 |
+| ProcessGoalMetric | Mirror | 当前 Chapter process goal，最多三列 |
+| LifeSignCard | Mirror | `IF / THEN` 双行结构 |
+| EventRow | Mirror | 风险等级 + 日期 + 摘要 |
+| WitnessCardThumb | Mirror | 见证卡缩略图入口 |
 | SettingsView | Settings | Form · Starpath 零圆角 · 5 Section |
 | ProfileInfoSection | Settings | Store profile 只读 KV 展示 |
 | CopperBreathingLine | Onboarding | 顶部 copper 渐变呼吸线 |
