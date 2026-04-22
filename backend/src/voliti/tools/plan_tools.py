@@ -13,6 +13,7 @@ from langchain_core.tools import InjectedToolArg, tool
 from langgraph.store.base import BaseStore
 from pydantic import ValidationError
 
+from voliti.a2ui import Component, SliderComponent, TextComponent, TextInputComponent
 from voliti.contracts.dashboard import DashboardConfigRecord
 from voliti.contracts.plan import (
     ChapterPatch,
@@ -598,31 +599,43 @@ def _merge_revise_plan(
 # ────────────────────────────────────────────────────────────────────────
 
 
-_PROCESS_GOAL_DAYS_KEY = re.compile(r"^process_goals\.(\d+)\.weekly_target_days$")
+# Plan Builder A2UI component key 单一事实源——_build_plan_builder_components
+# 生成 components 时注入、_apply_plan_builder_submission 解析 submit data 时
+# 消费、_resolve_numeric_field_value 计算当前值时匹配，三处引用同一套常量
+class PlanBuilderKey:
+    MILESTONE = "milestone"
+    RHYTHM_MEALS = "rhythm.meals"
+    RHYTHM_TRAINING = "rhythm.training"
+    RHYTHM_SLEEP = "rhythm.sleep"
+    WEEKLY_TRAINING_COUNT = "weekly_training_count"
+    CALORIE_LOWER = "daily_calorie_range.lower"
+    CALORIE_UPPER = "daily_calorie_range.upper"
+    PROTEIN_LOWER = "daily_protein_grams_range.lower"
+    PROTEIN_UPPER = "daily_protein_grams_range.upper"
+    _PROCESS_GOAL_DAYS_RE = re.compile(
+        r"^process_goals\.(\d+)\.weekly_target_days$"
+    )
+
+    @staticmethod
+    def process_goal_days(idx: int) -> str:
+        return f"process_goals.{idx}.weekly_target_days"
 
 
 def _resolve_numeric_field_value(
     key: str, chapter: ChapterRecord
 ) -> int | None:
-    """Plan Builder 数值字段 key → 当前 chapter 对应值。未知 key 返 None。
-
-    支持 key 集合（C.3.b.1）：
-      - weekly_training_count
-      - daily_calorie_range.lower / .upper
-      - daily_protein_grams_range.lower / .upper
-      - process_goals.{N}.weekly_target_days
-    """
-    if key == "weekly_training_count":
+    """Plan Builder 数值字段 key → 当前 chapter 对应值。未知 key 返 None。"""
+    if key == PlanBuilderKey.WEEKLY_TRAINING_COUNT:
         return chapter.weekly_training_count
-    if key == "daily_calorie_range.lower":
+    if key == PlanBuilderKey.CALORIE_LOWER:
         return chapter.daily_calorie_range[0]
-    if key == "daily_calorie_range.upper":
+    if key == PlanBuilderKey.CALORIE_UPPER:
         return chapter.daily_calorie_range[1]
-    if key == "daily_protein_grams_range.lower":
+    if key == PlanBuilderKey.PROTEIN_LOWER:
         return chapter.daily_protein_grams_range[0]
-    if key == "daily_protein_grams_range.upper":
+    if key == PlanBuilderKey.PROTEIN_UPPER:
         return chapter.daily_protein_grams_range[1]
-    match = _PROCESS_GOAL_DAYS_KEY.fullmatch(key)
+    match = PlanBuilderKey._PROCESS_GOAL_DAYS_RE.fullmatch(key)
     if match:
         idx = int(match.group(1))
         if 0 <= idx < len(chapter.process_goals):
@@ -632,8 +645,8 @@ def _resolve_numeric_field_value(
 
 def _editable_field_to_slider(
     spec: dict[str, Any], chapter: ChapterRecord
-) -> dict[str, Any] | None:
-    """把 Coach 传入的 editable_field spec 转换为 A2UI slider component。
+) -> SliderComponent | None:
+    """把 Coach 传入的 editable_field spec 转换为 A2UI SliderComponent。
 
     spec 非法（kind 不是 slider / min>max / key 未识别 / 当前值取不到）→ 返 None，
     调用方跳过该字段。非致命，便于 Coach 迭代 editable_fields 时不整体失败。
@@ -664,15 +677,9 @@ def _editable_field_to_slider(
     # 这是 slider 的 UI 约束，并非写入数据；最终写入仍由 Pydantic + Coach
     # 给的 min/max 共同守护
     initial = max(min_val, min(int(current), max_val))
-    return {
-        "kind": "slider",
-        "key": key,
-        "label": label,
-        "min": min_val,
-        "max": max_val,
-        "step": step,
-        "value": initial,
-    }
+    return SliderComponent(
+        key=key, label=label, min=min_val, max=max_val, step=step, value=initial
+    )
 
 
 def _readonly_numeric_summary(
@@ -681,14 +688,14 @@ def _readonly_numeric_summary(
     """把当前 chapter 中 *未开放编辑* 的数值合并为一行只读展示。三项都被编辑 → None。"""
     segments: list[str] = []
     calorie_edited = (
-        "daily_calorie_range.lower" in edited_keys
-        and "daily_calorie_range.upper" in edited_keys
+        PlanBuilderKey.CALORIE_LOWER in edited_keys
+        and PlanBuilderKey.CALORIE_UPPER in edited_keys
     )
     protein_edited = (
-        "daily_protein_grams_range.lower" in edited_keys
-        and "daily_protein_grams_range.upper" in edited_keys
+        PlanBuilderKey.PROTEIN_LOWER in edited_keys
+        and PlanBuilderKey.PROTEIN_UPPER in edited_keys
     )
-    wtc_edited = "weekly_training_count" in edited_keys
+    wtc_edited = PlanBuilderKey.WEEKLY_TRAINING_COUNT in edited_keys
     if not calorie_edited:
         segments.append(
             f"热量 {chapter.daily_calorie_range[0]}-{chapter.daily_calorie_range[1]} kcal"
@@ -708,21 +715,13 @@ def _build_plan_builder_components(
     plan: PlanDocument,
     chapter_index: int,
     editable_fields: list[dict[str, Any]] | None = None,
-) -> list[dict[str, Any]] | None:
+) -> list[Component] | None:
     """按约定顺序生成 Plan Builder overlay 的 A2UI components。
 
-    约定的 key 命名映射（前后端对齐）：
-      - "milestone"        → patch.chapters[i].milestone
-      - "rhythm.meals"     → patch.chapters[i].daily_rhythm.meals.value
-      - "rhythm.training"  → patch.chapters[i].daily_rhythm.training.value
-      - "rhythm.sleep"     → patch.chapters[i].daily_rhythm.sleep.value
-      - 数值字段通过 editable_fields 参数按 spec 开放（见 _resolve_numeric_field_value）
-
-    editable_fields：Coach 供给的数值字段约束列表，每条 spec:
-      { "key": str, "kind": "slider", "min": int, "max": int, "step": int?,
-        "label": str, "hint": str? }
+    key 映射（前后端对齐）集中在 `PlanBuilderKey` 常量类里。数值字段通过
+    editable_fields 参数按 spec 开放（见 `_resolve_numeric_field_value`）。
     Coach 负责根据用户画像/当前 chapter/numeric-guidelines.md 计算合理的
-    min/max，代码只执行。无效 spec 跳过，不阻断整体渲染。
+    min/max；代码只执行，无效 spec 静默跳过。
 
     chapter_index 不匹配任何 chapter → 返回 None，由调用方透传错误给 Coach。
     """
@@ -733,62 +732,54 @@ def _build_plan_builder_components(
     if chapter is None:
         return None
 
-    components: list[dict[str, Any]] = [
-        {"kind": "text", "text": f"“{plan.overall_narrative}”"},
-        {"kind": "text", "text": f"{plan.target_summary}"},
-        {
-            "kind": "text",
-            "text": (
-                f"Chapter {chapter.chapter_index} · {chapter.name}\n"
-                f"{chapter.why_this_chapter}"
-            ),
-        },
-        {
-            "kind": "text_input",
-            "key": "milestone",
-            "label": "本章目标（可调整文案）",
-            "value": chapter.milestone,
-        },
-        {"kind": "text", "text": "每日节奏"},
-        {
-            "kind": "text_input",
-            "key": "rhythm.meals",
-            "label": "三餐",
-            "value": chapter.daily_rhythm.meals.value,
-        },
-        {
-            "kind": "text_input",
-            "key": "rhythm.training",
-            "label": "训练",
-            "value": chapter.daily_rhythm.training.value,
-        },
-        {
-            "kind": "text_input",
-            "key": "rhythm.sleep",
-            "label": "作息",
-            "value": chapter.daily_rhythm.sleep.value,
-        },
+    components: list[Component] = [
+        TextComponent(text=f"“{plan.overall_narrative}”"),
+        TextComponent(text=plan.target_summary),
+        TextComponent(
+            text=f"Chapter {chapter.chapter_index} · {chapter.name}\n{chapter.why_this_chapter}"
+        ),
+        TextInputComponent(
+            key=PlanBuilderKey.MILESTONE,
+            label="本章目标（可调整文案）",
+            value=chapter.milestone,
+        ),
+        TextComponent(text="每日节奏"),
+        TextInputComponent(
+            key=PlanBuilderKey.RHYTHM_MEALS,
+            label="三餐",
+            value=chapter.daily_rhythm.meals.value,
+        ),
+        TextInputComponent(
+            key=PlanBuilderKey.RHYTHM_TRAINING,
+            label="训练",
+            value=chapter.daily_rhythm.training.value,
+        ),
+        TextInputComponent(
+            key=PlanBuilderKey.RHYTHM_SLEEP,
+            label="作息",
+            value=chapter.daily_rhythm.sleep.value,
+        ),
     ]
 
     edited_keys: set[str] = set()
-    numeric_components: list[dict[str, Any]] = []
+    numeric_components: list[Component] = []
     for spec in editable_fields or []:
         slider = _editable_field_to_slider(spec, chapter)
         if slider is None:
             continue
         hint = spec.get("hint")
         if isinstance(hint, str) and hint.strip():
-            numeric_components.append({"kind": "text", "text": hint.strip()})
+            numeric_components.append(TextComponent(text=hint.strip()))
         numeric_components.append(slider)
-        edited_keys.add(slider["key"])
+        edited_keys.add(slider.key)
 
     if numeric_components:
-        components.append({"kind": "text", "text": "数值调整"})
+        components.append(TextComponent(text="数值调整"))
         components.extend(numeric_components)
 
     readonly_line = _readonly_numeric_summary(chapter, edited_keys)
     if readonly_line is not None:
-        components.append({"kind": "text", "text": readonly_line})
+        components.append(TextComponent(text=readonly_line))
 
     return components
 
@@ -844,7 +835,7 @@ def _apply_plan_builder_submission(
     chapter_patch: dict[str, Any] = {"chapter_index": chapter_index}
     changes: list[str] = []
 
-    new_milestone = data.get("milestone")
+    new_milestone = data.get(PlanBuilderKey.MILESTONE)
     if isinstance(new_milestone, str):
         stripped = new_milestone.strip()
         if stripped and stripped != chapter.milestone:
@@ -852,9 +843,13 @@ def _apply_plan_builder_submission(
             changes.append(f"本章目标 → {stripped}")
 
     rhythm_patch: dict[str, Any] = {}
-    rhythm_labels = {"meals": "三餐", "training": "训练", "sleep": "作息"}
-    for slot in ("meals", "training", "sleep"):
-        raw = data.get(f"rhythm.{slot}")
+    rhythm_slots = {
+        "meals": (PlanBuilderKey.RHYTHM_MEALS, "三餐"),
+        "training": (PlanBuilderKey.RHYTHM_TRAINING, "训练"),
+        "sleep": (PlanBuilderKey.RHYTHM_SLEEP, "作息"),
+    }
+    for slot, (rhythm_key, label_zh) in rhythm_slots.items():
+        raw = data.get(rhythm_key)
         if not isinstance(raw, str):
             continue
         stripped = raw.strip()
@@ -867,7 +862,7 @@ def _apply_plan_builder_submission(
             "value": stripped,
             "tooltip": getattr(chapter.daily_rhythm, slot).tooltip,
         }
-        changes.append(f"{rhythm_labels[slot]} → {stripped}")
+        changes.append(f"{label_zh} → {stripped}")
 
     if rhythm_patch:
         full_rhythm = {
@@ -889,19 +884,21 @@ def _apply_plan_builder_submission(
 
     # 数值字段（C.3.b.1）──────────────────────────────────────────────
 
-    new_wtc = _coerce_int(data.get("weekly_training_count"))
+    new_wtc = _coerce_int(data.get(PlanBuilderKey.WEEKLY_TRAINING_COUNT))
     if new_wtc is not None and new_wtc != chapter.weekly_training_count:
         chapter_patch["weekly_training_count"] = new_wtc
         changes.append(f"每周训练次数 → {new_wtc}")
 
     # 区间字段：lower / upper 单独提交时需合成完整 tuple，另一端保留原值
-    for range_key, label_zh, unit in (
-        ("daily_calorie_range", "热量区间", "kcal"),
-        ("daily_protein_grams_range", "蛋白区间", "g"),
+    for range_key, label_zh, unit, lower_key, upper_key in (
+        ("daily_calorie_range", "热量区间", "kcal",
+         PlanBuilderKey.CALORIE_LOWER, PlanBuilderKey.CALORIE_UPPER),
+        ("daily_protein_grams_range", "蛋白区间", "g",
+         PlanBuilderKey.PROTEIN_LOWER, PlanBuilderKey.PROTEIN_UPPER),
     ):
         current_lower, current_upper = getattr(chapter, range_key)
-        new_lower = _coerce_int(data.get(f"{range_key}.lower"))
-        new_upper = _coerce_int(data.get(f"{range_key}.upper"))
+        new_lower = _coerce_int(data.get(lower_key))
+        new_upper = _coerce_int(data.get(upper_key))
         if new_lower is None and new_upper is None:
             continue
         final_lower = current_lower if new_lower is None else new_lower
@@ -921,7 +918,7 @@ def _apply_plan_builder_submission(
     # process_goals.{N}.weekly_target_days 整体替换 process_goals 列表
     pg_updates: dict[int, int] = {}
     for key, value in data.items():
-        match = _PROCESS_GOAL_DAYS_KEY.fullmatch(key)
+        match = PlanBuilderKey._PROCESS_GOAL_DAYS_RE.fullmatch(key)
         if not match:
             continue
         idx = int(match.group(1))

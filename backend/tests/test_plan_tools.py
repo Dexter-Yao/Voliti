@@ -657,7 +657,7 @@ class TestBuildPlanBuilderComponents:
     ) -> None:
         components = _build_plan_builder_components(baseline_plan, 1)
         assert components is not None
-        input_keys = [c["key"] for c in components if c["kind"] == "text_input"]
+        input_keys = [c.key for c in components if c.kind == "text_input"]
         assert input_keys == [
             "milestone",
             "rhythm.meals",
@@ -672,11 +672,11 @@ class TestBuildPlanBuilderComponents:
         components = _build_plan_builder_components(baseline_plan, 1)
         assert components is not None
         numeric_rows = [
-            c for c in components if c["kind"] == "text" and "kcal" in c.get("text", "")
+            c for c in components if c.kind == "text" and "kcal" in c.text
         ]
         assert len(numeric_rows) == 1
-        assert "蛋白" in numeric_rows[0]["text"]
-        assert "每周训练" in numeric_rows[0]["text"]
+        assert "蛋白" in numeric_rows[0].text
+        assert "每周训练" in numeric_rows[0].text
 
     def test_top_of_panel_anchors_user_narrative(
         self, baseline_plan: PlanDocument
@@ -684,8 +684,8 @@ class TestBuildPlanBuilderComponents:
         """第一条组件应呈现用户自己的 overall_narrative，让共建感以"被看见"开场。"""
         components = _build_plan_builder_components(baseline_plan, 1)
         assert components is not None
-        assert components[0]["kind"] == "text"
-        assert baseline_plan.overall_narrative in components[0]["text"]
+        assert components[0].kind == "text"
+        assert baseline_plan.overall_narrative in components[0].text
 
 
 class TestApplyPlanBuilderSubmission:
@@ -802,7 +802,8 @@ class TestEditableFieldToSlider:
         spec = {"key": "weekly_training_count", "kind": "slider",
                 "min": 3, "max": 5, "step": 1, "label": "每周训练次数"}
         slider = _editable_field_to_slider(spec, baseline_plan.chapters[0])
-        assert slider == {
+        assert slider is not None
+        assert slider.model_dump() == {
             "kind": "slider",
             "key": "weekly_training_count",
             "label": "每周训练次数",
@@ -827,7 +828,7 @@ class TestEditableFieldToSlider:
         slider = _editable_field_to_slider(spec, baseline_plan.chapters[0])
         assert slider is not None
         # chapter 1 的 process_goals[0].weekly_target_days == 5
-        assert slider["value"] == 5
+        assert slider.value == 5
 
 
 class TestBuildPlanBuilderComponentsWithEditableFields:
@@ -838,10 +839,10 @@ class TestBuildPlanBuilderComponentsWithEditableFields:
         components = _build_plan_builder_components(baseline_plan, 1, None)
         assert components is not None
         readonly_rows = [
-            c for c in components if c["kind"] == "text" and "kcal" in c.get("text", "")
+            c for c in components if c.kind == "text" and "kcal" in c.text
         ]
         assert len(readonly_rows) == 1
-        assert "蛋白" in readonly_rows[0]["text"] and "每周训练" in readonly_rows[0]["text"]
+        assert "蛋白" in readonly_rows[0].text and "每周训练" in readonly_rows[0].text
 
     def test_editable_field_emits_hint_before_slider(
         self, baseline_plan: PlanDocument
@@ -858,11 +859,11 @@ class TestBuildPlanBuilderComponentsWithEditableFields:
         ]
         components = _build_plan_builder_components(baseline_plan, 1, editable)
         assert components is not None
-        kinds = [c["kind"] for c in components]
+        kinds = [c.kind for c in components]
         # 期望末尾出现 text("数值调整") -> text(hint) -> slider
-        slider_pos = next(i for i, c in enumerate(components) if c["kind"] == "slider")
-        assert components[slider_pos - 1]["text"] == "新手阶段 2-3 次稳定比 4 次断续更值"
-        assert components[slider_pos - 2]["text"] == "数值调整"
+        slider_pos = next(i for i, c in enumerate(components) if c.kind == "slider")
+        assert components[slider_pos - 1].text == "新手阶段 2-3 次稳定比 4 次断续更值"
+        assert components[slider_pos - 2].text == "数值调整"
         assert "slider" in kinds
 
     def test_readonly_summary_drops_edited_fields(
@@ -877,15 +878,15 @@ class TestBuildPlanBuilderComponentsWithEditableFields:
         assert components is not None
         readonly_rows = [
             c for c in components
-            if c["kind"] == "text"
-            and ("kcal" in c.get("text", "") or "每周训练" in c.get("text", ""))
-            and "数值调整" not in c.get("text", "")
+            if c.kind == "text"
+            and ("kcal" in c.text or "每周训练" in c.text)
+            and "数值调整" not in c.text
         ]
         # 热量 + 蛋白仍在只读行；每周训练不再出现
         assert len(readonly_rows) == 1
-        assert "每周训练" not in readonly_rows[0]["text"]
-        assert "热量" in readonly_rows[0]["text"]
-        assert "蛋白" in readonly_rows[0]["text"]
+        assert "每周训练" not in readonly_rows[0].text
+        assert "热量" in readonly_rows[0].text
+        assert "蛋白" in readonly_rows[0].text
 
     def test_invalid_spec_is_silently_skipped(
         self, baseline_plan: PlanDocument
@@ -898,9 +899,9 @@ class TestBuildPlanBuilderComponentsWithEditableFields:
         ]
         components = _build_plan_builder_components(baseline_plan, 1, editable)
         assert components is not None
-        sliders = [c for c in components if c["kind"] == "slider"]
+        sliders = [c for c in components if c.kind == "slider"]
         assert len(sliders) == 1
-        assert sliders[0]["key"] == "weekly_training_count"
+        assert sliders[0].key == "weekly_training_count"
 
 
 class TestApplyPlanBuilderSubmissionNumericFields:
