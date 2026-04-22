@@ -148,7 +148,7 @@ Coach Agent 由 `create_deep_agent()` 构造，运行时组合以下能力：
 
 1. 系统 prompt（`PromptRegistry` + Jinja2 `SandboxedEnvironment`）。
 2. 会话级 middleware 栈（剥离内置默认值、注入 onboarding / skills / briefing）。
-3. 工具：通用 `fan_out`、`add_forward_marker`，以及 `backend/skills/coach/` 下动态加载的四个 intervention 专用工具与 `issue_witness_card`。
+3. 工具：通用 `fan_out`、`add_forward_marker`，以及 `backend/skills/coach/` 下动态加载的 skill 工具——四个 intervention 专用工具、`issue_witness_card`、以及 **Plan Skill 的 5 个工具**（`create_plan` / `set_goal_status` / `update_week_narrative` / `revise_plan` / `fan_out_plan_builder`）。
 4. 虚拟文件系统（`CompositeBackend`）：`/user/…` 路由到 Store、`/skills/coach/…` 路由到只读文件系统、其他到 State。
 5. 记忆路径：coaching 会话挂载 `/user/coach/AGENTS.md`、`/user/profile/context.md`、`/user/coping_plans_index.md`。
 
@@ -157,6 +157,7 @@ Coach Agent 由 `create_deep_agent()` 构造，运行时组合以下能力：
 1. 用户不直接接触后台分析代理。
 2. 会话差异通过 `SessionProfile` + middleware 组合，而非多套独立 agent。
 3. Witness Card 与体验式干预通过 skill tool 组合进入主运行时，无 subagent。
+4. **Plan Skill 承担结构化减脂方案**：单文件嵌套 PlanDocument（target / chapters / current_week）+ 跨字段 Pydantic 守护 + archive-first 写入 + dashboardConfig 自动同步 + 全屏共建 overlay（`surface="plan-builder"`）。Coach 在六维画像充分后触发 `create_plan`，紧接 `fan_out_plan_builder` 让用户看见并轻度共建。详见 [`plan-skill.md`](plan-skill.md)。
 
 ### 3.4 LangGraph Store 与运行态
 
@@ -185,7 +186,7 @@ Day-End Pipeline 是周期性后台流程，按用户时区零点由 LangGraph C
 3. `archive_conversation` — 完整会话归档写入 `/conversation_archive/{date}.md`。
 4. `backfill_missing_summaries` — 7 天窗口内缺失日期自动回填。
 5. `expire_passed_markers` — 超过当前时间的 `timeline/markers.json` 条目状态改为 `passed`。
-6. `compute_and_write_briefing` — 预计算 Goal/Chapter/摘要上下文写入 `/derived/briefing.md`，供下一次 coaching 会话 BriefingMiddleware 直接注入。
+6. `compute_and_write_briefing` — 预计算摘要上下文写入 `/derived/briefing.md`，末尾以 `<user_plan_data>` XML 段嵌入 Plan 精简投影（target_summary / active chapter / current_week / week_freshness / watch_list），供下一次 coaching 会话 BriefingMiddleware 直接注入；compute_plan_view 失败时降级为 `<user_plan_data_unavailable>` 段。
 
 ### 3.6 Eval 模块
 

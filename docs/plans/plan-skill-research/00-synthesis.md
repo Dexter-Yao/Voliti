@@ -3,10 +3,11 @@
 <!-- ABOUTME: Plan Skill 设计决策汇总 + 架构图 + 字段清单 + 实施路径 -->
 <!-- ABOUTME: 基于 6 路调研(01-06) + 主线决策对话 + CEO review Section 1-11 + Anthropic agent 工程原则对齐 -->
 
-> **状态**：决策收敛，等待进入实施
-> **产出日期**：2026-04-20
+> ⚠️ **生效规格以 [`docs/plan-skill.md`](../../plan-skill.md) 为准**（2026-04-22 起）。本文保留为 Phase A→B→C→D.1 的决策轨迹与 CEO review 收敛历史，供复盘与新人 onboarding 使用。实现与真相源：`backend/src/voliti/contracts/plan.py`、`backend/src/voliti/tools/plan_tools.py`、`backend/skills/coach/plan/SKILL.md`。
+>
+> **状态**：决策已实施（Phase A + B + C + D.1 全部 commit 入仓）。P2 项状态表见 `docs/plan-skill.md § 11`。
+> **产出日期**：2026-04-20（原稿）/ 2026-04-22（evergreen 剥离）
 > **依据**：`01-academic.md` / `02-benchmark.md` / `03-knowledge-base.md` / `04-voliti-internal.md` / `05-skill-authoring.md` / `06-tech-arch.md` + 主线对话 + 早期四层骨架草稿 + CEO review 方案 C→D→E→F 多轮收敛 + Section 1-11 失败模式 / 测试 / 部署 / 设计评审 + Anthropic 四篇工程文章（writing tools / agent skills / context engineering / harness design）
-> **下游**：本文通过后，进入实施路径（契约模型 + 写入工具 + 派生层 + Briefing 扩展 + Plan Skill SKILL.md）
 
 ---
 
