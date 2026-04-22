@@ -54,18 +54,20 @@ def _make_lifesigns_index_value(lines: list[str]) -> dict[str, Any]:
 # ── build_plan_view_payload ────────────────────────────────────────────
 
 
-def test_build_plan_view_payload_returns_none_when_plan_absent() -> None:
+@pytest.mark.asyncio
+async def test_build_plan_view_payload_returns_none_when_plan_absent() -> None:
     store = InMemoryStore()
-    result = build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
+    result = await build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
     assert result is None
 
 
-def test_build_plan_view_payload_returns_plan_and_view_in_chapter() -> None:
+@pytest.mark.asyncio
+async def test_build_plan_view_payload_returns_plan_and_view_in_chapter() -> None:
     store = InMemoryStore()
     store.put(USER_NS, PLAN_CURRENT_KEY, _load_plan_fixture_raw())
     plan = _load_plan_document()
 
-    result = build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
+    result = await build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
 
     assert result is not None
     assert result["plan"]["plan_id"] == plan.plan_id
@@ -74,26 +76,29 @@ def test_build_plan_view_payload_returns_plan_and_view_in_chapter() -> None:
     assert result["plan_view"]["active_chapter_index"] == 1
 
 
-def test_build_plan_view_payload_before_start() -> None:
+@pytest.mark.asyncio
+async def test_build_plan_view_payload_before_start() -> None:
     store = InMemoryStore()
     store.put(USER_NS, PLAN_CURRENT_KEY, _load_plan_fixture_raw())
 
-    result = build_plan_view_payload(store, TEST_USER_ID, date(2026, 3, 1))
+    result = await build_plan_view_payload(store, TEST_USER_ID, date(2026, 3, 1))
     assert result is not None
     assert result["plan_view"]["plan_phase"] == "before_start"
     assert result["plan_view"]["active_chapter_index"] is None
 
 
-def test_build_plan_view_payload_after_end() -> None:
+@pytest.mark.asyncio
+async def test_build_plan_view_payload_after_end() -> None:
     store = InMemoryStore()
     store.put(USER_NS, PLAN_CURRENT_KEY, _load_plan_fixture_raw())
 
-    result = build_plan_view_payload(store, TEST_USER_ID, date(2026, 7, 1))
+    result = await build_plan_view_payload(store, TEST_USER_ID, date(2026, 7, 1))
     assert result is not None
     assert result["plan_view"]["plan_phase"] == "after_end"
 
 
-def test_build_plan_view_payload_includes_markers_batch() -> None:
+@pytest.mark.asyncio
+async def test_build_plan_view_payload_includes_markers_batch() -> None:
     store = InMemoryStore()
     store.put(USER_NS, PLAN_CURRENT_KEY, _load_plan_fixture_raw())
     store.put(
@@ -113,14 +118,15 @@ def test_build_plan_view_payload_includes_markers_batch() -> None:
         ),
     )
 
-    result = build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
+    result = await build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
     assert result is not None
     # fixture plan 的 linked_markers 为空，watch_list 来自 linked_markers 过滤后为空；
     # 但 markers batch 读取流程仍应完成，不应抛错
     assert "watch_list" in result["plan_view"]
 
 
-def test_build_plan_view_payload_survives_corrupted_markers() -> None:
+@pytest.mark.asyncio
+async def test_build_plan_view_payload_survives_corrupted_markers() -> None:
     store = InMemoryStore()
     store.put(USER_NS, PLAN_CURRENT_KEY, _load_plan_fixture_raw())
     store.put(
@@ -129,7 +135,7 @@ def test_build_plan_view_payload_survives_corrupted_markers() -> None:
         {"version": "1", "content": ["{broken"], "created_at": "", "modified_at": ""},
     )
 
-    result = build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
+    result = await build_plan_view_payload(store, TEST_USER_ID, date(2026, 4, 20))
     assert result is not None
     assert result["plan_view"]["plan_phase"] == "in_chapter"
 
