@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import date, datetime, timezone
 from typing import Any
@@ -153,24 +154,26 @@ async def build_plan_view_payload(
     if plan is None:
         return None
 
-    markers_raw: dict[str, Any] | None = None
-    lifesigns_raw: dict[str, Any] | None = None
-    try:
-        markers_item = await store.aget(user_namespace, TIMELINE_MARKERS_KEY)
-        markers_raw = markers_item.value if markers_item else None
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "http_app: failed to read markers",
-            extra={"exception_type": type(exc).__name__},
-        )
-    try:
-        lifesigns_item = await store.aget(user_namespace, COPING_PLANS_INDEX_KEY)
-        lifesigns_raw = lifesigns_item.value if lifesigns_item else None
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "http_app: failed to read coping_plans_index",
-            extra={"exception_type": type(exc).__name__},
-        )
+    # 并行读 markers 与 lifesigns（两者之间无依赖；return_exceptions 保留
+    # per-key fail-open 语义：一个读失败仍用另一个）
+    markers_result, lifesigns_result = await asyncio.gather(
+        store.aget(user_namespace, TIMELINE_MARKERS_KEY),
+        store.aget(user_namespace, COPING_PLANS_INDEX_KEY),
+        return_exceptions=True,
+    )
+
+    def _unwrap(result: Any, key_label: str) -> dict[str, Any] | None:
+        if isinstance(result, BaseException):
+            logger.warning(
+                "http_app: failed to read %s",
+                key_label,
+                extra={"exception_type": type(result).__name__},
+            )
+            return None
+        return result.value if result is not None else None
+
+    markers_raw = _unwrap(markers_result, "markers")
+    lifesigns_raw = _unwrap(lifesigns_result, "coping_plans_index")
 
     markers = parse_markers(markers_raw)
     lifesigns = parse_lifesigns_index(lifesigns_raw)
