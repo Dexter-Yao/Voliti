@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Component } from "@/lib/a2ui";
+import { buildInitialFormData } from "@/lib/a2ui-form";
 
 interface PlanBuilderLayoutProps {
   components: Component[];
@@ -19,18 +20,6 @@ interface PlanBuilderLayoutProps {
 }
 
 type FormValue = string | number;
-
-function buildInitialData(components: Component[]): Record<string, FormValue> {
-  const data: Record<string, FormValue> = {};
-  for (const c of components) {
-    if (c.kind === "text_input") {
-      data[c.key] = c.value ?? "";
-    } else if (c.kind === "slider") {
-      data[c.key] = c.value ?? Math.round((c.min + c.max) / 2);
-    }
-  }
-  return data;
-}
 
 function normalizeForCompare(value: FormValue | undefined): string {
   if (value === undefined) return "";
@@ -45,7 +34,10 @@ export function PlanBuilderLayout({
   onReject,
   onSkip,
 }: PlanBuilderLayoutProps) {
-  const initialData = useMemo(() => buildInitialData(components), [components]);
+  const initialData = useMemo(
+    () => buildInitialFormData(components) as Record<string, FormValue>,
+    [components],
+  );
   const [formData, setFormData] = useState<Record<string, FormValue>>(() => ({
     ...initialData,
   }));

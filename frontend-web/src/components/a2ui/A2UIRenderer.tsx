@@ -18,34 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Undo2 } from "lucide-react";
-
-// --- Initial data builder ---
-
-function buildInitialData(components: Component[]): Record<string, unknown> {
-  const data: Record<string, unknown> = {};
-  for (const c of components) {
-    if ("key" in c) {
-      switch (c.kind) {
-        case "slider":
-          data[c.key] = c.value ?? Math.round((c.min + c.max) / 2);
-          break;
-        case "text_input":
-          data[c.key] = c.value ?? "";
-          break;
-        case "number_input":
-          data[c.key] = c.value != null ? String(c.value) : "";
-          break;
-        case "select":
-          data[c.key] = c.value ?? "";
-          break;
-        case "multi_select":
-          data[c.key] = c.value ?? [];
-          break;
-      }
-    }
-  }
-  return data;
-}
+import { buildInitialFormData } from "@/lib/a2ui-form";
 
 // --- Individual renderers ---
 
@@ -259,7 +232,7 @@ export function A2UIRenderer({
   mode = "coaching",
 }: A2UIRendererProps) {
   const isOnboarding = mode === "onboarding";
-  const initialDataRef = useRef<Record<string, unknown>>(buildInitialData(components));
+  const initialDataRef = useRef<Record<string, unknown>>(buildInitialFormData(components));
   const [formData, setFormData] = useState<Record<string, unknown>>(() => ({ ...initialDataRef.current }));
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
